@@ -1,0 +1,85 @@
+#comments {
+}
+
+.comments-area {
+  background-color: $white;
+  padding: toRem(10);
+  box-shadow: 0 1px 5px 0 rgb(0 0 0 / 25%);
+  border-radius: 5px;
+}
+
+.comment-section {
+  padding: toRem(10);
+  flex-grow: 1;
+}
+
+.comment-aside {
+}
+
+.bbj-comment-container {
+  display: flex;
+  margin-bottom: toRem(10);
+}
+
+.comment-section ol {
+  padding-left: 0px;
+}
+
+.comment-section ol li {
+  list-style-type: none;
+}
+
+.comment-section .children {
+  padding-left: toRem(60);
+}
+.bbj-comment-left {
+  width: toRem(50);
+  flex-shrink: 0;
+  margin-right: -25px;
+  z-index: 10;
+}
+
+.bbj-avatar-container {
+  border-radius: 50%;
+  padding: toRem(2);
+  border: 1px solid $secondaryColor;
+  background-color: $white;
+}
+
+.bbj-avatar-container img {
+  width: 100%;
+  border-radius: 50%;
+}
+.bbj-comment-right {
+  border-left: 1px solid $secondaryColor;
+  border-bottom: 1px solid $secondaryColor;
+  width: 100%;
+}
+
+.comment-meta-top {
+  background-color: $backgroundColor;
+  margin-top: toRem(10);
+  padding-left: toRem(35);
+  padding-top: toRem(8);
+  padding-bottom: toRem(8);
+  font-weight: 500;
+  font-size: toRem(16);
+  display: flex;
+}
+
+.comment-username {
+  flex-grow: 1;
+}
+
+.comment-head-right {
+  width: toRem(50);
+  flex-shrink: 0;
+}
+
+#comments {
+  max-width: 100% !important;
+}
+
+#wpdcom {
+  max-width: 95% !important;
+}

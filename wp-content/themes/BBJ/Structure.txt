@@ -1,0 +1,63 @@
+
+
+Season 
+
+Name 
+Start Date 
+End Date 
+Abbreviation 
+Season Number 
+Picture 
+Banner 
+
+
+Players 
+
+First Name 
+Last Name 
+Nickname 
+Gender 
+Picture 
+Banner 
+DOB 
+Occupation 
+FB 
+IG 
+Twitter 
+TT 
+Geo Address (mostly just need state and all that stuff)
+
+
+Relationships 
+
+Player (linked to player ID of wp_bbj_players table)
+Season (linked to the season ID of wp_bbj_seasons table)
+Winner (boolean)
+Runner-Up (boolean)
+America's Favorite (boolean)
+Evicted (boolean)
+Jury (boolean)
+
+
+Weekly Result 
+
+Season 
+Week 
+Start Date 
+End Date 
+(player loop)
+Player 
+HOH 
+POV 
+Nom 
+Saved 
+Jury
+Evicted 
+Voted For 
+
+-- This page will pull from the relationship table and look up which player is connected to the season # and not evicted or in jury and display them in the loop. 
+
+
+Current Status Bar 
+
+-- This bar will just be a list of any player I make and the dropdowns that apply to them.  Jury, HoH, etc.  I don't think it should be tied in with any Relationship becuase it would be too many queries to pull through who is evicted and when.  

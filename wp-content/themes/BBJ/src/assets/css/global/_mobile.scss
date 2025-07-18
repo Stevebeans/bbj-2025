@@ -1,0 +1,83 @@
+// Desktops
+@media screen and (min-width: 768px) {
+  .related-post {
+    max-width: 33%;
+  }
+
+  .player-profile {
+    flex-direction: row;
+  }
+
+  .profile-left {
+    max-width: 300px;
+  }
+
+  .player-name-desktop {
+    display: block;
+    margin-top: -55px;
+    margin-left: -45px;
+    color: $white;
+  }
+
+  .player-name-mobile {
+    display: none;
+  }
+  .player-profile-content {
+    border-left: 0px;
+  }
+
+  .sc__banner {
+    font-size: toRem(16);
+  }
+
+  .standing-contain {
+    width: toRem(175);
+    height: toRem(175);
+  }
+  .navigation-main {
+    display: block;
+  }
+
+  .navigation-main-mobile {
+    display: none;
+  }
+
+  .sideBar {
+    width: toRem(300);
+  }
+}
+
+// huge screens
+@media screen and (min-width: 1366px) {
+  // body
+
+  .body-regular,
+  .post-bottom {
+    max-width: 1400px;
+    display: flex;
+    grid-template-columns: 1fr 300px;
+  }
+
+  aside {
+    display: block;
+    flex-shrink: 0;
+    flex-basis: 300px;
+    padding: toRem(10);
+    margin-top: toRem(10);
+    align-self: start;
+    position: sticky;
+    position: -webkit-sticky; /* for Safari */
+    top: 10px;
+  }
+
+  .aside-sticky {
+    border: 1px solid blue;
+    height: 300px;
+    width: 100%;
+  }
+
+  .related-post {
+    font-size: toRem(16);
+    flex-grow: 1;
+  }
+}

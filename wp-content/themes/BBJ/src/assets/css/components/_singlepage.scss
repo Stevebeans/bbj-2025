@@ -1,0 +1,162 @@
+.feed-update-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+  @include media(">tablet") {
+    flex-direction: row;
+  }
+  .update-left {
+    flex-grow: 1;
+  }
+}
+.update-right {
+  width: 100%;
+  padding-left: 10px;
+  background-color: $lightGray;
+  padding: 15px;
+  border-radius: 15px;
+
+  @include media(">tablet") {
+    width: 280px;
+  }
+
+  align-self: start;
+  display: block;
+  top: 30px;
+  position: sticky;
+  .single-spoiler-box {
+  }
+}
+
+.feed-update {
+  h3 {
+    font-family: $alt_font_two;
+    font-size: toRem(16);
+    font-weight: 600;
+  }
+  p {
+    font-size: toRem(16);
+    font-weight: 400;
+  }
+
+  margin-right: 10px;
+}
+
+.feed-update-detail {
+  min-height: 300px;
+  border: 1px solid $darkGray;
+  padding: 20px;
+  border-radius: 10px;
+}
+.feed-update a,
+.feed-update a:visited {
+  color: $darkGray;
+}
+.update-post {
+  border-left: 1px solid $lightGray;
+  border-right: 1px solid $lightGray;
+  a,
+  a:visited {
+    color: $fontGray;
+  }
+}
+.feed-update-featured {
+  display: block;
+  img {
+    width: 400px;
+    height: 200px;
+    border-radius: 10px;
+    margin: 5px auto 10px auto;
+  }
+}
+
+.feed-update-post {
+  padding: 10px 10px;
+  display: grid;
+  border-top: 1px solid $lightGray;
+  grid-template-columns: 100px 1fr;
+  grid-template-areas:
+    "date title"
+    "body body";
+
+  p {
+    margin: 0;
+    font-size: toRem(14);
+    top: 0;
+    align-items: start;
+    color: $darkGray;
+  }
+
+  .header {
+    font-size: toRem(16);
+    font-weight: 600;
+    display: inline-block;
+    grid-area: title;
+    padding-left: 5px;
+    h3 {
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: toRem(16);
+      font-weight: 600;
+    }
+  }
+
+  .date {
+    grid-area: date;
+    font-size: toRem(12);
+    font-weight: 400;
+    text-align: center;
+    font-family: $alt_font;
+    padding: 5px;
+    border-right: 1px solid $lightGray;
+    border-radius: 5px;
+  }
+  .body {
+    position: relative;
+    padding-top: 10px;
+    grid-area: body;
+  }
+
+  .avatar {
+    grid-area: avatar;
+    padding-top: 5px;
+
+    img {
+      border-radius: 50%;
+      height: 35px;
+      width: 35px;
+      object-fit: cover;
+    }
+    text-align: center;
+  }
+}
+.feed-update-post:hover {
+  background-color: $lightGray;
+  transition-timing-function: ease-in;
+
+  /* Quick on the way out */
+  transition: 0.2s;
+}
+
+.post-content {
+  padding: 0px;
+  @include media(">=tablet") {
+    padding: 10px;
+  }
+}
+
+.promobox {
+  border: 1px solid $darkGray;
+  box-shadow: 0 1px 5px 0 rgb(0 0 0 / 25%);
+  padding: 10px;
+  margin: 5px auto 10px auto;
+  text-align: center;
+}
+
+.ad-notice {
+  font-size: toRem(14);
+  font-family: $alt_font;
+  text-align: center;
+  margin-bottom: -10px;
+  color: $fontGray;
+}

@@ -1,0 +1,349 @@
+header {
+  font-size: 1rem;
+  border-bottom: 0px solid $primaryColor;
+}
+
+.headerContain {
+  background-color: $white;
+  border: 0px solid green;
+  padding-top: toRem(10);
+  padding-bottom: toRem(10);
+  padding-left: toRem(5);
+  padding-right: toRem(5);
+  display: flex;
+}
+
+.headerContain img {
+  margin-top: 5px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  border: 0px solid black;
+}
+
+.headerLogoFull {
+  display: none;
+  @include media(">tablet") {
+    display: block;
+  }
+}
+
+.headerLogoFull img {
+  max-width: 350px;
+}
+
+.headerLogoMobile {
+  display: block;
+  @include media(">tablet") {
+    display: none;
+  }
+}
+
+.searchBar {
+  flex-grow: 1;
+  border: 0px solid;
+  align-items: center;
+  justify-content: right;
+  padding: 5px 20px 5px 5px;
+  display: flex;
+}
+
+.searchBar input {
+  width: 75%;
+  max-width: 300px;
+  border-radius: 15px;
+  border: 1px solid $borderColor;
+  padding: 4px 10px 2px 10px;
+  font-size: 0.85rem;
+}
+.mobileMenu__icon,
+.mobileMenu {
+  border: 0px solid;
+  display: block;
+  font-size: 1.75rem;
+  color: $primaryColor;
+  position: static;
+  float: right;
+
+  @include media(">tablet") {
+    display: none;
+  }
+}
+
+.regMenu {
+  display: none;
+  flex-wrap: nowrap;
+
+  @include media(">tablet") {
+    display: flex;
+  }
+}
+
+.mobileMenu__icon {
+  border: 0px solid;
+}
+
+.menuRow {
+  background-color: $primaryColor;
+  padding: 5px 5px;
+  display: none;
+}
+
+.spoilerTrigger {
+  color: $primaryAccent;
+  font-weight: 600;
+  display: block;
+}
+
+.spoilerTrigger i {
+  display: inline-block;
+  font-size: 1.5rem;
+  color: $primaryAccent;
+}
+
+.spoilerTriggerText {
+  font-size: $fs_medium;
+  padding: 3px 5px 3px 0px;
+}
+
+.spoilerSection {
+  border: 0px solid $white;
+  width: 170px;
+}
+
+.menu {
+  flex-grow: 1;
+}
+
+.menuFull {
+  display: flex;
+  position: relative;
+  background-color: $primaryColor;
+  padding-left: 5px;
+  height: auto;
+  min-width: 100px;
+}
+
+.menu-inside {
+}
+
+// .menuFull a:link,
+// a:visited {
+//   padding: 5px 5px;
+//   font-size: $fs_medium;
+//   font-weight: 600;
+//   display: inline-block;
+// }
+
+.menuShow {
+  display: none;
+  background-color: rgba($primaryColor, 0.9);
+  opacity: 0;
+  position: absolute;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out, transform 0.3s ease-out;
+  transform: translateY(0);
+  width: 100%;
+  z-index: 10;
+}
+
+.menuShow--active {
+  opacity: 1;
+  display: block;
+  position: absolute;
+  width: 100%;
+  transform: translateY(0);
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.spoilerBar {
+  display: block;
+  flex-direction: column;
+  background-color: $backgroundColor;
+  max-width: $max_width;
+  margin: 0px auto;
+  //position: absolute;
+  //left: 50%;
+  //max-width: toRem(1000);
+}
+
+.closingBar {
+  background: rgb(255, 191, 15);
+  background: linear-gradient(0deg, rgba(255, 191, 15, 1) 10%, rgba(252, 220, 131, 1) 50%, rgba(255, 191, 15, 1) 90%);
+  box-shadow: 2px 0px 3px 1px rgba(0, 0, 0, 0.3);
+  height: toRem(5);
+  max-width: toRem(1050);
+  margin: 0px auto;
+  border: 0px solid $secondaryColor;
+  opacity: 1;
+  position: relative;
+  z-index: 10;
+}
+
+.playerDiv {
+  display: flex;
+  justify-content: space-between;
+  padding: 5px;
+  background-color: $white;
+  transform: translateY(0);
+  flex-wrap: wrap;
+  max-width: toRem(1030);
+  box-shadow: 5px 0px 10px 1px rgba(0, 0, 0, 0.15);
+  margin: 0px auto;
+  position: relative;
+  z-index: 5;
+}
+
+.spoilerBar--active {
+  opacity: 1;
+  padding: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.menuShow a:link,
+.menuShow a:visited {
+  color: $white;
+  padding: 5px 10px;
+  font-size: $fs_medium;
+  margin: 5px 5px;
+  display: block;
+}
+
+.menuShow a:hover {
+  background-color: $primaryHover;
+  border-radius: 5px;
+}
+
+.menuShow ul {
+  padding: 5px;
+  margin: 0px;
+}
+
+.menuShow li {
+  list-style: none;
+  display: block;
+  @include media(">tablet") {
+    display: inline-block;
+  }
+}
+
+.loginButtons {
+  width: 100%;
+  display: flex;
+}
+
+.loginButtons > div {
+  width: 50%;
+  justify-content: center;
+  align-items: center;
+  border: 0px solid pink;
+  text-align: center;
+}
+
+.menuButtons {
+  width: toRem(100);
+  background-color: $secondaryColor;
+  border: 1px solid $primaryHover;
+  padding-top: toRem(4);
+  border-radius: 5px;
+  font-size: toRem(14);
+  font-weight: 600;
+}
+
+.btn__left {
+  margin-right: toRem(10);
+}
+
+.profile-contain h3 {
+  font-size: toRem(16);
+  font-weight: 400;
+  text-align: center;
+  line-height: toRem(18);
+}
+
+.profile-contain h4 {
+  font-size: toRem(14);
+  line-height: toRem(14);
+  font-family: $header_font;
+  font-weight: 400;
+  text-align: center;
+}
+
+.header-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0px;
+  padding: 2px;
+  border-radius: 25px;
+}
+
+.header-thumb {
+  display: block;
+  margin: 0px;
+  padding: 0px;
+  width: 50px;
+  height: 75px;
+  text-align: center;
+}
+
+.HoH,
+.Winner {
+  color: $hoh-strong;
+}
+
+.HoH img,
+.Winner img {
+  background-color: $hoh-light;
+  border: 2px solid $hoh-strong;
+}
+
+.PoV,
+.Second {
+  color: $pov-strong;
+}
+
+.PoV img,
+.Second img {
+  background-color: $pov-light;
+  border: 2px solid $pov-strong;
+}
+
+.Nom,
+.AFP {
+  color: $nom-strong;
+}
+
+.Nom img,
+.AFP img {
+  background-color: $nom-light;
+  border: 2px solid $nom-strong;
+}
+
+.Jury {
+  color: $jury-strong;
+}
+
+.Jury img {
+  background-color: $jury-light;
+  border: 2px solid $jury-strong;
+  opacity: 0.5;
+}
+
+.Evicted {
+  color: $evic-strong;
+}
+
+.Evicted img {
+  background-color: $evic-light;
+  border: 2px solid $evic-strong;
+  filter: gray; /* IE6-9 */
+  -webkit-filter: grayscale(1); /* Google Chrome, Safari 6+ & Opera 15+ */
+  filter: grayscale(1); /* Microsoft Edge and Firefox 35+ */
+}

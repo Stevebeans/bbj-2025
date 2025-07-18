@@ -1,0 +1,1898 @@
+[
+    {
+        "ID": 44747,
+        "post_author": "1",
+        "post_date": "2022-04-09 15:48:23",
+        "post_date_gmt": "2022-04-09 22:48:23",
+        "post_content": "",
+        "post_title": "BB Season Player Relationship",
+        "post_excerpt": "",
+        "post_status": "publish",
+        "comment_status": "closed",
+        "ping_status": "closed",
+        "post_password": "",
+        "post_name": "bb-season-player-relationship",
+        "to_ping": "",
+        "pinged": "",
+        "post_modified": "2022-04-10 20:06:24",
+        "post_modified_gmt": "2022-04-11 03:06:24",
+        "post_content_filtered": "",
+        "post_parent": 0,
+        "guid": "http://bbj3.local/?post_type=meta-box&#038;p=44747",
+        "menu_order": 0,
+        "post_type": "meta-box",
+        "post_mime_type": "",
+        "comment_count": "0",
+        "filter": "raw",
+        "settings": {
+            "object_type": "post",
+            "post_types": [
+                "bigbrother-seasons"
+            ],
+            "context": "normal",
+            "priority": "high",
+            "style": "default",
+            "tab_style": "",
+            "tab_default_active": "",
+            "custom_table": {
+                "enable": true,
+                "name": "bbj_player_season_new",
+                "prefix": true,
+                "create": true
+            },
+            "class": "",
+            "prefix": "",
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name"
+        },
+        "fields": {
+            "group_osa1iqprvlm": {
+                "_id": "group_osa1iqprvlm",
+                "_state": "expanded",
+                "name": "Players",
+                "id": "player_list2",
+                "type": "group",
+                "label_description": "",
+                "desc": "",
+                "default_state": "expanded",
+                "group_title": "",
+                "clone": true,
+                "sort_clone": true,
+                "clone_as_multiple": true,
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "save_field": true,
+                "sanitize_callback": "",
+                "fields": {
+                    "post_lhnw86xmmmp": {
+                        "_id": "post_lhnw86xmmmp",
+                        "_state": "expanded",
+                        "name": "Name",
+                        "id": "player_id",
+                        "type": "post",
+                        "label_description": "",
+                        "desc": "",
+                        "post_type": [
+                            "bigbrother-players"
+                        ],
+                        "field_type": "select_advanced",
+                        "placeholder": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 2,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_05g7g0fn3ins": {
+                        "_id": "checkbox_05g7g0fn3ins",
+                        "_state": "collapsed",
+                        "name": "HoH",
+                        "id": "current_hoh",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_7himhzg3xte": {
+                        "_id": "checkbox_7himhzg3xte",
+                        "_state": "collapsed",
+                        "name": "PoV",
+                        "id": "current_pov",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_uwpyugiaulm": {
+                        "_id": "checkbox_uwpyugiaulm",
+                        "_state": "collapsed",
+                        "name": "Jury",
+                        "id": "current_jury",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_ljysjyz85mb": {
+                        "_id": "checkbox_ljysjyz85mb",
+                        "_state": "collapsed",
+                        "name": "Nom",
+                        "id": "current_nom",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_fwxn5aqhetj": {
+                        "_id": "checkbox_fwxn5aqhetj",
+                        "_state": "collapsed",
+                        "name": "Evicted",
+                        "id": "current_evic",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_i1t64ljk24a": {
+                        "_id": "checkbox_i1t64ljk24a",
+                        "_state": "collapsed",
+                        "name": "Winner",
+                        "id": "current_winner",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_e8o0n1w6a9": {
+                        "_id": "checkbox_e8o0n1w6a9",
+                        "_state": "collapsed",
+                        "name": "Second",
+                        "id": "current_second",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "checkbox_hrn401tw6z": {
+                        "_id": "checkbox_hrn401tw6z",
+                        "_state": "collapsed",
+                        "name": "AFP",
+                        "id": "current_afp",
+                        "type": "checkbox",
+                        "label_description": "",
+                        "desc": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 1,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "date_n3ct0yv4bn8": {
+                        "_id": "date_n3ct0yv4bn8",
+                        "_state": "expanded",
+                        "name": "Evicted",
+                        "id": "evicted",
+                        "type": "date",
+                        "label_description": "",
+                        "desc": "",
+                        "std": "",
+                        "placeholder": "",
+                        "size": "",
+                        "save_format": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 2,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    }
+                }
+            },
+            "divider_m51e8b78b4": {
+                "_id": "divider_m51e8b78b4",
+                "_state": "collapsed",
+                "type": "divider",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": ""
+            }
+        },
+        "data": {
+            "tab_index": 0
+        },
+        "meta_box": {
+            "title": "BB Season Player Relationship",
+            "id": "bb-season-player-relationship",
+            "post_types": [
+                "bigbrother-seasons"
+            ],
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name",
+            "storage_type": "custom_table",
+            "table": "wp_bbj_player_season_new",
+            "fields": [
+                {
+                    "name": "Players",
+                    "id": "player_list2",
+                    "type": "group",
+                    "clone": true,
+                    "sort_clone": true,
+                    "clone_as_multiple": true,
+                    "fields": [
+                        {
+                            "name": "Name",
+                            "id": "player_id",
+                            "type": "post",
+                            "post_type": [
+                                "bigbrother-players"
+                            ],
+                            "field_type": "select_advanced",
+                            "columns": 2
+                        },
+                        {
+                            "name": "HoH",
+                            "id": "current_hoh",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "PoV",
+                            "id": "current_pov",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "Jury",
+                            "id": "current_jury",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "Nom",
+                            "id": "current_nom",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "Evicted",
+                            "id": "current_evic",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "Winner",
+                            "id": "current_winner",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "Second",
+                            "id": "current_second",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "AFP",
+                            "id": "current_afp",
+                            "type": "checkbox",
+                            "columns": 1
+                        },
+                        {
+                            "name": "Evicted",
+                            "id": "evicted",
+                            "type": "date",
+                            "columns": 2
+                        }
+                    ]
+                },
+                {
+                    "type": "divider"
+                }
+            ]
+        }
+    },
+    {
+        "ID": 44741,
+        "post_author": "1",
+        "post_date": "2022-04-09 13:50:23",
+        "post_date_gmt": "2022-04-09 20:50:23",
+        "post_content": "",
+        "post_title": "Feed Updates",
+        "post_excerpt": "",
+        "post_status": "publish",
+        "comment_status": "closed",
+        "ping_status": "closed",
+        "post_password": "",
+        "post_name": "feed-updates",
+        "to_ping": "",
+        "pinged": "",
+        "post_modified": "2022-04-09 13:54:55",
+        "post_modified_gmt": "2022-04-09 20:54:55",
+        "post_content_filtered": "",
+        "post_parent": 0,
+        "guid": "http://bbj3.local/?post_type=meta-box&#038;p=44741",
+        "menu_order": 0,
+        "post_type": "meta-box",
+        "post_mime_type": "",
+        "comment_count": "0",
+        "filter": "raw",
+        "settings": {
+            "object_type": "post",
+            "post_types": [
+                "feed_update"
+            ],
+            "context": "normal",
+            "priority": "high",
+            "style": "default",
+            "tab_style": "",
+            "tab_default_active": "",
+            "custom_table": {
+                "enable": true,
+                "name": "bbj_feedupdates",
+                "prefix": true,
+                "create": true
+            },
+            "class": "",
+            "prefix": "",
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name"
+        },
+        "fields": {
+            "time_yfocslgxus": {
+                "_id": "time_yfocslgxus",
+                "_state": "expanded",
+                "name": "Time",
+                "id": "feed_time",
+                "type": "datetime",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "save_format": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "wysiwyg_6exr316aw7g": {
+                "_id": "wysiwyg_6exr316aw7g",
+                "_state": "expanded",
+                "name": "Wysiwyg",
+                "id": "feed_update",
+                "type": "wysiwyg",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            }
+        },
+        "data": {
+            "tab_index": 1
+        },
+        "meta_box": {
+            "title": "Feed Updates",
+            "id": "feed-updates",
+            "post_types": [
+                "feed_update"
+            ],
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name",
+            "storage_type": "custom_table",
+            "table": "wp_bbj_feedupdates",
+            "fields": [
+                {
+                    "name": "Time",
+                    "id": "feed_time",
+                    "type": "datetime"
+                },
+                {
+                    "name": "Wysiwyg",
+                    "id": "feed_update",
+                    "type": "wysiwyg"
+                }
+            ]
+        }
+    },
+    {
+        "ID": 44737,
+        "post_author": "1",
+        "post_date": "2022-04-03 10:55:33",
+        "post_date_gmt": "2022-04-03 17:55:33",
+        "post_content": "",
+        "post_title": "BB Season Results",
+        "post_excerpt": "",
+        "post_status": "publish",
+        "comment_status": "closed",
+        "ping_status": "closed",
+        "post_password": "",
+        "post_name": "bb-season-results",
+        "to_ping": "",
+        "pinged": "",
+        "post_modified": "2022-04-03 16:52:25",
+        "post_modified_gmt": "2022-04-03 23:52:25",
+        "post_content_filtered": "",
+        "post_parent": 0,
+        "guid": "http://bbj3.local/?post_type=meta-box&#038;p=44737",
+        "menu_order": 0,
+        "post_type": "meta-box",
+        "post_mime_type": "",
+        "comment_count": "0",
+        "filter": "raw",
+        "settings": {
+            "object_type": "post",
+            "post_types": [
+                "bigbrother-players"
+            ],
+            "context": "normal",
+            "priority": "high",
+            "style": "default",
+            "tab_style": "",
+            "tab_default_active": "",
+            "custom_table": {
+                "enable": true,
+                "name": "bbj_player_results_new",
+                "prefix": true,
+                "create": true
+            },
+            "class": "",
+            "prefix": "",
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name"
+        },
+        "fields": {
+            "group_ihmke9j5std": {
+                "_id": "group_ihmke9j5std",
+                "_state": "expanded",
+                "name": "BB Seasons Played",
+                "id": "bb_seasons_played",
+                "type": "group",
+                "label_description": "",
+                "desc": "",
+                "default_state": "expanded",
+                "group_title": "",
+                "clone": true,
+                "clone_as_multiple": true,
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "save_field": true,
+                "sanitize_callback": "",
+                "fields": {
+                    "text_e3ijvieod1p": {
+                        "_id": "text_e3ijvieod1p",
+                        "_state": "expanded",
+                        "name": "Season",
+                        "id": "pick_seasons",
+                        "type": "post",
+                        "label_description": "",
+                        "desc": "",
+                        "post_type": [
+                            "bigbrother-seasons"
+                        ],
+                        "field_type": "",
+                        "placeholder": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 6,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    },
+                    "date_b9g2i3a74si": {
+                        "_id": "date_b9g2i3a74si",
+                        "_state": "expanded",
+                        "name": "Evicted Date",
+                        "id": "evicted_date",
+                        "type": "date",
+                        "label_description": "",
+                        "desc": "",
+                        "std": "",
+                        "placeholder": "",
+                        "size": "",
+                        "save_format": "",
+                        "max_clone": "",
+                        "add_button": "",
+                        "admin_columns": {
+                            "position": {
+                                "type": "after",
+                                "column": "title"
+                            },
+                            "title": "",
+                            "before": "",
+                            "after": ""
+                        },
+                        "columns": 6,
+                        "tooltip": {
+                            "icon": "",
+                            "position": "top",
+                            "content": ""
+                        },
+                        "before": "",
+                        "after": "",
+                        "class": "",
+                        "sanitize_callback": "",
+                        "save_field": true
+                    }
+                }
+            }
+        },
+        "data": {
+            "tab_index": 1
+        },
+        "meta_box": {
+            "title": "BB Season Results",
+            "id": "bb-season-results",
+            "post_types": [
+                "bigbrother-players"
+            ],
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name",
+            "storage_type": "custom_table",
+            "table": "wp_bbj_player_results_new",
+            "fields": [
+                {
+                    "name": "BB Seasons Played",
+                    "id": "bb_seasons_played",
+                    "type": "group",
+                    "clone": true,
+                    "clone_as_multiple": true,
+                    "fields": [
+                        {
+                            "name": "Season",
+                            "id": "pick_seasons",
+                            "type": "post",
+                            "post_type": [
+                                "bigbrother-seasons"
+                            ],
+                            "columns": 6
+                        },
+                        {
+                            "name": "Evicted Date",
+                            "id": "evicted_date",
+                            "type": "date",
+                            "columns": 6
+                        }
+                    ]
+                }
+            ]
+        }
+    },
+    {
+        "ID": 44733,
+        "post_author": "1",
+        "post_date": "2022-04-02 17:42:14",
+        "post_date_gmt": "2022-04-03 00:42:14",
+        "post_content": "",
+        "post_title": "Site Settings",
+        "post_excerpt": "",
+        "post_status": "publish",
+        "comment_status": "closed",
+        "ping_status": "closed",
+        "post_password": "",
+        "post_name": "site-settings",
+        "to_ping": "",
+        "pinged": "",
+        "post_modified": "2022-04-09 15:58:12",
+        "post_modified_gmt": "2022-04-09 22:58:12",
+        "post_content_filtered": "",
+        "post_parent": 0,
+        "guid": "http://bbj3.local/?post_type=meta-box&#038;p=44733",
+        "menu_order": 0,
+        "post_type": "meta-box",
+        "post_mime_type": "",
+        "comment_count": "0",
+        "filter": "raw",
+        "settings": {
+            "object_type": "setting",
+            "settings_pages": [
+                "bbj-settings"
+            ],
+            "tab_style": "",
+            "tab_default_active": "",
+            "class": "",
+            "prefix": "",
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name"
+        },
+        "fields": {
+            "taxonomy_ajhhxixzfu": {
+                "_id": "taxonomy_ajhhxixzfu",
+                "_state": "collapsed",
+                "name": "Current Category",
+                "id": "current_category",
+                "type": "taxonomy",
+                "label_description": "",
+                "desc": "",
+                "taxonomy": [
+                    "category"
+                ],
+                "field_type": "select_advanced",
+                "placeholder": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "post_l6po62exsws": {
+                "_id": "post_l6po62exsws",
+                "_state": "expanded",
+                "name": "Current Season",
+                "id": "current_season",
+                "type": "post",
+                "label_description": "",
+                "desc": "",
+                "post_type": [
+                    "bigbrother-seasons"
+                ],
+                "field_type": "select_advanced",
+                "placeholder": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            }
+        },
+        "data": {
+            "tab_index": 0
+        },
+        "meta_box": {
+            "title": "Site Settings",
+            "id": "site-settings",
+            "settings_pages": [
+                "bbj-settings"
+            ],
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name",
+            "fields": [
+                {
+                    "name": "Current Category",
+                    "id": "current_category",
+                    "type": "taxonomy",
+                    "taxonomy": [
+                        "category"
+                    ],
+                    "field_type": "select_advanced"
+                },
+                {
+                    "name": "Current Season",
+                    "id": "current_season",
+                    "type": "post",
+                    "post_type": [
+                        "bigbrother-seasons"
+                    ],
+                    "field_type": "select_advanced"
+                }
+            ]
+        }
+    },
+    {
+        "ID": 44715,
+        "post_author": "1",
+        "post_date": "2022-04-02 16:54:31",
+        "post_date_gmt": "2022-04-02 23:54:31",
+        "post_content": "",
+        "post_title": "BB Seasons",
+        "post_excerpt": "",
+        "post_status": "publish",
+        "comment_status": "closed",
+        "ping_status": "closed",
+        "post_password": "",
+        "post_name": "bb-seasons",
+        "to_ping": "",
+        "pinged": "",
+        "post_modified": "2022-04-09 17:42:09",
+        "post_modified_gmt": "2022-04-10 00:42:09",
+        "post_content_filtered": "",
+        "post_parent": 0,
+        "guid": "http://bbj3.local/?post_type=meta-box&#038;p=44715",
+        "menu_order": 0,
+        "post_type": "meta-box",
+        "post_mime_type": "",
+        "comment_count": "0",
+        "filter": "raw",
+        "settings": {
+            "object_type": "post",
+            "post_types": [
+                "bigbrother-seasons"
+            ],
+            "context": "normal",
+            "priority": "high",
+            "style": "default",
+            "tab_style": "",
+            "tab_default_active": "",
+            "custom_table": {
+                "enable": true,
+                "name": "bbj_seasons",
+                "prefix": true,
+                "create": true
+            },
+            "class": "",
+            "prefix": "",
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name"
+        },
+        "fields": {
+            "text_qinazyf1l5h": {
+                "_id": "text_qinazyf1l5h",
+                "_state": "collapsed",
+                "name": "Full Name",
+                "id": "full_name",
+                "type": "text",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "datalist_choices": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "date_bjorsozv26": {
+                "_id": "date_bjorsozv26",
+                "_state": "collapsed",
+                "name": "Start Date",
+                "id": "start_date",
+                "type": "date",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "save_format": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 4,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "date_kj0y9fqj1ji": {
+                "_id": "date_kj0y9fqj1ji",
+                "_state": "collapsed",
+                "name": "End Date",
+                "id": "end_date",
+                "type": "date",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "save_format": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 4,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "divider_iq6rzf8o5k": {
+                "_id": "divider_iq6rzf8o5k",
+                "_state": "collapsed",
+                "type": "divider",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": ""
+            },
+            "text_ygwhncwp9uk": {
+                "_id": "text_ygwhncwp9uk",
+                "_state": "collapsed",
+                "name": "Season Number",
+                "id": "season_number",
+                "type": "text",
+                "label_description": "This is just the number (ie 23) that could be used in certain places",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "datalist_choices": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 3,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "image_fe73guiocy": {
+                "_id": "image_fe73guiocy",
+                "_state": "collapsed",
+                "name": "Season Picture",
+                "id": "season_picture",
+                "type": "single_image",
+                "label_description": "Small thumbnail",
+                "desc": "",
+                "image_size": "profile-picture",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 4,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "image_upload_xj6jf49pfvj": {
+                "_id": "image_upload_xj6jf49pfvj",
+                "_state": "collapsed",
+                "name": "Season Banner Image",
+                "id": "season_banner_image",
+                "type": "single_image",
+                "label_description": "Large Banner",
+                "desc": "",
+                "image_size": "player-banner",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 5,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            }
+        },
+        "data": {
+            "tab_index": 0
+        },
+        "meta_box": {
+            "title": "BB Seasons",
+            "id": "bb-seasons",
+            "post_types": [
+                "bigbrother-seasons"
+            ],
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name",
+            "storage_type": "custom_table",
+            "table": "wp_bbj_seasons",
+            "fields": [
+                {
+                    "name": "Full Name",
+                    "id": "full_name",
+                    "type": "text"
+                },
+                {
+                    "name": "Start Date",
+                    "id": "start_date",
+                    "type": "date",
+                    "columns": 4
+                },
+                {
+                    "name": "End Date",
+                    "id": "end_date",
+                    "type": "date",
+                    "columns": 4
+                },
+                {
+                    "type": "divider"
+                },
+                {
+                    "name": "Season Number",
+                    "id": "season_number",
+                    "type": "text",
+                    "label_description": "This is just the number (ie 23) that could be used in certain places",
+                    "columns": 3
+                },
+                {
+                    "name": "Season Picture",
+                    "id": "season_picture",
+                    "type": "single_image",
+                    "label_description": "Small thumbnail",
+                    "image_size": "profile-picture",
+                    "columns": 4
+                },
+                {
+                    "name": "Season Banner Image",
+                    "id": "season_banner_image",
+                    "type": "single_image",
+                    "label_description": "Large Banner",
+                    "image_size": "player-banner",
+                    "columns": 5
+                }
+            ]
+        }
+    },
+    {
+        "ID": 44712,
+        "post_author": "1",
+        "post_date": "2022-04-02 16:50:19",
+        "post_date_gmt": "2022-04-02 23:50:19",
+        "post_content": "",
+        "post_title": "BB Players",
+        "post_excerpt": "",
+        "post_status": "publish",
+        "comment_status": "closed",
+        "ping_status": "closed",
+        "post_password": "",
+        "post_name": "bb-players",
+        "to_ping": "",
+        "pinged": "",
+        "post_modified": "2022-04-10 20:01:12",
+        "post_modified_gmt": "2022-04-11 03:01:12",
+        "post_content_filtered": "",
+        "post_parent": 0,
+        "guid": "http://bbj3.local/?post_type=meta-box&#038;p=44712",
+        "menu_order": 0,
+        "post_type": "meta-box",
+        "post_mime_type": "",
+        "comment_count": "0",
+        "filter": "raw",
+        "settings": {
+            "object_type": "post",
+            "post_types": [
+                "bigbrother-players"
+            ],
+            "context": "normal",
+            "priority": "high",
+            "style": "default",
+            "tab_style": "",
+            "tab_default_active": "",
+            "custom_table": {
+                "enable": true,
+                "name": "bbj_players",
+                "prefix": true,
+                "create": true
+            },
+            "class": "",
+            "prefix": "",
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name"
+        },
+        "fields": {
+            "text_bk4kf4dqebp": {
+                "_id": "text_bk4kf4dqebp",
+                "_state": "collapsed",
+                "name": "First Name",
+                "id": "first_name",
+                "type": "text",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "datalist_choices": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "text_eo2wblxkzev": {
+                "_id": "text_eo2wblxkzev",
+                "_state": "collapsed",
+                "name": "Last Name",
+                "id": "last_name",
+                "type": "text",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "datalist_choices": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "text_it1m8be8m8j": {
+                "_id": "text_it1m8be8m8j",
+                "_state": "expanded",
+                "name": "Official Nickname",
+                "id": "official_nickname",
+                "type": "text",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "datalist_choices": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "wysiwyg_raribdeb8v": {
+                "_id": "wysiwyg_raribdeb8v",
+                "_state": "collapsed",
+                "name": "Right Side",
+                "id": "right_side",
+                "type": "wysiwyg",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 12,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "text_brz04r3mb2s": {
+                "_id": "text_brz04r3mb2s",
+                "_state": "collapsed",
+                "name": "Profile Picture",
+                "id": "profile_picture",
+                "type": "single_image",
+                "label_description": "",
+                "desc": "",
+                "image_size": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 4,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "image_mmn5hkcikq": {
+                "_id": "image_mmn5hkcikq",
+                "_state": "collapsed",
+                "name": "Player Banner",
+                "id": "player_banner",
+                "type": "single_image",
+                "label_description": "",
+                "desc": "",
+                "image_size": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 4,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "post_dzof19ujsn": {
+                "_id": "post_dzof19ujsn",
+                "_state": "collapsed",
+                "name": "Date of birth",
+                "id": "date_of_birth",
+                "type": "date",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "save_format": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 6,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "text_xnffal695ym": {
+                "_id": "text_xnffal695ym",
+                "_state": "collapsed",
+                "name": "Occupation",
+                "id": "occupation",
+                "type": "text",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "datalist_choices": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 6,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "url_jtsohgnfcka": {
+                "_id": "url_jtsohgnfcka",
+                "_state": "collapsed",
+                "name": "Facebook",
+                "id": "facebook",
+                "type": "url",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 3,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "url_3bgr46n9fet": {
+                "_id": "url_3bgr46n9fet",
+                "_state": "collapsed",
+                "name": "Instagram",
+                "id": "instagram",
+                "type": "url",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 3,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "url_4zvc3707u0q": {
+                "_id": "url_4zvc3707u0q",
+                "_state": "collapsed",
+                "name": "Twitter",
+                "id": "twitter",
+                "type": "url",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 3,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            },
+            "url_hy3nygw20h": {
+                "_id": "url_hy3nygw20h",
+                "_state": "collapsed",
+                "name": "Tiktok",
+                "id": "tiktok",
+                "type": "url",
+                "label_description": "",
+                "desc": "",
+                "std": "",
+                "placeholder": "",
+                "size": "",
+                "prepend": "",
+                "append": "",
+                "max_clone": "",
+                "add_button": "",
+                "admin_columns": {
+                    "position": {
+                        "type": "after",
+                        "column": "title"
+                    },
+                    "title": "",
+                    "before": "",
+                    "after": ""
+                },
+                "columns": 3,
+                "tooltip": {
+                    "icon": "",
+                    "position": "top",
+                    "content": ""
+                },
+                "before": "",
+                "after": "",
+                "class": "",
+                "sanitize_callback": "",
+                "save_field": true
+            }
+        },
+        "data": {
+            "tab_index": 0
+        },
+        "meta_box": {
+            "title": "BB Players",
+            "id": "bb-players",
+            "post_types": [
+                "bigbrother-players"
+            ],
+            "text_domain": "your-text-domain",
+            "function_name": "your_prefix_function_name",
+            "storage_type": "custom_table",
+            "table": "wp_bbj_players",
+            "fields": [
+                {
+                    "name": "First Name",
+                    "id": "first_name",
+                    "type": "text"
+                },
+                {
+                    "name": "Last Name",
+                    "id": "last_name",
+                    "type": "text"
+                },
+                {
+                    "name": "Official Nickname",
+                    "id": "official_nickname",
+                    "type": "text"
+                },
+                {
+                    "name": "Right Side",
+                    "id": "right_side",
+                    "type": "wysiwyg"
+                },
+                {
+                    "name": "Profile Picture",
+                    "id": "profile_picture",
+                    "type": "single_image",
+                    "columns": 4
+                },
+                {
+                    "name": "Player Banner",
+                    "id": "player_banner",
+                    "type": "single_image",
+                    "columns": 4
+                },
+                {
+                    "name": "Date of birth",
+                    "id": "date_of_birth",
+                    "type": "date",
+                    "columns": 6
+                },
+                {
+                    "name": "Occupation",
+                    "id": "occupation",
+                    "type": "text",
+                    "columns": 6
+                },
+                {
+                    "name": "Facebook",
+                    "id": "facebook",
+                    "type": "url",
+                    "columns": 3
+                },
+                {
+                    "name": "Instagram",
+                    "id": "instagram",
+                    "type": "url",
+                    "columns": 3
+                },
+                {
+                    "name": "Twitter",
+                    "id": "twitter",
+                    "type": "url",
+                    "columns": 3
+                },
+                {
+                    "name": "Tiktok",
+                    "id": "tiktok",
+                    "type": "url",
+                    "columns": 3
+                }
+            ]
+        }
+    }
+]

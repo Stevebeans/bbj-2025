@@ -1,0 +1,417 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  a {
+    @apply text-primary500 transition visited:text-primary500 hover:text-second500 hover:transition dark:text-primary500 dark:hover:text-second500;
+  }
+
+  .flex-cnt {
+    @apply flex items-center justify-center;
+  }
+}
+
+@layer components {
+  .bbj-container {
+    @apply mx-auto p-2  lg:container lg:p-2;
+  }
+
+  .bbj-container-inner {
+    @apply mx-auto max-w-screen-xl p-2;
+  }
+
+  #breadcrumbs-new a,
+  #breadcrumbs-new a:visited {
+    @apply text-second500 underline underline-offset-2 hover:text-secondHard;
+  }
+
+  #breadcrumbs-new {
+    @apply text-white;
+  }
+
+  .front-card {
+    @apply rounded-sm bg-white shadow-md dark:bg-gray-800;
+  }
+
+  .bbj-title {
+    @apply p-2 font-mainHead text-2xl font-extrabold text-primary500 dark:text-primarySoft;
+  }
+
+  .heading-bg {
+    @apply relative mb-2 mt-6 max-w-max rounded-r-md bg-amber-400 px-4 py-1 shadow-inner dark:bg-amber-600;
+  }
+
+  .heading-text {
+    @apply mt-[-16px] font-mainHead text-xl font-bold text-primary500 dark:font-normal dark:text-gray-300;
+  }
+
+  .bbj-desc {
+    @apply pl-2 text-gray-700 dark:text-gray-300;
+  }
+
+  .bbj-category {
+    @apply p-2 font-ibm text-base capitalize text-gray-400;
+  }
+
+  .bbj-meta {
+    @apply mt-2 border-t border-gray-200 p-2 text-sm;
+  }
+
+  .post-card {
+    @apply w-full rounded-sm border border-gray-200;
+  }
+
+  .bbj-pagination {
+    @apply m-2 mx-auto flex max-w-[800px] items-center justify-between rounded-md border border-gray-200 px-4 py-3;
+  }
+
+  .page-num {
+    @apply flex grow items-center justify-center border-r border-gray-200 p-2 font-semibold text-second500 last:border-0 hover:bg-gray-200;
+  }
+
+  .page-num a {
+    @apply font-normal;
+  }
+}
+
+@layer utilities {
+  /* Chrome, Safari and Opera */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  .pp-user-avatar {
+    @apply mr-1 mt-1 rounded-full;
+  }
+  .bbj-btn {
+    @apply rounded-lg border border-primary500 bg-second500 px-4 py-1.5 text-primary500 hover:cursor-pointer hover:bg-secondHard hover:text-white focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800;
+  }
+
+  .new-bbj-btn {
+    @apply rounded-3xl border border-gray-300 bg-white px-4 py-1.5 text-base text-primary500 hover:cursor-pointer hover:bg-gray-200 focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-blue-800;
+  }
+
+  .nav-class-li li a,
+  .nav-class-li li ul li a,
+  .nav-class-li li ul li ul li a {
+    @apply px-2 text-second500 visited:text-second500 hover:text-secondSoft;
+  }
+
+  .nav-class-li li {
+    @apply px-2 hover:rounded-lg hover:bg-primarySoft md:py-1 md:pr-4 md:hover:bg-transparent;
+  }
+
+  .nav-class-li li li {
+    @apply px-2;
+  }
+
+  .nav-class-li .current-menu-item a {
+    @apply font-bold text-secondSoft underline decoration-secondHard decoration-2 underline-offset-4;
+  }
+
+  .spoilerBar {
+    display: block;
+    @apply mx-auto flex max-w-5xl flex-col;
+  }
+
+  .playerDiv {
+    @apply mx-auto flex w-full max-w-6xl translate-y-0 flex-wrap  justify-center  bg-white px-0.5 py-2 shadow-md dark:bg-gray-900 lg:flex lg:w-[975px] lg:gap-4 lg:px-4;
+  }
+
+  .profile-contain {
+    @apply mt-2 w-8 md:mt-0 md:w-9;
+  }
+
+  .player-thumb {
+    @apply m-0 block h-12 w-full   rounded-3xl p-0.5 md:h-16  md:w-12;
+  }
+  .closing-bar {
+    @apply z-20 mx-auto flex h-1.5 w-full max-w-[1050px]  bg-gradient-to-b from-yellow-100 via-yellow-300 to-yellow-400 shadow lg:w-[1000px];
+  }
+
+  .ad-box {
+    @apply relative mx-auto max-w-full border border-gray-300 p-2;
+  }
+
+  .ad-label {
+    @apply absolute top-[-10px]  text-xs text-gray-500;
+  }
+
+  .winner {
+    @apply text-green-500;
+  }
+
+  .winner img,
+  .hoh img {
+    @apply border-2 border-green-500 dark:opacity-60;
+  }
+
+  .hoh {
+    @apply text-green-500;
+  }
+
+  .second,
+  .pov {
+    @apply text-cyan-600;
+  }
+
+  .second img,
+  .pov img {
+    @apply border-2 border-sky-400  dark:opacity-60;
+  }
+
+  .pov {
+    @apply text-cyan-600;
+  }
+
+  .afp img {
+    @apply border-2 border-rose-400  dark:opacity-60;
+  }
+
+  .afp {
+    @apply text-rose-500;
+  }
+
+  .nom img {
+    @apply border-2 border-amber-400  dark:opacity-60;
+  }
+
+  .nom {
+    @apply text-amber-500;
+  }
+
+  .jury img {
+    @apply border-2 border-purple-400  opacity-40 dark:grayscale;
+  }
+
+  .jury {
+    @apply text-purple-600;
+  }
+
+  .evic img {
+    @apply border border-gray-400 opacity-50 grayscale;
+  }
+
+  .evic {
+    @apply text-gray-400;
+  }
+
+  .active img {
+    @apply border-2 border-sky-800 dark:opacity-60;
+  }
+
+  .active {
+    @apply dark:text-gray-200;
+  }
+  .read-more a {
+    @apply text-xs underline;
+  }
+
+  .bbj-quicklinks {
+    @apply mx-auto flex flex-wrap items-center justify-center gap-2 rounded border border-slate-300 bg-slate-200 p-2 text-sm shadow-lg md:w-3/4;
+  }
+
+  .bbj-btn-sm {
+    @apply flex-grow cursor-pointer rounded-lg bg-primary500 px-1.5 py-0.5 text-center text-xs text-white hover:bg-primarySoft;
+  }
+
+  .bbj-content-container {
+    @apply w-full;
+  }
+
+  .bbj-inner-content-container {
+    @apply my-2 flex w-full flex-col rounded-md bg-white p-2 lg:flex-row;
+  }
+
+  .bbj-player-card-wrap {
+    @apply flex flex-wrap sm:grid sm:grid-cols-2 sm:gap-2;
+  }
+
+  .bbj-player-card-container {
+    @apply mb-4 w-full overflow-hidden rounded-lg bg-slate-100 shadow-deep hover:cursor-pointer hover:shadow-deepHover;
+  }
+
+  .player-card-stat-header {
+    @apply rounded bg-second500 text-center font-ibm text-xs font-bold capitalize text-primary500;
+  }
+
+  .search-result {
+    @apply w-full bg-white p-2 hover:bg-slate-200 dark:bg-gray-900;
+  }
+
+  #mailpoet_form_1 form.mailpoet_form {
+    @apply !p-2;
+  }
+
+  #stat-table td {
+    @apply border-0 p-0;
+  }
+
+  .res-winner {
+    @apply text-sm font-bold text-sky-500;
+  }
+
+  .select-option.selected {
+    @apply bg-sky-100;
+  }
+
+  #ajax-load-more {
+    @apply text-base;
+  }
+}
+
+.adcontainer {
+  @apply mx-auto my-2  max-w-screen-xl p-0;
+}
+
+.positive {
+  @apply text-green-700;
+}
+
+.negative {
+  @apply text-red-500;
+}
+
+#main-page-feed p {
+  @apply my-1 text-sm;
+}
+
+#mailpoet_form_1 .mailpoet_paragraph {
+  margin-bottom: 4px !important;
+}
+
+.slide-down {
+  max-height: 400px; /* or any height you want */
+  transition: max-height 0.3s ease-in-out;
+}
+
+#mailpoet_form_1 .mailpoet_text {
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+#mailpoet_form_1 .mailpoet_submit {
+  background-color: #35546e;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* Misc Stuff */
+#gform_wrapper_3 .gform_heading .gform_required_legend {
+  display: none;
+}
+#gform_3 .gform_footer input {
+  width: 100%;
+}
+
+/* Small */
+@media screen and (min-width: 640px) {
+}
+
+/* Medium */
+@media screen and (min-width: 768px) {
+}
+
+/* Hamburger Menu */
+.hamburger {
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  transition: all 0.25s;
+  position: relative;
+}
+
+.hamburger-top,
+.hamburger-middle,
+.hamburger-bottom {
+  position: absolute;
+  width: 24px;
+  height: 2px;
+  top: 0;
+  left: 0;
+  background: #009999;
+  transform: rotate(0);
+  transition: all 0.5s;
+}
+
+.hamburger-middle {
+  transform: translateY(7px);
+}
+
+.hamburger-bottom {
+  transform: translateY(14px);
+}
+
+.open {
+  transform: rotate(90deg);
+}
+
+.open .hamburger-top {
+  transform: rotate(45deg) translateY(6px) translateX(6px);
+}
+
+.open .hamburger-middle {
+  display: none;
+}
+
+.open .hamburger-bottom {
+  transform: rotate(-45deg) translateY(6px) translateX(-6px);
+}
+
+.result-winner {
+  color: green;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-runner-up {
+  color: #ffa500;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-afp {
+  color: purple;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-jury {
+  color: rgb(14 165 233);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-evicted {
+  color: red;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-tbd {
+  color: black;
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.frm_paypal input[type="submit"] {
+  background: url("https://bigbrotherjunkies.com/wp-content/uploads/2023/03/paypal-checkout.png") no-repeat;
+  width: 300px; /* Replace with the width of the image */
+  height: auto; /* Replace with the height of the image */
+  border: none;
+  text-indent: -9999px;
+  cursor: pointer;
+}

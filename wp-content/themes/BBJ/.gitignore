@@ -1,0 +1,10 @@
+node_modules
+build/index.css.map
+build/index.asset.php
+build/index.css
+build/index.asset.php
+build/index.js.map
+/build
+/info.env
+/cast photos
+/donotupload

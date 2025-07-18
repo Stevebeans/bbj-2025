@@ -1,0 +1,161 @@
+.container {
+  width: 100%;
+  margin: 0px auto;
+  border: 0px solid;
+}
+
+h1 {
+  font-size: toRem(40);
+  font-weight: 700;
+  font-family: $header_font;
+  color: $primaryColor;
+  @include media("<=tablet") {
+    line-height: toRem(40);
+  }
+}
+
+h2 {
+  font-size: toRem(28);
+  font-weight: 700;
+  font-family: $header_font;
+  color: $primaryColor;
+  @include media("<=tablet") {
+    line-height: toRem(28);
+  }
+}
+
+h3 {
+  font-size: toRem(24);
+  font-weight: 700;
+  font-family: $header_font;
+  color: $primaryColor;
+  @include media("<=tablet") {
+    line-height: toRem(24);
+  }
+}
+
+p {
+  font-size: toRem(16);
+  line-height: toRem(20);
+}
+
+img {
+  object-fit: cover;
+}
+
+.body-regular,
+.post-bottom {
+  max-width: 100%;
+  margin: 0px auto;
+}
+
+article {
+  flex-grow: 1;
+}
+
+aside {
+  display: none;
+}
+
+.featured-image {
+  margin: 0px auto;
+  display: block;
+}
+
+.featured-image img {
+  display: block;
+  margin: 0px auto;
+  max-height: toRem(400);
+}
+
+.post-meta {
+  padding: toRem(10);
+  font-size: toRem(14);
+  color: $fontGray;
+  display: flex;
+}
+
+.post-meta > div {
+  padding-right: toRem(5);
+}
+
+.spacer {
+  width: 2px;
+  position: relative;
+  margin-left: toRem(5);
+  margin-right: toRem(5);
+  padding: 0px;
+  flex-grow: 0;
+}
+
+.spacer-inner {
+  width: 1px;
+  height: 75%;
+  margin: 0px;
+  padding: 0px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: $borderColor;
+}
+
+.related-post-meta span,
+.post-meta span {
+  font-weight: 400;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.related-posts {
+  display: flex;
+  gap: 10px;
+  align-content: space-evenly;
+  flex-wrap: wrap;
+}
+
+.related-post {
+  font-size: toRem(16);
+  flex-grow: 1;
+}
+
+.related-post img {
+  width: 100%;
+  max-width: 300px;
+  max-height: 150px;
+  margin: 0px auto;
+}
+
+.related-post-meta {
+  font-size: toRem(14);
+  color: $fontGray;
+  display: flex;
+}
+
+.new-body-container {
+  max-width: $max_width;
+  //border: 1px solid;
+  margin: 0px auto;
+  position: relative;
+}
+
+#breadcrumbs {
+  list-style: none;
+  margin: -16px 0px 10px 0px;
+  padding-left: toRem(10);
+  overflow: hidden;
+  font-size: toRem(20);
+  font-weight: 600;
+  font-family: $header_font;
+}
+
+#breadcrumbs li {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: toRem(8);
+}
+
+#breadcrumbs .separator {
+  font-size: 18px;
+  font-weight: 100;
+  color: $secondaryColor;
+}

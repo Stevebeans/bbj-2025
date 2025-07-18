@@ -1,0 +1,23 @@
+.bbj-admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.bbj-admin-table th,
+.bbj-admin-table td {
+  padding: 8px;
+  border: 1px solid #ccc;
+}
+
+.bbj-admin-table th {
+  background-color: #f2f2f2;
+  font-weight: bold;
+}
+
+.bbj-admin-table tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+.bbj-center-td {
+  text-align: center;
+}

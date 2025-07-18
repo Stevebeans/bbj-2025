@@ -1,0 +1,79 @@
+
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+        "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/>
+</head>
+<body leftmargin="0" marginwidth="0" topmargin="0" marginheight="0" offset="0">
+
+    <table border="0" cellpadding="0" cellspacing="0">
+        <tr>
+            <td border="0" valign="top" align="left" style="padding:15px;font-family:helvetica,arial,sans-serif;line-height: 1.5em">
+                Hello,<br><br>Your new Taboola code is ready!<br><br>Please implement your Article Pages code in all relevant sites using the instructions below.<br><br>If you plan testing this on a staging site that is on a different domain than the actual site, you will need to append taboola_sim_domain=sitename.com to the URL. 'sitename.com' should be the domain of the actual site in the network that we will be integrated on.<br><br>
+<b>Step 1: Ads.txt Compliance</b>
+<br><br>
+In order to declare Taboola as an authorized seller, please visit the <a class="colored-link" href="https://backstage.taboola.com/backstage/1220845/reports/account/ads-txt/">Ads.txt Records tab in Taboola Backstage</a>
+and copy all the presented records to the ads.txt file in your root domain.
+If you have more than one site, you will find ads.txt records for each of your sites.
+<span style="color: red">Failure to add ALL of these lines to your ads.txt file can result in a significant reduction in revenue. </span>Please contact your account manager if you have any questions about ads.txt.
+<br><br>
+<b>Step 2: Consent Management Platform (CMP) Signals</b>
+<br><br>
+This Step only applies if you have EU traffic and use a Consent Management Platform (CMP). If not, you can proceed to Step 3.
+<br><br>
+In order to remain compliant with GDPR and all applicable privacy laws, if you implement a CMP on your properties, but Taboola fails to receive a valid consent signal that indicates users' consent choices, then we will serve only contextually-based recommendations without use of personal data until the signals are properly received.  This might happen if Taboola's script loads before your CMP renders.<span style="color: red">To ensure that Taboola properly receives a consent signal from your CMP and recommends personalised content for the highest performance, please make sure that your CMP script loads as early as possible before Taboola's script.</span>
+<br><br>
+<b>Step 3: Code Integration</b><br><br>For help implementing, please watch <a href="https://www.youtube.com/watch?v=el_eJtTlY8c" target="_blank" class="colored-link int-video-link">this</a> instructional video.<br><br>
+<b></b>Place this code in the &lt;head&gt; section:<p></p>
+<div style="background-color: #EEEEEE; font-family: Courier New, Courier, monospace">
+&lt;script type="text/javascript"&gt;<br>
+&nbsp;&nbsp;window._taboola = window._taboola || [];<br>
+&nbsp;&nbsp;_taboola.push({article:'auto'});<br>
+&nbsp;&nbsp;!function (e, f, u, i) {<br>
+&nbsp;&nbsp;&nbsp;&nbsp;if (!document.getElementById(i)){<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.async = 1;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.src = u;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;e.id = i;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;f.parentNode.insertBefore(e, f);<br>
+&nbsp;&nbsp;&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;}(document.createElement('script'),<br>
+&nbsp;&nbsp;document.getElementsByTagName('script')[0],<br>
+&nbsp;&nbsp;'//cdn.taboola.com/libtrc/bigbrotherjunkies-network/loader.js',<br>
+&nbsp;&nbsp;'tb_loader_script');<br>
+&nbsp;&nbsp;if(window.performance &amp;&amp; typeof window.performance.mark == 'function')<br>
+&nbsp;&nbsp;&nbsp;&nbsp;{window.performance.mark('tbl_ic');}<br>
+&lt;/script&gt;
+</div><br>
+Place this code where you want the "Mid Article Reco Reel" widget to render:<p></p>
+<div style="background-color: #EEEEEE; font-family: Courier New, Courier, monospace">
+&lt;div id="taboola-mid-article-reco-reel"&gt;&lt;/div&gt;<br>
+&lt;script type="text/javascript"&gt;<br>
+&nbsp;&nbsp;window._taboola = window._taboola || [];<br>
+&nbsp;&nbsp;_taboola.push({<br>
+&nbsp;&nbsp;&nbsp;&nbsp;mode: 'rec-reel-3n4-a',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;container: 'taboola-mid-article-reco-reel',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;placement: 'Mid Article Reco Reel',<br>
+&nbsp;&nbsp;&nbsp;&nbsp;target_type: 'mix'<br>
+&nbsp;&nbsp;});<br>
+&lt;/script&gt;
+</div><br>
+Place this code at the end of your &lt;body&gt; tag:<p></p>
+<div style="background-color: #EEEEEE; font-family: Courier New, Courier, monospace">
+&lt;script type="text/javascript"&gt;<br>
+&nbsp;&nbsp;window._taboola = window._taboola || [];<br>
+&nbsp;&nbsp;_taboola.push({flush: true});<br>
+&lt;/script&gt;
+</div><br>
+
+
+
+We would appreciate your providing us with a timeframe for launch, so we can plan our post-launch QA.<br><br>Please let us know if you have any questions or comments, and we would be happy to assist.<br><br>For more information please reference the <a href="https://pubhelp.taboola.com/hc/en-us" target="_blank" class="colored-link">Taboola Publisher Help Center</a>.<br><br>We look forward to our continued partnership.<br><br>Best, <br>Taboola Support Team
+
+            </td>
+        </tr>
+    </table>
+
+</body>
+</html>

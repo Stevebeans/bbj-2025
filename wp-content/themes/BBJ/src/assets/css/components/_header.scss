@@ -1,0 +1,752 @@
+header {
+  font-size: 1rem;
+  border-bottom: 0px solid $primaryColor;
+}
+
+.headerContain {
+  background-color: $white;
+  padding-top: toRem(10);
+  padding-bottom: toRem(10);
+  padding-left: toRem(5);
+  padding-right: toRem(5);
+
+  .header-content {
+    max-width: $max-width-full;
+    display: flex;
+    margin: 0 auto;
+  }
+}
+
+.search-wrapper {
+  flex-grow: 1;
+  justify-content: center;
+  position: relative;
+  .search-bar {
+    width: 90%;
+    margin: 0px auto;
+    position: relative;
+    input {
+      width: 100%;
+      margin: 0px auto;
+      border-radius: 15px 0px 0px 15px;
+      border: 1px solid $borderColor;
+      padding: 4px 10px 2px 10px;
+      font-size: 0.85rem;
+    }
+  }
+  .search-dropdown {
+    visibility: hidden;
+    position: absolute;
+    background-color: $white;
+    border: 1px solid;
+    width: 100%;
+    top: 100%;
+    z-index: 20;
+    border-left: 1px solid $backgroundColor;
+    border-bottom: 1px solid $backgroundColor;
+    border-right: 1px solid $backgroundColor;
+    border-top: 0px;
+    border-radius: 15px;
+    padding: toRem(16);
+    max-height: 70vh;
+    overflow: auto;
+  }
+  .search-drop-active {
+    visibility: visible;
+  }
+}
+
+.is-search-icon {
+  border-radius: 0px 15px 15px 0px;
+  background-color: $primaryAccent;
+}
+
+#bbj_search:focus {
+  outline: 0px;
+}
+.headerContain img {
+  margin-top: 5px;
+}
+
+.headerLeft {
+  display: flex;
+  align-items: center;
+  flex-grow: 1;
+  border: 0px solid black;
+}
+
+.headerLogoFull {
+  display: none;
+  @include media(">tablet") {
+    display: block;
+  }
+}
+
+.headerLogoFull img {
+  max-width: 350px;
+}
+
+.headerLogoMobile {
+  display: block;
+  @include media(">tablet") {
+    display: none;
+  }
+}
+
+.mobileMenu__icon,
+.mobileMenu {
+  border: 0px solid;
+  display: block;
+  font-size: 1.75rem;
+  color: $primaryColor;
+  position: static;
+  float: right;
+
+  @include media(">tablet") {
+    display: none;
+  }
+}
+
+.regMenu {
+  display: none;
+  flex-wrap: nowrap;
+
+  @include media(">tablet") {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.mobileMenu__icon {
+  border: 0px solid;
+}
+
+.menuRow {
+  background-color: $primaryColor;
+  padding: 5px 5px;
+  display: none;
+}
+
+.spoilerTrigger {
+  color: $primaryAccent;
+  font-weight: 600;
+  display: block;
+}
+
+.spoilerTrigger i {
+  display: inline-block;
+  font-size: 1.5rem;
+  color: $primaryAccent;
+}
+
+.spoilerTriggerText {
+  font-size: $fs_medium;
+  padding: 3px 5px 3px 0px;
+}
+
+.spoilerSection {
+  border: 0px solid $white;
+  width: 170px;
+}
+
+.menu {
+}
+
+.menuFull {
+  display: flex;
+  position: relative;
+  background-color: $primaryColor;
+  padding-left: 5px;
+  height: auto;
+  min-width: 100px;
+  text-align: left;
+  justify-content: space-between;
+}
+
+.menu-inside {
+}
+
+// .menuFull a:link,
+// a:visited {
+//   padding: 5px 5px;
+//   font-size: $fs_medium;
+//   font-weight: 600;
+//   display: inline-block;
+// }
+
+.menuShow {
+  display: none;
+  background-color: rgba($primaryColor, 0.9);
+  opacity: 0;
+  position: absolute;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out, transform 0.3s ease-out;
+  transform: translateY(0);
+  width: 100%;
+  z-index: 10;
+}
+
+.menuShow--active {
+  opacity: 1;
+  display: block;
+  position: absolute;
+  width: 100%;
+  transform: translateY(0);
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out, transform 0.3s ease-out;
+}
+
+// .spoilerBar {
+//   display: block;
+//   flex-direction: column;
+//   background-color: $backgroundColor;
+//   max-width: $max_width;
+//   margin: 0px auto;
+//   //position: absolute;
+//   //left: 50%;
+//   //max-width: toRem(1000);
+// }
+
+.closingBar {
+  background: rgb(255, 191, 15);
+  background: linear-gradient(0deg, rgba(255, 191, 15, 1) 10%, rgba(252, 220, 131, 1) 50%, rgba(255, 191, 15, 1) 90%);
+  box-shadow: 2px 0px 3px 1px rgba(0, 0, 0, 0.3);
+  height: toRem(5);
+  max-width: toRem(1050);
+  margin: 0px auto;
+  border: 0px solid $secondaryColor;
+  opacity: 1;
+  position: relative;
+  z-index: 5;
+}
+
+// .playerDiv {
+//   display: flex;
+//   padding: 5px;
+//   gap: 5px;
+//   background-color: $white;
+//   transform: translateY(0);
+//   flex-wrap: wrap;
+//   max-width: toRem(1030);
+//   box-shadow: 5px 0px 10px 1px rgba(0, 0, 0, 0.15);
+//   margin: 0px auto;
+//   position: relative;
+//   z-index: 5;
+//   justify-content: center;
+// }
+.player-div-hide {
+  display: none !important;
+}
+
+.header-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  margin: 0px;
+  padding: 2px;
+  border-radius: 25px;
+}
+
+.header-thumb {
+  display: block;
+  margin: 0px;
+  padding: 0px;
+  width: 50px;
+  height: 75px;
+  text-align: center;
+  @include media("<=tablet") {
+    width: 40px;
+    height: 65px;
+  }
+}
+
+.spoilerBar--active {
+  opacity: 1;
+  padding: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  transition: opacity 0.3s ease-out, visibility 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.menuShow a:link,
+.menuShow a:visited {
+  color: $white;
+  padding: 5px 10px;
+  font-size: $fs_medium;
+  margin: 5px 5px;
+  display: block;
+}
+
+.menuShow a:hover {
+  background-color: $primaryHover;
+  border-radius: 5px;
+}
+
+.menuShow ul {
+  padding: 5px;
+  margin: 0px;
+}
+
+.menuShow li {
+  list-style: none;
+  display: block;
+  @include media(">tablet") {
+    display: inline-block;
+  }
+}
+
+.loginButtons {
+  width: 100%;
+  display: flex;
+  gap: 2px;
+}
+
+.loginButtons > div {
+  width: 50%;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  background-color: $secondaryColor;
+}
+
+.menuButtons {
+  width: toRem(100);
+  background-color: $secondaryColorLight;
+  border: 1px solid $primaryHover;
+  font-size: toRem(14);
+  font-weight: 600;
+  text-align: center;
+  align-self: center;
+}
+
+.btn__left {
+  margin-right: toRem(10);
+}
+
+.profile-contain h3 {
+  font-size: toRem(16);
+  font-weight: 400;
+  text-align: center;
+  line-height: toRem(18);
+}
+
+.profile-contain h4 {
+  font-size: toRem(14);
+  line-height: toRem(14);
+  font-family: $header_font;
+  font-weight: 400;
+  text-align: center;
+}
+
+.HoH,
+.Winner,
+.HoH-PoV {
+  color: $hoh-strong;
+}
+
+.HoH img,
+.Winner,
+.HoH-PoV img {
+  background-color: $hoh-light;
+  border: 2px solid $hoh-strong;
+}
+
+.PoV,
+.Second {
+  color: $pov-strong;
+}
+
+.PoV img,
+.Second img {
+  background-color: $pov-light;
+  border: 2px solid $pov-strong;
+}
+
+.Nom,
+.AFP {
+  color: $nom-strong;
+}
+
+.Nom img,
+.AFP img {
+  background-color: $nom-light;
+  border: 2px solid $nom-strong;
+}
+
+.Jury {
+  color: $jury-strong;
+}
+
+.Jury img {
+  background-color: $jury-light;
+  border: 2px solid $jury-strong;
+  opacity: 0.5;
+}
+
+.Evicted {
+  color: $evic-strong;
+}
+
+.Evicted img {
+  background-color: $evic-light;
+  border: 2px solid $evic-strong;
+  filter: gray; /* IE6-9 */
+  -webkit-filter: grayscale(1); /* Google Chrome, Safari 6+ & Opera 15+ */
+  filter: grayscale(1); /* Microsoft Edge and Firefox 35+ */
+}
+
+.navigation-main {
+  display: none;
+  //
+  // Structural Styles
+  //
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+  text-align: center;
+
+  ul {
+    min-width: 100px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    position: absolute;
+    top: -999em;
+    left: -999em;
+  }
+
+  li {
+    display: inline-block;
+    position: relative;
+    text-align: left; // Reset text alignment
+
+    &.focus,
+    &:hover {
+      > ul {
+        top: auto;
+        left: auto;
+      }
+    }
+
+    li {
+      display: block;
+
+      &.focus,
+      &:hover {
+        > ul {
+          left: 100%;
+          top: 0;
+        }
+      }
+    }
+  }
+
+  //
+  // Presentational Styles
+  //
+
+  // Global menu link styles
+  a {
+    color: $secondaryColor;
+    text-decoration: none;
+    display: block;
+    white-space: nowrap;
+    padding: 5px 10px;
+  }
+
+  // Active & hover styles
+  a:hover,
+  li:hover > a,
+  .focus > a,
+  .current-menu-item > a,
+  .current-menu-ancestor > a {
+    color: $secondaryColorLight;
+  }
+
+  // First level item arrows
+  .menu-item-has-children {
+    > a {
+      &::before {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 4px solid transparent;
+        border-top-color: currentColor; // Nifty trick to always keep the arrow colored the same as the menu item's text in every different state
+      }
+    }
+  }
+
+  // Second level item arrows
+  ul {
+    .menu-item-has-children {
+      > a {
+        &::before {
+          right: 2px;
+          border-top-color: transparent;
+          border-left-color: currentColor;
+        }
+      }
+    }
+  }
+
+  // Submenu styles
+  ul {
+    background-color: $primaryColor;
+    z-index: 20;
+  }
+}
+
+.navigation-main-mobile {
+  //
+  // Structural Styles
+  //
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+  text-align: center;
+
+  ul {
+    min-width: 100px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    position: absolute;
+    top: -999em;
+    left: -999em;
+  }
+
+  li {
+    display: block;
+    position: relative;
+    text-align: left; // Reset text alignment
+
+    &.focus,
+    &:hover {
+      > ul {
+        top: auto;
+        left: auto;
+      }
+    }
+
+    li {
+      display: block;
+
+      &.focus,
+      &:hover {
+        > ul {
+          left: 100%;
+          top: 0;
+        }
+      }
+    }
+  }
+
+  //
+  // Presentational Styles
+  //
+
+  // Global menu link styles
+  a {
+    color: $secondaryColor;
+    text-decoration: none;
+    display: block;
+    white-space: nowrap;
+    padding: 5px 10px;
+  }
+
+  // Active & hover styles
+  a:hover,
+  li:hover > a,
+  .focus > a,
+  .current-menu-item > a,
+  .current-menu-ancestor > a {
+    color: $secondaryColorLight;
+  }
+
+  // First level item arrows
+  .menu-item-has-children {
+    > a {
+      &::before {
+        content: "";
+        position: absolute;
+        right: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        border: 4px solid transparent;
+        border-top-color: currentColor; // Nifty trick to always keep the arrow colored the same as the menu item's text in every different state
+      }
+    }
+  }
+
+  // Second level item arrows
+  ul {
+    .menu-item-has-children {
+      > a {
+        &::before {
+          right: 2px;
+          border-top-color: transparent;
+          border-left-color: currentColor;
+        }
+      }
+    }
+  }
+
+  // Submenu styles
+  ul {
+    background-color: $primaryColor;
+    z-index: 20;
+  }
+}
+
+#update-box {
+  border: 1px solid rgba($primaryColor, 0.2);
+  background-color: #fff;
+  padding: 10px;
+  width: 100%;
+  position: fixed;
+  margin: 0px auto;
+  display: block;
+  bottom: 0%;
+  left: 50%;
+  transform: translate(-50%, 0%);
+  z-index: 50;
+
+  @include media(">tablet") {
+    max-width: 1000px;
+  }
+
+  .bbj-nl-first,
+  .bbj-nl-last,
+  .bbj-nl-email {
+    margin: 0px;
+  }
+}
+
+.update-box-body {
+  height: 0px;
+  overflow: auto;
+  padding: 0px 5px;
+}
+.update-toggle {
+  height: 40vh;
+}
+.update-box-header {
+  padding: 5px;
+  background-color: $primaryColor;
+  position: relative;
+  color: #ffffff;
+  font-size: toRem(16);
+  font-weight: 600;
+}
+.update-box-button {
+  position: absolute;
+  right: 0;
+  top: 0;
+  padding: 3px 10px 3px 0px;
+  font-size: 20px;
+}
+
+.newsletter-bar {
+  background-color: rgba($primaryColor, 0.9);
+  border-radius: 10px;
+  padding: 5px 20px 15px 20px;
+  margin: 20px auto;
+  width: 95%;
+  position: relative;
+
+  h4 {
+    text-align: center;
+    color: #ffffff;
+  }
+
+  .nl-icon {
+    position: absolute;
+    top: -15px;
+    left: -15px;
+    border-radius: 50%;
+    padding: 5px;
+    background: rgb(53, 84, 110);
+    background: linear-gradient(0deg, rgba(53, 84, 110, 1) 0%, rgba(144, 175, 201, 1) 100%);
+
+    color: #fff;
+    height: 34px;
+    width: 34px;
+    .nl-icon-interior {
+      font-size: toRem(16);
+      font-weight: 400;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      border: 1px solid #ffffff;
+      border-radius: 50%;
+      height: 28px;
+      width: 28px;
+      text-align: center;
+
+      .fa-regular {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    }
+  }
+}
+
+#frm_form_6_container {
+}
+
+#form_newsletter-signup {
+  .frm_form_fields {
+    fieldset {
+      margin: 0px !important;
+      padding: 0px !important;
+    }
+    .frm_fields_container {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      @include media(">tablet") {
+        flex-direction: row;
+      }
+
+      > div {
+        flex-grow: 1;
+      }
+    }
+  }
+  .frm_style_formidable-style.with_frm_style .form-field {
+    margin-bottom: 0px !important;
+  }
+}
+
+.frm_style_formidable-style.with_frm_style .frm_submit button {
+  background-color: $secondaryColorAccent;
+  padding: 5px 10px;
+  border-radius: 10px;
+  font-size: toRem(14);
+  color: $primaryColor;
+  margin: 2px auto;
+  border: 0px;
+}
+
+.frm_style_formidable-style.with_frm_style .frm_submit button:hover {
+  color: $secondaryColor;
+  background-color: $primaryColor;
+}
+
+.feed-update-box {
+  border: 1px solid black;
+  padding: 10px 10px 0px 10px;
+  margin: 10px auto;
+  background-color: $secondaryColorLight;
+  h3 {
+    display: none;
+  }
+}

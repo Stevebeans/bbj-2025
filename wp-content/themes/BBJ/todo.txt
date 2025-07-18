@@ -1,0 +1,22 @@
+Remainder to do
+
+- Finish the live fed updating system. Very important
+- Look into having a mark as read 
+- Finish other archive pages 
+- Finish front page 
+- put in ads
+- Finish player profile pages 
+- Finish season profile pages 
+- Touch up blog posts and get finalized 
+- Mkae sure single page looks fine 
+
+
+-- Make sure newsletters are good.  
+- New user (links on what to do set up profile)
+- Post updates (BBJ Daily Digest) showing the posts for the day from posts to feed updates split into their own section 
+
+Missing from BBJ
+
+Index -- 
+Taboola
+Banner at top

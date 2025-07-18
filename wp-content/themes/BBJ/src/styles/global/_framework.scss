@@ -1,0 +1,80 @@
+// Steve's Personal Global Framework
+
+a:link,
+a:visited,
+a:hover {
+  text-decoration: none;
+}
+
+img {
+  display: block;
+}
+
+.btn {
+  border-radius: 5px;
+  font-size: $fs_normal;
+  padding: 5px 15px;
+  margin: 0px;
+  overflow: hidden;
+  text-decoration: none;
+}
+
+.btn__normal {
+  font-size: 1rem;
+  font-weight: 400;
+}
+
+.btn__primary {
+  background-color: $primaryColor;
+  color: $white;
+}
+.btn__secondary {
+  background-color: $secondaryColor;
+}
+
+.__bold {
+  font-weight: 600;
+}
+
+.btn__left {
+  margin-right: 20px;
+}
+
+//Full Center
+.cntr {
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+}
+
+// Max Width
+.mw_200 {
+  max-width: 200px;
+}
+
+.widgetTitle {
+  font-size: toRem(24);
+  font-weight: 700;
+  font-family: "Agency FB", sans-serif;
+  color: $primaryColor;
+}
+
+.boxShadow {
+  box-shadow: 2px 2px 6px rgba ($primaryColor, 0.5);
+}
+
+.boxShadowsft {
+  box-shadow: 2px 2px 6px rgba($primaryColor, 0.2);
+}
+
+.mobileShow {
+  @include media(">tablet") {
+    display: none;
+  }
+}
+
+.mobileHide {
+  @include media("<=tablet") {
+    display: none;
+  }
+}

@@ -1,0 +1,119 @@
+THings to do ASAP 
+
+TO CONTINUE 
+
+AddPlayer - I need to add the location to bbj_geo because I added it there for some strange reason and don't forget to combine lat and lng for the address_map field. I also need address_street field which is city, ST, USA 
+
+1. Keep tuning the ads.  
+-- Need 1-2 in feed updates.  Small one on front page, larger one on feed update page 
+-- Need an ad on front page below content 
+-- Need an 'in feed' ad for front page 
+-- Need a generic ad for custom stuff like players page, search page, seasons page 
+
+2. Add edit option to feed updates 
+
+3. Add cancel button for subs 
+
+4. Add more sub things 
+-- Not sure yet 
+
+5. Add front page thing to add / edit seasons. More graphical and user friendly because others may use it, plus I may forget how to use it each season. 
+
+
+
+
+Ads Removed:
+
+header:  (auto ads)
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3657293189229655"
+     crossorigin="anonymous"></script>
+     <script async src="https://fundingchoicesmessages.google.com/i/pub-1172879704296990?ers=1" nonce="TH85HcHKLQ1PJMToliS9AA"></script><script nonce="TH85HcHKLQ1PJMToliS9AA">(function() {function signalGooglefcPresent() {if (!window.frames['googlefcPresent']) {if (document.body) {const iframe = document.createElement('iframe'); iframe.style = 'width: 0; height: 0; border: none; z-index: -1000; left: -1000px; top: -1000px;'; iframe.style.display = 'none'; iframe.name = 'googlefcPresent'; document.body.appendChild(iframe);} else {setTimeout(signalGooglefcPresent, 0);}}}signalGooglefcPresent();})();</script>
+
+
+
+Taboola (Not front page )
+<script type="text/javascript">
+  window._taboola = window._taboola || [];
+  _taboola.push({article:'auto'});
+  !function (e, f, u, i) {
+    if (!document.getElementById(i)){
+      e.async = 1;
+      e.src = u;
+      e.id = i;
+      f.parentNode.insertBefore(e, f);
+    }
+  }(document.createElement('script'),
+  document.getElementsByTagName('script')[0],
+  '//cdn.taboola.com/libtrc/bigbrotherjunkies-network/loader.js',
+  'tb_loader_script');
+  if(window.performance && typeof window.performance.mark == 'function')
+    {window.performance.mark('tbl_ic');}    
+</script>
+<script type="text/javascript">
+  window._taboola = window._taboola || [];
+  _taboola.push({flush: true});
+</script>
+
+
+
+In article Ads after paragraph 3, 8, 14  (possibly adjust)
+
+single-bigbrother-players - 1 ad.  Beklow picture above stats
+
+Header below spoiler bar (adjust?) 
+      <?php get_template_part("template-parts/ads/ad-header"); ?>
+
+Sidebar-pages (template part)
+
+Index 
+- below newseltter
+- below top part
+
+Single - <?php get_template_part("template-parts/ads/taboola-below"); ?> 
+
+Sidebar-Default - get_template_part("template-parts/ads/ad-rectangle");
+
+Single Post Bottom Taboola - 
+          <?php get_template_part("template-parts/ads/taboola-below"); ?>  
+
+Things still left to do:
+
+-- Player database 
+-- Sidebar (add view / edit profile)
+-- Create page to edit season without going to admin. Or at least a link directly to that page from header
+
+
+--- Need to scan page by page and do an audit of what still needs to be done. 
+
+
+Speed Improvements
+
+Curent Mobile Score - 27
+
+Render Blocking Resources - 4.27
+
+
+
+1. Make sure paypal and stripe are working and functioning properly for the payment system. 
+-- I think this is done 
+
+2. Possibly re-do season page but at the very least add more data to the cards and touch it up. Showing winners, etc. Perhaps a weekly chart would be good. 
+-- Done
+
+3. Fix all-seasons to be pulling from the right database now that I have the winner/afp structure 
+
+4. Take a look at player directory and change it from season stats to career stats. List the seasons they played, and a badge if they won or afp etc. 
+  Also on this page, likely do pagination and fix up filtering more to display winners, afp, runner up, female, male, age range?, season
+
+5. Sidebar, add the view edit profile thing
+
+
+
+Notice: Function register_rest_route was called incorrectly. The REST API route definition for stripe/v1/webhook is missing the required permission_callback argument. For REST API routes that are intended to be public, use __return_true as the permission callback. Please see Debugging in WordPress for more information. (This message was added in version 5.5.0.) in /home/747173.cloudwaysapps.com/duesaptjae/public_html/wp-includes/functions.php on line 5835
+
+Notice: Function register_rest_route was called incorrectly. The REST API route definition for bbj/v1/feed-updates is missing the required permission_callback argument. For REST API routes that are intended to be public, use __return_true as the permission callback. Please see Debugging in WordPress for more information. (This message was added in version 5.5.0.) in /home/747173.cloudwaysapps.com/duesaptjae/public_html/wp-includes/functions.php on line 5835
+
+Notice: Function register_rest_route was called incorrectly. The REST API route definition for bbj/v1/player_info is missing the required permission_callback argument. For REST API routes that are intended to be public, use __return_true as the permission callback. Please see Debugging in WordPress for more information. (This message was added in version 5.5.0.) in /home/747173.cloudwaysapps.com/duesaptjae/public_html/wp-includes/functions.php on line 5835
+
+Notice: Function register_rest_route was called incorrectly. The REST API route definition for bbj/v1/search is missing the required permission_callback argument. For REST API routes that are intended to be public, use __return_true as the permission callback. Please see Debugging in WordPress for more information. (This message was added in version 5.5.0.) in /home/747173.cloudwaysapps.com/duesaptjae/public_html/wp-includes/functions.php on line 5835
+Add New Page

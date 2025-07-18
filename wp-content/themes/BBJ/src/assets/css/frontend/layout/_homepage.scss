@@ -1,0 +1,258 @@
+.bodyContainer {
+  max-width: $max_width;
+  margin: 0px auto;
+  display: flex;
+
+  @include media("<=tablet") {
+    flex-direction: column;
+  }
+}
+
+.mainBody {
+  flex-grow: 1;
+  max-width: toRem(820);
+}
+
+.mainBodyFull {
+  flex-grow: 1;
+  max-width: 100%;
+}
+
+.sideBar {
+  width: toRem(300);
+}
+
+.widgetContain {
+  background-color: $white;
+  margin: 10px;
+  padding: 5px 0px 0px 0px;
+  box-shadow: 0 1px 5px 0 rgb(0 0 0 / 25%);
+  border-radius: 5px;
+}
+
+.widgetHeader {
+  width: 100%;
+  position: relative;
+  margin-bottom: toRem(0);
+  margin-top: toRem(20);
+  @include media("<=tablet") {
+    margin-bottom: toRem(20);
+  }
+}
+
+.widgetHeader h2,
+.widgetHeader h3,
+.breadcrumbs-postion {
+  position: absolute;
+  top: -14px;
+  left: 14px;
+  @include media("<=tablet") {
+    line-height: toRem(28);
+  }
+}
+
+.titleBar {
+  background-color: $thirdColor;
+  width: toRem(200);
+  height: toRem(20);
+}
+
+.widgetBody {
+  padding: toRem(10);
+}
+
+.newsBar {
+  background-color: $primaryColor;
+  color: $white;
+  padding: 10px;
+  margin: 20px 0px;
+}
+
+.mainUpdates {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: toRem(10);
+
+  @include media("<=tablet") {
+    grid-template-columns: 1fr;
+  }
+}
+
+.secondUpdates {
+  display: flex;
+  flex-direction: column;
+  gap: toRem(10);
+}
+
+.newsArticle {
+  border: 1px solid rgba($borderColor, 0.3);
+  //background-color: $secondaryColorLight;
+  position: relative;
+  border-radius: 2px;
+  display: flex;
+  @include media("<=tablet") {
+    flex-direction: column;
+  }
+}
+
+.featured-contain {
+  margin-bottom: toRem(10);
+}
+.categoryInfo {
+  font-family: IBM Plex Mono, monospace;
+  color: rgba($primaryColor, 0.4);
+  font-size: toRem(14);
+}
+
+.categoryInfo-sm {
+  font-family: IBM Plex Mono, monospace;
+  color: rgba($primaryColor, 0.4);
+  font-size: toRem(12);
+}
+
+.frontMeta {
+  font-size: toRem(12);
+  font-weight: 600;
+  color: $fontGray;
+}
+
+.frontMeta span {
+  font-weight: 400;
+  font-family: IBM Plex Mono, monospace;
+  opacity: 0.5;
+}
+
+.coverHeadline h1 {
+  color: $primaryColor;
+  font-family: "Agency FB", sans-serif;
+  margin: 0.25rem 0;
+  padding: 0;
+}
+
+.coverHeadline h3 {
+  color: $primaryColor;
+  margin: 0.25rem 0;
+  padding: 0;
+}
+
+.coverExcerpt {
+  font-size: toRem(14);
+  line-height: toRem(16);
+  color: $fontGray;
+  flex-grow: 1;
+}
+
+.coverExcerptSm {
+  font-size: toRem(12);
+  line-height: toRem(14);
+  color: $fontGray;
+  flex-grow: 1;
+}
+
+.coverExcerpt p {
+  margin: 0;
+  padding: 10px 0;
+}
+
+.first {
+  grid-area: first;
+}
+
+.second {
+  grid-area: second;
+}
+
+.third {
+  background-color: rgba($primaryColor, 0.4);
+  grid-area: third;
+  background-size: cover;
+}
+
+.fourth {
+  grid-area: fourth;
+}
+
+.fifth {
+  grid-area: fifth;
+}
+
+.sixth {
+  grid-area: sixth;
+}
+
+.newsFeatured {
+  box-sizing: border-box;
+  width: 40%;
+  @include media("<=tablet") {
+    width: 100%;
+  }
+}
+
+.newsFeatured img {
+  box-sizing: border-box;
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  min-width: toRem(125);
+  padding: toRem(10);
+}
+
+.newsSecond img {
+  height: toRem(150);
+  width: 100%;
+  object-fit: cover;
+  padding: toRem(10);
+}
+
+.newsThird img {
+  box-sizing: border-box;
+  object-fit: cover;
+  height: toRem(50);
+  width: 100%;
+}
+
+.newsArticle img {
+  display: block;
+}
+
+.newsInfo {
+  display: flex;
+  flex-direction: column;
+  padding: toRem(10);
+  align-items: stretch;
+  width: 60%;
+  @include media("<=tablet") {
+    width: 100%;
+  }
+}
+
+.newsInfo2 {
+  display: flex;
+  flex-direction: column;
+  padding-right: toRem(10);
+  padding-bottom: toRem(10);
+  padding-left: toRem(10);
+  align-items: stretch;
+  width: 100%;
+}
+
+.newsInfo2 p {
+  margin-top: toRem(5);
+  margin-bottom: toRem(5);
+  font-size: toRem(14);
+  line-height: toRem(16);
+}
+
+.newsInfoNP {
+  display: flex;
+  flex-direction: column;
+  padding: toRem(10);
+  align-items: stretch;
+}
+
+.newsInfo div {
+}
+
+.newsArticle a,
+.newsArticle:visited {
+}
