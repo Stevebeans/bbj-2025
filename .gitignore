@@ -1,0 +1,37 @@
+# WordPress core
+/wp-admin/
+/wp-includes/
+
+# Caches & temp
+/wp-content/cache/
+/wp-content/upgrade/
+/wp-content/breeze-config/
+
+# Uploads
+/wp-content/uploads/
+
+# Plugins: ignore all but bbj-tools
+/wp-content/plugins/*
+!/wp-content/plugins/bbj-tools/
+
+# Your bbj-tools internals
+/wp-content/plugins/bbj-tools/logs/
+/wp-content/plugins/bbj-tools/node_modules/
+/wp-content/plugins/bbj-tools/vendor/
+
+# Themes you don’t want
+/wp-content/themes/twentytwentythree/
+/wp-content/themes/twentytwentyfour/
+/wp-content/themes/twentytwentyfive/
+
+# BBJ theme build folders
+/wp-content/themes/BBJ/node_modules/
+/wp-content/themes/BBJ/vendor/
+# …etc.
+
+# Misc
+*.log
+node_modules/
+.DS_Store
+Thumbs.db
+.env
