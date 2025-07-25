@@ -12,7 +12,17 @@
 
 # Plugins: ignore all but bbj-tools
 /wp-content/plugins/*
+# allow bbj-tools plugin and everything under it
 !/wp-content/plugins/bbj-tools/
+!/wp-content/plugins/bbj-tools/**
+
+# Allow bbj-v2 plugin and everything under it
+!/wp-content/plugins/bbj-v2/
+!/wp-content/plugins/bbj-v2/**
+
+# allow BBJ theme and everything under it
+!/wp-content/themes/BBJ/
+!/wp-content/themes/BBJ/**
 
 # Your bbj-tools internals
 /wp-content/plugins/bbj-tools/logs/
@@ -58,3 +68,5 @@ Thumbs.db
 /.htaccess
 /.gitattributes
 /bbj.code-workspace
+wp-config-sample.php
+wp-config-sample.php

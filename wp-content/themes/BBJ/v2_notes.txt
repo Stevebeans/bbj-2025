@@ -1,0 +1,48 @@
+
+=====bbj_players 
+
+
+first_name = text
+last_name = text 
+official_nickname = text 
+player_gender = select 
+profile_picture = single_image 
+date_of_birth = date 
+occupation = text 
+facebook = url 
+instagram = url 
+twitter = url 
+tiktok = url 
+
+
+=====bbj_seasons 
+
+full_name = text 
+start_date = date 
+end_date = date 
+abbreviation = text 
+season_number = text  (just a number)
+season_picture = single_image 
+season_banner_image = single_image 
+current_hoh [check]
+current_pov [check]
+season_winner [check]
+runner_up [check]
+afp [check]
+jury [check]
+evicted [check]
+havenot [check]
+
+
+====Connection 
+
+season[link]
+player[link]
+
+evicted_date [date]
+total_hoh [num]  (this is on a per season basis. Total for multiple seasons can be added up on screen)
+total_pov [num] 
+total_nom [num]
+votes_received [num]
+veto_played [num]
+saved_block [num]  (number of times they were on the block and then removed before eviction ngiht)

@@ -9,6 +9,9 @@ $curSeasonID = currentSeason("ID");
 
 $user_id = get_current_user_id();
 $posts_per_page_setting = get_user_meta($user_id, 'feed_update_count', true);
+
+
+
 ?>
 
 
@@ -26,20 +29,18 @@ $posts_per_page_setting = get_user_meta($user_id, 'feed_update_count', true);
       <div class="flex justify-between">
         <h1 class="font-mainHead text-4xl text-primary500 p-2"><a href="/bigbrother-seasons/big-brother-27/">Big Brother 27 Spoilers</a></h1>
 
-        <!-- PAGE-LEVEL UPDATED DATE -->
-        <div class="page-last-updated pt-2 pr-2 text-xs text-gray-500">
-          Last updated: 
-          <time class="updated" 
-                datetime="<?php echo get_lastpostmodified('c'); ?>" 
-                itemprop="dateModified">
-            <?php 
-              echo human_time_diff(
-                strtotime( get_lastpostmodified() ), 
-                current_time('timestamp')
-              ) . ' ago'; 
-            ?>
-          </time>
-        </div>
+           <div class="page-last-updated pt-2 pr-2 text-xs text-gray-500">
+            Last updated:
+            <time class="updated"
+                  datetime="<?php echo date('c', $latest_unix); ?>"
+                  itemprop="dateModified">
+              <?php echo human_time_diff( $latest_unix, current_time('timestamp') ) . ' ago'; ?>
+            </time>
+          </div>
+
+            <?php
+          
+          ?>
       </div>
 
 

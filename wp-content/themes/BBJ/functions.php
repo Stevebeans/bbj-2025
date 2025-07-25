@@ -31,6 +31,8 @@ require_once BBJ_MB_FILES . "/create-tables.php";
 //require_once BBJ_MB_FILES . "/relationships.php";
 require_once BBJ_MB_FILES . "/custom-blocks.php";
 
+// Testing Github
+
 // Load general scripts
 function load_assets()
 {
@@ -66,21 +68,7 @@ function bbj_menu()
 }
 add_action("init", "bbj_menu");
 
-function bbj_log3($log_msg) {
-  if (is_array($log_msg)) {
-    $log_msg = print_r($log_msg, true);
-  }
 
-  $log_filename = $_SERVER["DOCUMENT_ROOT"] . "/wp-content/themes/BBJ/logs";
-
-  if (!file_exists($log_filename)) {
-    // create directory/folder uploads.
-    mkdir($log_filename, 0777, true);
-  }
-  $log_file_data = $log_filename . "/log_" . date("M-Y") . ".log";
-
-  file_put_contents($log_file_data, $log_msg . "\n", FILE_APPEND);
-}
 
 // Load admin scripts
 function load_admin_scripts()
@@ -152,3 +140,33 @@ function get_google_db_connection() {
 }
 
 
+function bbj_get_latest_unix() {
+    $latest = get_posts([
+        'post_type'      => ['post','live-feed-updates'],
+        'posts_per_page' => 1,
+        'orderby'        => 'modified',
+        'order'          => 'DESC',
+        'fields'         => 'ids',
+    ]);
+    if ( empty($latest) ) {
+        return current_time('timestamp');
+    }
+    return get_post_modified_time('U', false, $latest[0]);
+}
+// Then elsewhere you can do:
+$latest_unix = bbj_get_latest_unix();
+
+add_action('wp_head', function(){
+  if ( is_front_page() ) {
+    $latest = bbj_get_latest_unix();
+    echo '<script type="application/ld+json">'
+       . wp_json_encode([
+           '@context'     => 'https://schema.org',
+           '@type'        => 'CollectionPage',
+           'url'          => home_url(),
+           'name'         => get_bloginfo('name'),
+           'dateModified' => date('c', $latest),
+         ])
+       . '</script>';
+  }
+});
