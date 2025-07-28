@@ -1,5 +1,5 @@
 
-=====bbj_players 
+=====bbj_players CPT
 
 
 first_name = text
@@ -15,7 +15,7 @@ twitter = url
 tiktok = url 
 
 
-=====bbj_seasons 
+=====bbj_seasons CPT
 
 full_name = text 
 start_date = date 
@@ -34,7 +34,7 @@ evicted [check]
 havenot [check]
 
 
-====Connection 
+====Connection  CPT
 
 season[link]
 player[link]
@@ -46,3 +46,15 @@ total_nom [num]
 votes_received [num]
 veto_played [num]
 saved_block [num]  (number of times they were on the block and then removed before eviction ngiht)
+
+
+SPOILERS BELOW ===>
+
+===
+
+===
+
+===
+
+===
+

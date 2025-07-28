@@ -22,6 +22,7 @@ module.exports = {
         second500: "#FFBF0F",
         secondSoft: "#ffd970",
         secondHard: "#FA910A",
+        thirdColor: "E55C41",
         textColor: ""
       },
       fontFamily: {

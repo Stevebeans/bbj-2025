@@ -41,7 +41,7 @@ require_once(LIB_PATH . '/shortcodes/front-page-stats.php');
 
 
 // Create metaboxes
-require_once(MB_PATH . 'players.php');
+//require_once(MB_PATH . 'players.php');
 
 
 function bbj_tools_menu() {

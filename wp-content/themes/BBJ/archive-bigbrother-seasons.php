@@ -79,6 +79,7 @@ ORDER BY s.start_date DESC
         
         foreach ($results as $result) { ?>
 
+
             
             
 
@@ -105,7 +106,7 @@ ORDER BY s.start_date DESC
                 <a href="<?=  get_permalink( $result['runner_up_id']) ?>"><?= $result['runner_up']; ?></a>
                 </td>
                 <td class="px-6 py-4">
-                    <a href="<?=  get_permalink( $result['ID']) ?>?bbjMode=edit" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
+                    <a href="/edit-big-brother-season/?season=<?= $result['ID'] ?>" class="font-medium text-blue-600 dark:text-blue-500 hover:underline">Edit</a>
                 </td>
             </tr>
             

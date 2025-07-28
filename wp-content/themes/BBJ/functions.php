@@ -95,6 +95,12 @@ add_filter('comment_flood_filter', '__return_false');
 
 
 
+// v2 INCLUDES 
+define ('BBJ_V2', BBJ_INCLUDES . '/V2');
+
+
+
+
 function get_google_db_connection() {
   $autoload_path = __DIR__ . '/vendor/autoload.php';
 

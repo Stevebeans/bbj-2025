@@ -35,3 +35,8 @@ register_deactivation_hook( __FILE__, 'bbj_v2_deactivate' );
 
 // Include the main plugin file
 require_once BBJ_V2_PATH . 'includes/bbj-plugin.php';
+
+// Registration hook for creating database tables
+register_activation_hook( __FILE__, 'bbj_create_player_season_table' );
+register_activation_hook( __FILE__, 'bbj_create_players_table' );
+register_activation_hook( __FILE__, 'bbj_create_seasons_table' );
