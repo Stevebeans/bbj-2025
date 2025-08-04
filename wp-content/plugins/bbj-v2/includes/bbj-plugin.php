@@ -6,8 +6,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // include helpers which has the log 
 
-
-define( 'BBJ_V2_INCLUDES', BBJ_V2_PATH . 'includes/' );
+// include global variables
+require_once BBJ_V2_INCLUDES . 'Helpers/global-vars.php';
+// include helpers
+require_once BBJ_V2_INCLUDES . 'Helpers/global-functions.php';
 
 // Include Logger
 require_once BBJ_V2_INCLUDES . 'Helpers/bbj-log.php';
@@ -20,5 +22,10 @@ require_once BBJ_V2_INCLUDES . 'PostTypes/Players.php';
 require_once BBJ_V2_INCLUDES . 'PostTypes/Seasons.php';
 require_once BBJ_V2_INCLUDES . 'PostTypes/PlayerSeasonLink.php';
 
+// include admin menu 
+require_once BBJ_V2_INCLUDES . 'Helpers/admin-menu.php';
 
-// include public pages (shortcodes)
+// include actions 
+require_once BBJ_V2_INCLUDES . 'Actions/action-list.php';
+
+

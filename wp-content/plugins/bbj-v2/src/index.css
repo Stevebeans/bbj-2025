@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  h2 {
+    @apply text-xs font-bold mb-4 text-red-500;
+  }
+}
+
+@layer components {
+  .bbj-table {
+    @apply table-auto border-collapse border border-gray-300 mb-4;
+  }
+
+  .bbj-admin h2 {
+    @apply text-2xl font-bold mb-4 text-primary500;
+  }
+
+  .bbj-admin form {
+    @apply mt-6 border border-gray-300 p-4;
+  }
+
+  .bbj-table th {
+    @apply px-2 py-1 text-xs font-medium text-gray-700 dark:text-gray-400 uppercase tracking-wider w-fit;
+  }
+
+  .bbj-table td {
+    @apply border border-gray-300 px-1 py-1 text-sm w-fit text-center;
+  }
+
+  .bbj-table input {
+    @apply px-2 py-1 border border-gray-300 rounded;
+  }
+
+  .bbj-input-number {
+    @apply appearance-none; /* Tailwind’s utility to zero out browser UI */
+  }
+
+  .bbj-input-number::-webkit-inner-spin-button,
+  .bbj-input-number::-webkit-outer-spin-button {
+    @apply appearance-none; /* works in WebKit engines */
+  }
+
+  .bbj-input-number {
+    @apply w-[55px] text-xs text-center border border-gray-300 rounded p-1;
+  }
+
+  .bbj-input-date {
+    @apply w-[120px] text-xs text-center border border-gray-300 rounded p-1;
+  }
+
+  .bbj-input-text {
+    @apply w-[120px] text-xs text-center border border-gray-300 rounded p-1;
+  }
+
+  .bbj-input-select {
+    @apply text-xs text-left border border-gray-300 rounded p-1;
+  }
+}

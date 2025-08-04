@@ -12,21 +12,37 @@
   }
 
   h2 {
-    @apply mb-2 mt-4 text-xl font-bold text-primary500 dark:text-primarySoft;
+    @apply py-2 text-xl font-bold text-primary500 dark:text-primarySoft;
   }
 }
 
 @layer components {
   .v2-input-text {
-    @apply block w-full appearance-none rounded-lg border border-gray-300 bg-gray-50 p-2 text-center text-xs text-gray-900 [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none;
+    @apply block w-full appearance-none rounded-lg border border-gray-300 bg-gray-50 p-1 text-center text-xs text-gray-900 [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none;
+  }
+
+  .v2-input-date {
+    @apply block w-full rounded-lg border border-gray-300 bg-gray-50 px-1 py-1 text-center text-xs text-gray-900;
+  }
+
+  .v2-input-checkbox {
+    @apply h-4 w-4 rounded border-gray-300 bg-gray-50 text-primary500 hover:cursor-pointer;
+  }
+
+  .v2-cc {
+    @apply flex items-center justify-center;
   }
 
   .v2-input-select {
-    @apply block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 text-left text-xs text-gray-900 dark:bg-gray-800 dark:text-gray-300;
+    @apply block w-full rounded-lg border border-gray-300 bg-gray-50 p-2 py-1 text-left text-xs text-gray-900 dark:bg-gray-800 dark:text-gray-300;
   }
 
   .v2-btn {
     @apply rounded-lg bg-primary500 px-4 py-1.5 text-second500 hover:cursor-pointer hover:bg-primarySoft hover:text-thirdColor focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800;
+  }
+
+  .v2-table-cell-edit-player {
+    @apply border border-gray-300 px-1 py-2 text-sm text-gray-700 dark:text-gray-300;
   }
 
   .bbj-container {

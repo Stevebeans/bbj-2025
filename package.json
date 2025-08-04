@@ -1,0 +1,12 @@
+{
+  "name": "bbj-monorepo",
+  "private": true,
+  "workspaces": [
+    "wp-content/themes/BBJ",
+    "wp-content/plugins/bbj-tools",
+    "wp-content/plugins/bbj-v2"
+  ],
+  "scripts": {
+    "start": "npm run start --workspaces"
+  }
+}
