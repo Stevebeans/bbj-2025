@@ -297,6 +297,70 @@
   }
 }
 
+/* Version 2 Components BELOW */
+
+.bbj-spoiler-bar {
+  @apply mx-auto w-full max-w-screen-xl overflow-hidden rounded-b-md  bg-white shadow-md dark:border-gray-700 dark:bg-gray-800;
+}
+
+.bbj-spoiler-bar h2 {
+  @apply pt-0 text-sm font-bold text-primary500 dark:text-primarySoft;
+}
+
+.spoilerbar-hoh {
+  @apply border-green-500 bg-green-500;
+}
+
+.spoilerbar-pov {
+  @apply border-amber-400 bg-amber-400 text-primary500;
+}
+
+.spoilerbar-active {
+  @apply border-slate-100 bg-slate-100 text-black;
+}
+
+.spoilerbar-nom {
+  @apply border-rose-400 bg-rose-400 text-white;
+}
+
+.spoilerbar-evicted {
+  @apply border-gray-200 bg-gray-200 text-gray-800;
+}
+
+.spoilerbar-evicted-img {
+  @apply border-gray-400 opacity-30 grayscale;
+}
+
+.spoilerbar-jury {
+  @apply border-purple-300 bg-purple-300 text-white;
+}
+
+.spoilerbar-jury-img {
+  @apply border-purple-200 opacity-30 grayscale;
+}
+
+.spoilerbar-havenot {
+  @apply border-slate-100 bg-white text-indigo-600;
+}
+
+.spoilerbar-safe {
+  @apply border-amber-400 bg-slate-100 text-green-600;
+}
+
+.spoilerbar-vertical-left {
+  writing-mode: sideways-lr;
+  text-orientation: mixed;
+  font-size: 1rem;
+}
+
+.spoilerbar-vertical-right {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 1rem;
+}
+
+/* Version 2 Components ABOVE */
+
 .adcontainer {
   @apply mx-auto my-2  max-w-screen-xl p-0;
 }

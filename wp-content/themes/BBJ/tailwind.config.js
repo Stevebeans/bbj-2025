@@ -1,6 +1,6 @@
 module.exports = {
   darkMode: "class",
-  content: ["./**/*.php", "./src/**/*.js", "./node_modules/flowbite/**/*.js"],
+  content: ["./**/*.php", "./src/**/*.js", "./node_modules/flowbite/**/*.js", "../../plugins/bbj-v2/includes/Public/shortcodes/**/*.php"],
   theme: {
     extend: {
       dropShadow: {

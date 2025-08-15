@@ -22,14 +22,65 @@ $season_afp = $season ? $season->afp : '';
 
 $season_players = bbj_v2_get_season_players($season_id);
 $all_players = bbj_v2_get_all_players('first_name', 'ASC');
+$all_seasons = bbj_v2_get_seasons('season_number', 'DESC');
 
-bbj_log3(print_r($all_players, true));
 
-bbj_log3(print_r($season_players, true));
+usort($season_players, function ($a, $b) {
+    $rawA = isset($a['bbj_evicted_date']) ? trim((string)$a['bbj_evicted_date']) : '';
+    $rawB = isset($b['bbj_evicted_date']) ? trim((string)$b['bbj_evicted_date']) : '';
+
+    // Treat placeholders as "no date"
+    $aNoDate = ($rawA === '' || $rawA === '0000-00-00' || $rawA === '0000-00-00 00:00:00' || $rawA === '0');
+    $bNoDate = ($rawB === '' || $rawB === '0000-00-00' || $rawB === '0000-00-00 00:00:00' || $rawB === '0');
+
+    // 1) No date first
+    if ($aNoDate !== $bNoDate) return $aNoDate ? -1 : 1;
+
+    // 2) Both missing → sort by name to keep it predictable
+    if ($aNoDate && $bNoDate) {
+        $an = trim(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? ''));
+        $bn = trim(($b['first_name'] ?? '') . ' ' . ($b['last_name'] ?? ''));
+        $cmp = strcasecmp($an, $bn);
+        return $cmp !== 0 ? $cmp : ((int)($a['bbj_player'] ?? 0) <=> (int)($b['bbj_player'] ?? 0)); // tie-breaker
+    }
+
+    // 3) Both have dates → newest first
+    $da = bbj_eviction_ts($rawA);
+    $db = bbj_eviction_ts($rawB);
+
+    if ($db === $da) {
+        // same date → tie-break by name/id so usort's instability doesn't shuffle them
+        $an = trim(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? ''));
+        $bn = trim(($b['first_name'] ?? '') . ' ' . ($b['last_name'] ?? ''));
+        $cmp = strcasecmp($an, $bn);
+        return $cmp !== 0 ? $cmp : ((int)($a['bbj_player'] ?? 0) <=> (int)($b['bbj_player'] ?? 0));
+    }
+
+    return $db <=> $da; // newer first
+});
+
+
 ?>
 
 <div class="wrap bbj-admin">
-    <h1>Edit <?php echo esc_html( $season->full_name ); ?></h1>
+   
+      <h1>Edit Season</h1>
+        <form method="get" action="<?php echo esc_url( admin_url('admin.php') ); ?>">
+          <!-- keep WordPress “page” parameter so it loads your menu slug -->
+          <input type="hidden" name="page" value="bbj-v2-edit-season" />
+
+          <h2>Select Season</h2>
+          <select name="season_id" id="bbj_v2_season">
+            <?php foreach ( $all_seasons as $s ) : ?>
+              <option value="<?php echo esc_attr( $s['id'] ); ?>">
+                <?php echo esc_html( $s['full_name'] ); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <button type="submit" class="button button-primary">Select Season</button>
+        </form>
+    <?php if ( $season ) : ?>
+    <h1>Edit <?php echo esc_html( $season->full_name ? $season->full_name : 'Season' ); ?></h1>
 
     <!-- Back Link -->
     <p><a href="<?php echo admin_url( 'admin.php?page=bbj-v2-seasons' ); ?>" class="button button-secondary">Back to Seasons</a></p>
@@ -275,7 +326,13 @@ bbj_log3(print_r($season_players, true));
             <td>
               <div class="v2-cc">
                 <a href="<?php echo esc_url( admin_url( 'admin.php?page=bbj-v2-add-edit-player&method=edit&player_id=' . $player['bbj_player'] ) ); ?>" class="button button-secondary">Edit Player</a>
-                <button type="submit" name="remove_player[<?php echo intval( $player['bbj_player'] ); ?>]" class="button button-danger">Remove</button>
+                <button
+                  type="submit"
+                  name="remove_player[<?php echo intval( $player['bbj_player'] ); ?>]"
+                  value="1"
+                  class="button button-danger"
+                  onclick="return confirm('Remove this player from the season?');"
+                >Remove</button>
               </div>
             </td>
           </tr>
@@ -378,7 +435,40 @@ bbj_log3(print_r($season_players, true));
           <button type="submit" class="button button-primary">Save Season</button>
         </div>
      </form>
+    <?php else: ?>
+      <p class="notice notice-warning">Please select a season to edit.</p>
+    <?php endif; ?>
 
 </div>
 
 
+<?php 
+
+// REPLACE your bbj_eviction_ts with this safer version
+if (!function_exists('bbj_eviction_ts')) {
+    function bbj_eviction_ts($v) {
+        // Normalize and catch placeholders
+        if ($v === null) return null;
+        if (is_string($v)) {
+            $v = trim($v);
+            if ($v === '' || $v === '0000-00-00' || $v === '0000-00-00 00:00:00') {
+                return null;
+            }
+        }
+
+        // Numeric input (seconds or milliseconds)
+        if (is_numeric($v)) {
+            $iv = (int) $v;
+            if ($iv > 2000000000) { // likely ms → convert to s
+                $iv = (int) floor($iv / 1000);
+            }
+            // Treat 0/negative (pre-epoch) as "no date"
+            return $iv > 0 ? $iv : null;
+        }
+
+        // String date → timestamp
+        $ts = strtotime($v);
+        // If parse fails or is pre-epoch, treat as "no date"
+        return ($ts !== false && $ts > 0) ? $ts : null;
+    }
+}

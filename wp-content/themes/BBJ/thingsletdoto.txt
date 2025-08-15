@@ -1,8 +1,0 @@
-Things left to do....
-
-Finish setting up the ad thing to hide ads for premium
-Play aroudn with the update thing on the main page.
-Set up a category for that and give permissions
-Think about how to display the archive pages. At the very least, create a block that will display the feed updates based on the day.
-
-

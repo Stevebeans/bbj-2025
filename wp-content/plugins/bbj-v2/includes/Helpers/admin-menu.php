@@ -56,7 +56,28 @@ function bbj_tools_register_menu() {
         'bbj-v2-add-edit-player',
         'bbj_tools_render_edit_player'
     );
+
+    // Edit Ads submenu
+    add_submenu_page(
+        'bbj-main',
+        'Edit Ads',
+        'Edit Ads',
+        'manage_options',
+        'bbj-v2-edit-ads',
+        'bbj_tools_render_edit_ads'
+    );
 }
+
+
+function bbj_tools_render_edit_ads() {
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_die( __( 'You do not have sufficient permissions to access this page.' ) );
+    }
+    
+    // Include the edit ads template file
+    include BBJ_V2_PUBLIC . 'bbj-edit-ads.php';
+}
+
 
 
 function bbj_tools_render_edit_player() {

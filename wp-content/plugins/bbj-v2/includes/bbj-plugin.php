@@ -28,4 +28,7 @@ require_once BBJ_V2_INCLUDES . 'Helpers/admin-menu.php';
 // include actions 
 require_once BBJ_V2_INCLUDES . 'Actions/action-list.php';
 
+// include shortcodes
+require_once BBJ_V2_INCLUDES . 'Public/shortcodes/spoiler-bar.php';
+
 

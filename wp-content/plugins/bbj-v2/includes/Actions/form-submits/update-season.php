@@ -54,6 +54,9 @@ function bbj_v2_edit_season_info() {
         'post_title' => $season_name,
     ]);
 
+    // bust cache 
+    bbj_spoiler_bar_bust_cache( $season_id );
+
     // 5) Redirect back with a success flag
     $redirect = wp_get_referer() ?: home_url();
     wp_safe_redirect( add_query_arg( 'updated', '1', $redirect ) );
@@ -79,6 +82,32 @@ function bbj_v2_update_season() {
     $season_id = absint( $_POST['season_id'] );
 
     
+    // If Remove Clicked, remove player and exit 
+    if ( ! empty( $_POST['remove_player'] ) && is_array( $_POST['remove_player'] ) ) {
+        // There will be exactly one key: the clicked player's ID
+        $player_ids = array_keys( $_POST['remove_player'] );
+        $player_id  = absint( reset( $player_ids ) );
+
+        $deleted = $wpdb->delete(
+            $link_table,
+            [ 'bbj_player' => $player_id, 'bbj_season' => $season_id ],
+            [ '%d', '%d' ]
+        );
+
+        // optional logging
+        bbj_log3( $deleted ? "Removed player $player_id from season $season_id"
+                           : "Failed to remove player $player_id from season $season_id" );
+
+        bbj_spoiler_bar_bust_cache( $season_id );
+
+        $redirect = wp_get_referer() ?: admin_url( 'admin.php?page=bbj-v2-edit-season' );
+        wp_safe_redirect( add_query_arg( [
+            'removed'   => $deleted ? 1 : 0,
+            'player_id' => $player_id,
+            'season_id' => $season_id, // keep season selected after redirect
+        ], $redirect ) );
+        exit;
+    }
 
     // pull in input data
     $evicted_date      = $_POST['evicted_date']      ?? [];
@@ -155,6 +184,9 @@ function bbj_v2_update_season() {
             bbj_log3( "Updated player $player_id in season $season_id" );
         }
     }
+
+    // cache bust
+    bbj_spoiler_bar_bust_cache( $season_id );
 
     // finished, redirecting
     $redirect = wp_get_referer() ?: home_url();

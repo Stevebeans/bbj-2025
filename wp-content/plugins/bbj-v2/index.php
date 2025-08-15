@@ -27,9 +27,21 @@ define( 'BBJ_V2_PUBLIC',    BBJ_V2_INCLUDES . 'Public/' );
 define( 'BBJ_V2_TABLE_PLAYERS', 'wp_bbj_players' );
 define( 'BBJ_V2_TABLE_SEASONS', 'wp_bbj_seasons' );
 define( 'BBJ_V2_TABLE_LINKS',   'wp_bbj_v2_player_season' );
+define( 'BBJ_V2_TABLE_GEO',   'wp_bbj_geo' );
+define( 'GOOGLE_API_KEY', 'AIzaSyBLQ2ii4adt-2cQzOtoPXxjWTxjEUb6Tsw' ); 
+
+// Media Sizes 
+add_action( 'after_setup_theme', 'bbj_register_player_image_sizes' );
+function bbj_register_player_image_sizes() {
+    // hard crops
+    add_image_size( 'bbj_v2_spoiler_bar',    100, 100, true );
+    add_image_size( 'bbj_v2_profile_image',  375, 375, true );
+}
+
 
 // Action variables 
-define ('BBJ_FORM_SUBMITS', BBJ_V2_INCLUDES . 'Actions/form-submits/');
+define ('BBJ_ACTION_LIST', BBJ_V2_INCLUDES . 'Actions/' );
+define ('BBJ_FORM_SUBMITS', BBJ_ACTION_LIST . 'form-submits/');
 
 // Activation hook
 function bbj_v2_activate() {
@@ -53,6 +65,9 @@ function bbj_v2_enqueue_admin_assets( $hook ) {
 
     $ver = defined( 'BBJ_V2_VERSION' ) ? BBJ_V2_VERSION : false;
 
+
+
+    // enqueue common admin styles and scripts
     wp_enqueue_style(
         'bbj-v2-admin-css',
         BBJ_V2_URL . 'build/index.css',
@@ -65,7 +80,36 @@ function bbj_v2_enqueue_admin_assets( $hook ) {
         [ 'wp-element' ],
         $ver,
         true
-    );
+    );  
+    
+    /**
+     * 
+     * Enqueue Scripts and Styles for Specific Pages
+     * 
+     * 
+     */
+
+    // Enqueue for Add/Edit Player page
+    if ( 'bbj_page_bbj-v2-add-edit-player' === $hook ) {
+        wp_enqueue_script(
+            'bbj-v2-admin-player-js',
+            BBJ_V2_URL . 'build/player-admin.js',
+            [ 'wp-element' ],
+            $ver,
+            true
+        );
+
+        // enqueue Google Maps API
+        wp_enqueue_script(
+            'bbj-v2-google-maps',
+            'https://maps.googleapis.com/maps/api/js?key=' . GOOGLE_API_KEY . '&libraries=places',
+            [],
+            null,
+            true
+        );
+    }
+
+
 }
 
 

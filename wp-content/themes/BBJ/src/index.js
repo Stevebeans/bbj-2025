@@ -6,23 +6,23 @@ import PlayerTableReact from "./scripts/PlayerTableReact";
 import CommentSystem from "./scripts/ReactComments";
 import BBJSearch from "./scripts/SearchBar";
 
-
 import SearchBar from "./scripts/SearchBar";
 
 //import ExampleReactComponent from "./scripts/ExampleReactComponent";
 //import MobileDrop from "./scripts/MobileDrop";
 //import React from "react";
 //import ReactDOM from "react-dom";
-import SpoilerBar from "./scripts/SpoilerBar";
-import SpoilerBarNew from "./scripts/SpoilerBarNew";
+//import SpoilerBar from "./scripts/SpoilerBar";
+//import SpoilerBarNew from "./scripts/SpoilerBarNew";
 //import PlayerArchive from "./scripts/PlayerArchive";
+import SpoilerSwipe from "./scripts/SpoilerSwipe";
 import PlayerTable from "./scripts/PlayerTable";
 import { permission_check } from "./scripts/Permissions";
-import { feed_update_slider } from "./scripts/FeedUpdateBar";
+//import { feed_update_slider } from "./scripts/FeedUpdateBar";
 import DarkMode from "./scripts/DarkMode";
-import FeedUpdates from "./scripts/FeedUpdates";
+//import FeedUpdates from "./scripts/FeedUpdates";
 import PaymentModel from "./scripts/PaymentModel";
-import FeedEdit from "./scripts/FeedEdit";
+//import FeedEdit from "./scripts/FeedEdit";
 import { handleWelcomeBar } from "./scripts/WelcomeBar";
 import FeedUpdateBarReact from "./scripts/FeedUpdateBarReact";
 import ReplyBox from "./scripts/ReplyBox";
@@ -75,7 +75,9 @@ if (commentEl) {
 
 //const searchBar = new SearchBar(); back burner for now
 //const mobileDrop = new MobileDrop();
-const spoilerBar = new SpoilerBarNew();
+//const spoilerBar = new SpoilerBarNew();
+const spoilerSwipe = new SpoilerSwipe();
+
 const playerTable = new PlayerTable();
 
 const darkMode = new DarkMode();

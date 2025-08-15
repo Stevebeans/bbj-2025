@@ -6,10 +6,13 @@ get_header(); ?>
 <?php
 $curSeason = currentSeason("name");
 $curSeasonID = currentSeason("ID");
+$current_season_id = get_option( 'bbj_v2_current_season', '' );
 
 $user_id = get_current_user_id();
 $posts_per_page_setting = get_user_meta($user_id, 'feed_update_count', true);
 
+
+global $bbj_is_admin;
 
 
 ?>
@@ -28,6 +31,12 @@ $posts_per_page_setting = get_user_meta($user_id, 'feed_update_count', true);
     <section id="main-left" class="flex-grow">
       <div class="flex justify-between">
         <h1 class="font-mainHead text-4xl text-primary500 p-2"><a href="/bigbrother-seasons/big-brother-27/">Big Brother 27 Spoilers</a></h1>
+        <?php
+        if ($bbj_is_admin) { ?>
+          <div class="admin-notice"><a href="/wp-admin/admin.php?page=bbj-v2-edit-season&season_id=<?php echo $current_season_id; ?>">Edit Season</a></div>
+        <?php
+        }
+        ?>
 
            <div class="page-last-updated pt-2 pr-2 text-xs text-gray-500">
             Last updated:

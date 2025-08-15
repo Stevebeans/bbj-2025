@@ -26,11 +26,11 @@
   }
 
   .bbj-table td {
-    @apply border border-gray-300 px-1 py-1 text-sm w-fit text-center;
+    @apply border border-gray-300 px-1 py-1 w-fit;
   }
 
   .bbj-table input {
-    @apply px-2 py-1 border border-gray-300 rounded;
+    @apply border border-gray-300 rounded;
   }
 
   .bbj-input-number {
