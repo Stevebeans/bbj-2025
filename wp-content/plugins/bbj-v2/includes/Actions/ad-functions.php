@@ -34,6 +34,7 @@ add_action ('admin_init', function() {
         'above_header' => 'Above Header',
         'in_header'    => 'Inside Header Ads (hidden)',
         'in_header_misc' => 'Inside Header Misc (visible)',
+        'below_header' => 'Below Header',
         'after_post'   => 'After Post',
         'sidebar_top'  => 'Sidebar (Top)',
         'footer'       => 'Footer',

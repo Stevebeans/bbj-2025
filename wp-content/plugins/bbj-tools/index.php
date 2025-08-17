@@ -79,15 +79,15 @@ function my_plugin_enqueue_block_editor_assets() {
 add_action( 'enqueue_block_editor_assets', 'my_plugin_enqueue_block_editor_assets' );
 
 // Function to enqueue CSS on front end where the block is used
-function my_plugin_enqueue_block_frontend_assets() {
-    global $post; // Ensure we have access to the global $post object
-    $screen = get_current_screen();
+// function my_plugin_enqueue_block_frontend_assets() {
+//     global $post; // Ensure we have access to the global $post object
+//     $screen = get_current_screen();
 
-    if ( isset( $post ) && has_block( 'my-plugin/new-feed-updates', $post ) ) {
-        wp_enqueue_style( 'my-plugin-tailwind-frontend', plugins_url( '/build/index-style.css', __FILE__ ), array(), BBJ_TOOLS_VERSION );
-    }
-}
-add_action( 'wp_enqueue_scripts', 'my_plugin_enqueue_block_frontend_assets' );
+//     if ( isset( $post ) && has_block( 'my-plugin/new-feed-updates', $post ) ) {
+//         wp_enqueue_style( 'my-plugin-tailwind-frontend', plugins_url( '/build/index-style.css', __FILE__ ), array(), BBJ_TOOLS_VERSION );
+//     }
+// }
+// add_action( 'wp_enqueue_scripts', 'my_plugin_enqueue_block_frontend_assets' );
 
 
 function enqueue_google_maps_api() {

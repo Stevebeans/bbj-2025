@@ -45,6 +45,22 @@
     @apply border border-gray-300 px-1 py-2 text-sm text-gray-700 dark:text-gray-300;
   }
 
+  .v2-highlight-text {
+    @apply font-semibold text-second500 !underline visited:text-second500 visited:underline hover:text-secondHard dark:text-second500 dark:visited:text-second500 dark:hover:text-secondHard;
+  }
+
+  .desktop-nav a,
+  .desktop-nav a:visited {
+    @apply text-yellow-400 hover:text-yellow-600 dark:text-yellow-300  dark:hover:text-yellow-100;
+  }
+  .desktop-nav ul {
+    @apply m-0 flex list-none flex-wrap p-0;
+  }
+
+  .desktop-nav li {
+    @apply px-2;
+  }
+
   .bbj-container {
     @apply mx-auto p-2  lg:container lg:p-2;
   }
@@ -316,7 +332,7 @@
 }
 
 .spoilerbar-active {
-  @apply border-slate-100 bg-slate-100 text-black;
+  @apply border-slate-100 bg-slate-100 text-black dark:border-slate-700 dark:bg-slate-800 dark:text-white;
 }
 
 .spoilerbar-nom {
@@ -340,11 +356,11 @@
 }
 
 .spoilerbar-havenot {
-  @apply border-slate-100 bg-white text-indigo-600;
+  @apply border-slate-100 bg-white text-indigo-600 dark:border-slate-700 dark:bg-slate-800 dark:text-white;
 }
 
 .spoilerbar-safe {
-  @apply border-amber-400 bg-slate-100 text-green-600;
+  @apply border-amber-400 bg-slate-100 text-green-600 dark:border-amber-600 dark:bg-slate-800 dark:text-green-400;
 }
 
 .spoilerbar-vertical-left {

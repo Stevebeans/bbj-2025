@@ -2,126 +2,156 @@ import axios from "axios";
 import spinner from "./Spinner";
 
 class BBJSearch {
-  constructor() {
-    this.input = document.getElementById("bbj-search");
-    this.resultsDiv = document.getElementById("bbj-search-results");
-    this.searchDiv = document.querySelector(".searchDiv");
+  constructor(rootElement) {
+    this.root = rootElement;
+    this.input = this.root.querySelector(".bbj-search__input");
+    this.resultsDiv = this.root.querySelector(".bbj-search__results");
+    this.searchBox = this.root.querySelector(".bbj-search__box");
 
-    // create spinner element
-    this.createSpinner();
+    // state
+    this.timeout = null;
+    this.abortController = null;
+    this.debounceMs = 300;
+    this.lastQuery = "";
+    this.isOpen = false;
 
-    //Hide the search result box and add the spinner to it
-    this.resultsDiv.style.display = "none";
+    // a11y hint (optional)
+    this.resultsDiv.setAttribute("aria-live", "polite");
 
-    // show status of spinner
-    this.spinnerDisplayed = false;
+    // start closed
+    this.hideResults();
 
     this.init();
   }
 
   init() {
-    this.input.addEventListener("keydown", event => {
-      this.keydownHandler(event);
+    // typing
+    this.input.addEventListener("input", () => this.onInput());
+    this.input.addEventListener("keydown", e => this.onKeyDown(e));
+    this.input.addEventListener("focus", () => {
+      if (this.resultsDiv.innerHTML.trim()) this.showResults();
     });
 
-    this.input.addEventListener("keyup", event => {
-      this.keyUpHandler();
+    // click-outside to close
+    document.addEventListener("click", e => {
+      if (!this.root.contains(e.target)) this.hideResults();
     });
   }
 
-  // create function keydownHandler to handle keydown events
-  keydownHandler(event) {
-    console.log("keydownHandler");
-    // make the escape key clear the input
+  onKeyDown(event) {
+    // Escape clears and closes
     if (event.key === "Escape") {
       this.input.value = "";
+      this.cancelPending();
+      this.hideResults();
     }
   }
 
-  keyUpHandler() {
+  onInput() {
     clearTimeout(this.timeout);
 
-    if (this.input.value.length) {
-      // Turn spinner on
-      if (!this.spinnerDisplayed) {
-        this.spinnerOn();
-      }
+    const q = this.input.value.trim();
 
-      this.resultsDiv.style.display = "block";
+    // if empty or too short, close + cancel
+    if (q.length < 2) {
+      this.cancelPending();
+      this.hideResults();
+      return;
+    }
 
-      this.timeout = setTimeout(() => {
-        this.getResults();
-      }, 500);
+    // if same as last rendered query, don't re-hit
+    if (q === this.lastQuery) {
+      this.showResults();
+      return;
+    }
+
+    // debounce
+    this.timeout = setTimeout(() => this.search(q), this.debounceMs);
+  }
+
+  cancelPending() {
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
     }
   }
 
-  async getResults() {
+  async search(query) {
+    this.cancelPending();
+    this.lastQuery = query;
+
+    // show spinner
+    this.resultsDiv.innerHTML = `${spinner()} Loading results…`;
+    this.showResults();
+
     try {
-      const response = await axios.get("/wp-json/bbj/v1/search?query=" + this.input.value);
-      this.displayValue(response.data);
-    } catch (error) {
-      console.error(error);
+      this.abortController = new AbortController();
+      const res = await axios.get(`/wp-json/bbj/v1/search?query=${encodeURIComponent(query)}`, { signal: this.abortController.signal });
+
+      this.renderResults(res.data);
+    } catch (err) {
+      // ignore cancels
+      if (axios.isCancel?.(err) || err?.name === "CanceledError") return;
+
+      console.error(err);
+      this.resultsDiv.innerHTML = `<div class="p-2 text-sm text-red-600">Something went wrong. Please try again.</div>`;
+      this.showResults();
     } finally {
-      // Turn off spinner
-      this.spinnerOff();
+      this.abortController = null;
     }
   }
 
-  displayValue(results) {
-    console.log("results");
-    console.log(results);
+  renderResults(results) {
+    // guard against undefined sections
+    const general = Array.isArray(results?.general) ? results.general : [];
+    const players = Array.isArray(results?.players) ? results.players : [];
+    const seasons = Array.isArray(results?.seasons) ? results.seasons : [];
 
-    this.resultsDiv.innerHTML = `
-    
-    <div id="general-container">
-      <h2 class="font-bold">General Results</h2>
-      ${results.general.map(result => `<a href="${result.permalink}"><div class="search-result">${result.title}</div></a>`).join("")}
-    </div>
+    const section = (title, html) =>
+      html
+        ? `<div class="mb-2">
+             <h2 class="font-bold mb-1">${title}</h2>
+             ${html}
+           </div>`
+        : "";
 
-    <div>
-    ${results.players.length ? `<h2 class="font-bold">Player Results</h2>` : ""}
-    ${results.players.length ? results.players.map(result => `<a href="${result.permalink}"><div class="search-result flex text-xl items-center"><img src="${result.player_image.url}" class="h-10 w-10 mr-2 rounded-full">${result.title} - (${result.abbreviation})</div></a> `).join("") : ""}
-    </div>
+    const list = items =>
+      items
+        .map(
+          r =>
+            `<a href="${r.permalink}">
+               <div class="search-result px-2 py-1 hover:bg-gray-100 rounded">${r.title}</div>
+             </a>`
+        )
+        .join("");
 
-    <div>
-    ${results.seasons.length ? `<h2 class="font-bold">Season Results</h2>` : ""}
-    ${results.seasons.length ? results.seasons.map(result => `<a href="${result.permalink}"><div class="search-result">${result.title}</div></a>`).join("") : ""}
-    </div>
-    `;
+    const playerList = players
+      .map(
+        r =>
+          `<a href="${r.permalink}">
+             <div class="search-result flex items-center px-2 py-1 hover:bg-gray-100 rounded">
+               ${r?.player_image?.url ? `<img src="${r.player_image.url}" class="h-10 w-10 mr-2 rounded-full" alt="">` : ""}
+               <span class="text-base md:text-lg">${r.title}${r?.abbreviation ? ` <span class="opacity-70">(${r.abbreviation})</span>` : ""}</span>
+             </div>
+           </a>`
+      )
+      .join("");
 
-    // results.general.forEach(result => {
-    //   let resultDiv = document.createElement("div");
-    //   resultDiv.classList.add("search-result");
-    //   resultDiv.innerHTML = `<a href="${result.permalink}">${result.title}</a>`;
-    //   this.resultsDiv.appendChild(resultDiv);
-    // });
+    const html = section("General Results", list(general)) + section(players.length ? "Player Results" : "", playerList) + section(seasons.length ? "Season Results" : "", list(seasons));
 
-    // let titleDiv = document.createElement("div");
-    // titleDiv.innerHTML = "Search Results";
-    // titleDiv.style.fontWeight = "bold";
-    // this.resultsDiv.insertBefore(titleDiv, this.resultsDiv.firstChild);
+    this.resultsDiv.innerHTML = html || `<div class="p-2 text-sm opacity-75">No results for “${this.lastQuery}”.</div>`;
+
+    this.showResults();
   }
 
-  // create function to turn spinner on
-  spinnerOn() {
-    console.log("trigger");
-
-    this.spinnerDisplayed = true;
-
-    // Set the initial HTML for this.resultsDiv
-    this.resultsDiv.innerHTML = `${spinner()} loading results...`;
+  showResults() {
+    this.resultsDiv.style.display = "block";
+    this.isOpen = true;
   }
 
-  // Create function to turn off spinner
-  spinnerOff() {
-    this.spinner.style.display = "none";
-    this.spinnerDisplayed = false;
-  }
-
-  createSpinner() {
-    this.spinner = document.createElement("div");
-    this.spinner.style.display = "none";
-    this.searchDiv.appendChild(this.spinner);
+  hideResults() {
+    this.resultsDiv.style.display = "none";
+    this.isOpen = false;
   }
 }
 

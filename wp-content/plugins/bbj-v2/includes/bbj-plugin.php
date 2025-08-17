@@ -25,6 +25,9 @@ require_once BBJ_V2_INCLUDES . 'PostTypes/PlayerSeasonLink.php';
 // include admin menu 
 require_once BBJ_V2_INCLUDES . 'Helpers/admin-menu.php';
 
+// include routes
+require_once BBJ_V2_ROUTES   . 'Search/search-route.php';
+
 // include actions 
 require_once BBJ_V2_INCLUDES . 'Actions/action-list.php';
 

@@ -1,6 +1,6 @@
 <?php
 
-define("BBJ_THEME_VERSION", "3.2.5");
+define("BBJ_THEME_VERSION", "3.2.6");
 define("BBJ_ROOT", dirname(__FILE__));
 define("BBJ_INCLUDES", BBJ_ROOT . "/includes");
 define("BBJ_IMAGES", get_theme_file_uri("/images"));
@@ -20,7 +20,7 @@ require_once BBJ_INCLUDES . "/freestarads.php";
 require "includes/cpt.php";
 require "includes/breadcrumbs.php";
 require "includes/routes.php";
-require "includes/search-route.php";
+//require "includes/search-route.php";
 require 'includes/nextroutes.php';
 require 'includes/nextjs-routes/admin-routes.php';
 require "includes/custom-jwt-functions.php";

@@ -30,14 +30,12 @@ import FeedRating from "./scripts/FeedRating";
 
 const playerTableEl = document.getElementById("player-directory-table");
 const commentEl = document.getElementById("bbj-comment-system");
-const searchBar = document.getElementById("bbj-search");
+const searchBar = document.querySelectorAll(".bbj-search");
 const feedUpdates = document.getElementById("new-feed-updates");
 const paymentForm = document.getElementById("payment-options");
 const mainBody = document.querySelector("#main-body");
 const updateBox = document.querySelector("#update-box");
 const newFeedUpdate = document.querySelector("#feed-update-box");
-
-console.log("NEW INDEX.JS LOADED");
 
 if (paymentForm) {
   let paymentModel = new PaymentModel();
@@ -62,7 +60,9 @@ if (newFeedUpdate) {
 // }
 
 if (searchBar) {
-  let searchBar = new BBJSearch();
+  searchBar.forEach(element => {
+    let searchBarInstance = new BBJSearch(element);
+  });
 }
 
 if (playerTableEl) {

@@ -22,6 +22,7 @@ define( 'BBJ_V2_PATH',      plugin_dir_path( __FILE__ ) );
 define( 'BBJ_V2_URL',       plugin_dir_url(  __FILE__ ) );
 define( 'BBJ_V2_INCLUDES',  BBJ_V2_PATH . 'includes/' );
 define( 'BBJ_V2_PUBLIC',    BBJ_V2_INCLUDES . 'Public/' );
+define ("BBJ_V2_ROUTES",    BBJ_V2_INCLUDES . 'Routes/');
 
 // global table variables 
 define( 'BBJ_V2_TABLE_PLAYERS', 'wp_bbj_players' );

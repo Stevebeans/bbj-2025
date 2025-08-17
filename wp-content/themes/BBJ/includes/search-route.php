@@ -10,6 +10,7 @@ add_action("rest_api_init", function () {
 
 function bbj_search_results($request)
 {
+  bbj_log3(print_r('SEARCH', true));
   $search_query = $request->get_param("query");
 
   $args = [

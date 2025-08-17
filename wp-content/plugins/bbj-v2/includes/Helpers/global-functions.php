@@ -216,9 +216,16 @@ function bbj_get_ad( string $slot ): string {
     return isset($opts[$slot]) ? (string) $opts[$slot] : '';
 }
 
+
+// This is the code to show the ads and blocked by user role or page
 function bbj_echo_ad( string $slot ): void {
     // Hide based on user role
-    if ( bbj_user_has_role( 'v2Supporter' ) || bbj_user_has_role( 'administrator' ) ) {
+    if ( bbj_user_has_role( 'updater' ) || bbj_user_has_role( 'administrator' ) || bbj_user_has_role( 'supporter' ) || bbj_user_has_role( 'comment_mod' ) || bbj_user_has_role( 'second_in_command' ) ) {
+        return; 
+    }
+
+    // Hide based on page 
+    if ( is_page( 'log-in' ) || is_admin() ) {
         return; 
     }
 
@@ -229,6 +236,7 @@ function bbj_echo_ad( string $slot ): void {
     }
 }
 
+// This is showing the code that is not blocked by user role or page.  Mostly meaning like google analyitcs
 function bbj_echo_code( string $slot ): void {
     
     $code = bbj_get_ad($slot);
