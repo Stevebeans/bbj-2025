@@ -41,12 +41,36 @@
     @apply rounded-lg bg-primary500 px-4 py-1.5 text-second500 hover:cursor-pointer hover:bg-primarySoft hover:text-thirdColor focus:outline-none focus:ring-4 focus:ring-blue-300 dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800;
   }
 
+  .v2-dark-reg {
+    @apply dark:bg-gray-800 dark:text-gray-400;
+  }
+
+  .v2-dark-link {
+    @apply text-primary500 visited:text-secondHard hover:text-second500 hover:transition dark:text-sky-600 dark:hover:text-second500;
+  }
+
   .v2-table-cell-edit-player {
     @apply border border-gray-300 px-1 py-2 text-sm text-gray-700 dark:text-gray-300;
   }
 
   .v2-highlight-text {
     @apply font-semibold text-second500 !underline visited:text-second500 visited:underline hover:text-secondHard dark:text-second500 dark:visited:text-second500 dark:hover:text-secondHard;
+  }
+
+  .v2-primary-container {
+    @apply mx-auto mb-4 mt-2 max-w-screen-xl;
+  }
+
+  .v2-primary-container-inner {
+    @apply relative  overflow-hidden rounded-lg bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
+  }
+
+  .v2-feed-update-container {
+    @apply flex  gap-2 border-b border-gray-200 p-4 last:border-0 first-of-type:border-t dark:border-gray-700;
+  }
+
+  .v2-ad-container {
+    @apply mx-auto border-b border-t border-gray-300  dark:border-gray-700 dark:bg-gray-900;
   }
 
   .desktop-nav a,

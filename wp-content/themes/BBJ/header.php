@@ -62,7 +62,8 @@
         <?php
         }
         ?> 
-        <a href="/contact/" class="hidden md:inline">Contact |</a>  
+        <a href="/contact/" class="hidden md:inline">Contact |</a>   
+        
         <a href="/privacy-policy/"  class="hidden md:inline">Privacy |</a> 
       Follow: <a href="https://www.facebook.com/bigbrotherjunkies" target="_blank"><i class="fa-brands fa-facebook ml-1"></i></a>
       <a href="https://www.instagram.com/bigbrotherjunky/" target="_blank"><i class="fa-brands fa-instagram ml-1"></i></a>

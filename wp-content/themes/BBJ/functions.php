@@ -1,6 +1,6 @@
 <?php
 
-define("BBJ_THEME_VERSION", "3.2.6");
+define("BBJ_THEME_VERSION", "3.2.7");
 define("BBJ_ROOT", dirname(__FILE__));
 define("BBJ_INCLUDES", BBJ_ROOT . "/includes");
 define("BBJ_IMAGES", get_theme_file_uri("/images"));

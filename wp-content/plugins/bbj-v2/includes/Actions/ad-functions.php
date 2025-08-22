@@ -36,6 +36,7 @@ add_action ('admin_init', function() {
         'in_header_misc' => 'Inside Header Misc (visible)',
         'below_header' => 'Below Header',
         'after_post'   => 'After Post',
+        'index_top'   => 'Index Top',
         'sidebar_top'  => 'Sidebar (Top)',
         'footer'       => 'Footer',
     ];

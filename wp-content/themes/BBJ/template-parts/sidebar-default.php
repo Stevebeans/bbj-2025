@@ -1,5 +1,5 @@
 
-<section class="flex-grow basis-[400px] p-2 relative shrink-0">
+<section class="flex-grow basis-[310px] p-2 relative shrink-0">
 
   <?php get_template_part("template-parts/socials"); ?>
   <?php get_template_part("template-parts/sidebar-newsletter"); ?>

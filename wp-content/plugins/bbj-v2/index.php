@@ -37,6 +37,9 @@ function bbj_register_player_image_sizes() {
     // hard crops
     add_image_size( 'bbj_v2_spoiler_bar',    100, 100, true );
     add_image_size( 'bbj_v2_profile_image',  375, 375, true );
+
+    add_image_size( 'bbj_v2_index_hero', 1000, 333, array( 'center', 'top' ) );
+    add_image_size( 'bbj_v2_index_mobile', 400, 333, array( 'center', 'top' ) );
 }
 
 

@@ -7,6 +7,11 @@ get_header(); ?>
 $curSeason = currentSeason("name");
 $curSeasonID = currentSeason("ID");
 $current_season_id = get_option( 'bbj_v2_current_season', '' );
+$bbj_season = bbj_v2_get_season_by_id($current_season_id);
+$season_name = $bbj_season['full_name'] ?? '';
+$season_permalink = get_permalink($current_season_id);
+
+
 
 $user_id = get_current_user_id();
 $posts_per_page_setting = get_user_meta($user_id, 'feed_update_count', true);
@@ -17,113 +22,189 @@ global $bbj_is_admin;
 
 ?>
 
+<?php
+// HERO: latest post only
+$hero_q = new WP_Query([
+  'post_type'           => 'post',
+  'post_status'         => 'publish',
+  'posts_per_page'      => 1,
+  'orderby'             => 'modified',
+  'order'               => 'DESC',
+  'ignore_sticky_posts' => true,
+]);
 
+$featured_post = null;
+$hero_id = 0;
 
-<div class="bbj-container-inner">
-<?php if (feedUpdater()): ?>
+if ( $hero_q->have_posts() ) {
+  $hero_q->the_post();
+  $featured_post = get_post();
+  $hero_id = $featured_post->ID;
+}
+$post_time_data = my_post_time_ago_function(); 
+
+$mobile_thumbnail = get_the_post_thumbnail_url($hero_id, 'bbj_v2_index_mobile');
+$desktop_thumbnail = get_the_post_thumbnail_url($hero_id, 'bbj_v2_index_hero');
+wp_reset_postdata();
+?> 
+
+<main class="v2-primary-container">
   
-  <div id="index-feed-updater"></div>
-<?php endif;  // End feed updater If?>
+  <?php if (feedUpdater()): ?>  
+    <div id="index-feed-updater"></div>
+  <?php endif;  // End feed updater If?>
 
 
 
-	<div class="mt-2 flex w-full flex-col bg-white lg:flex-row">
-    <section id="main-left" class="flex-grow">
-      <div class="flex justify-between">
-        <h1 class="font-mainHead text-4xl text-primary500 p-2"><a href="/bigbrother-seasons/big-brother-27/">Big Brother 27 Spoilers</a></h1>
-        <?php
-        if ($bbj_is_admin) { ?>
-          <div class="admin-notice"><a href="/wp-admin/admin.php?page=bbj-v2-edit-season&season_id=<?php echo $current_season_id; ?>">Edit Season</a></div>
-        <?php
-        }
-        ?>
 
-           <div class="page-last-updated pt-2 pr-2 text-xs text-gray-500">
-            Last updated:
-            <time class="updated"
-                  datetime="<?php echo date('c', $latest_unix); ?>"
-                  itemprop="dateModified">
-              <?php echo human_time_diff( $latest_unix, current_time('timestamp') ) . ' ago'; ?>
-            </time>
+  <div class="flex w-full flex-col  lg:flex-row dark:text-gray-200">
+    <section id="main-left" class="flex-grow space-y-4">
+      <?php if ( $featured_post ): ?>
+      <article class="v2-primary-container-inner"  >
+        <!-- Latest Article Hero Section -->
+        <div class="relative h-[333px] bg-gray-100 overflow-hidden">
+          <div class="absolute inset-0">
+            <a href="<?= esc_url( get_permalink($hero_id) ) ?>">
+            <img
+              src="<?= esc_url( $desktop_thumbnail ) ?>"
+              class="w-full h-full hidden md:block object-cover"
+              alt="<?= esc_attr( get_the_title($hero_id) ) ?>"
+            >
+            <img
+              src="<?= esc_url( $mobile_thumbnail ) ?>"
+              class="w-full h-full md:hidden object-cover"
+              alt="<?= esc_attr( get_the_title($hero_id) ) ?>">
+            </a>
+          </div>
+           
+          <div class="absolute w-full z-10 bottom-0 left-0 ">
+            <!-- Meta Data -->
+            <div class="bg-white  px-4 py-0.5 w-fit flex items-center rounded-tr-md font-ibm text-xs text-slate-700 v2-dark-reg">
+              
+              <?= $post_time_data["time_diff"] ?> • <i class="fa-regular fa-message ml-2 mr-1"></i> <?= comments_number("No comments", "1 comment", "% comments") ?>
+            </div>          
           </div>
 
+          <!-- Read More Button -->
+          <div class="absolute bottom-4 right-4 z-30">
+            <a href="<?= esc_url( get_permalink($hero_id) ) ?>" class="inline-flex text-sm md:text-base items-center rounded  px-2 md:px-4 py-1 font-bold text-white
+          bg-gradient-to-r from-red-400 to-red-700
+          hover:from-red-500 hover:to-red-800
+          focus:outline-none focus:ring-2 focus:ring-red-500/50 focus:ring-offset-2
+          transition-colors visited:text-white ">
+              Read More
+            </a>
+          </div>
+        </div>
+        <div>
+          <div class="p-2">
+            <h1 class="font-mainHead text-3xl md:text-4xl py-0 my-0 text-primary500 visited:text-primary500 hover:text-primary500">
+              <a href="<?= esc_url( get_permalink($hero_id) ) ?>" class="font-normal v2-dark-link">
+                <?= esc_html( get_the_title($hero_id) ) ?>
+              </a>
+            </h1>           
             <?php
-          
+              $raw = get_post_field('post_excerpt', $hero_id);
+              if ($raw === '') {
+                $raw = wp_strip_all_tags( get_post_field('post_content', $hero_id) );
+              }
+              $mobile_text  = wp_html_excerpt($raw, 85, '…');  // 25 chars
+              $desktop_text = wp_html_excerpt($raw, 250, '…');  // 85 chars
+              ?>
+                            
+              <div class="text-sm v2-dark-reg">
+                <span class=""><?= esc_html($desktop_text) ?></span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <?php endif; ?> 
+
+      <?php bbj_echo_ad( 'index_top' ); ?>
+
+      
+      <div class="flex">
+        <section class="v2-primary-container-inner grow mr-4 p-2" aria-labelledby="main-feeds" >
+          <h2 id="main-feeds" class="font-mainHead text-2xl text-primary500 uppercase p-2">Latest Feed Upates</h2>
+
+          <?php
+          $args = [
+            "post_type" => "live-feed-updates",
+            "posts_per_page" => $posts_per_page_setting,
+            "orderby" => "modified",
+            "order" => "DESC",
+          ];
+          $feed_updates = new WP_Query($args);
+
+          if ($feed_updates->have_posts()): 
+            $counter = 0;
+            while ($feed_updates->have_posts()):
+              $feed_updates->the_post(); 
+              $post_id = get_the_ID();                
+            ?>
+        
+            <!-- Loop Through Feed Updates -->
+            <article class="v2-feed-update-container">
+              <!-- Avatar and Votes -->
+                <?php 
+                    // get author avatar 
+                  $author_id = get_the_author_meta("ID");
+                  $author_avatar = get_avatar_url($author_id, 32);              
+                ?>
+              <div class="w-12 flex border-r shrink-0 justify-center items-start">
+                <img src="<?= $author_avatar ?>" class="rounded-full w-10 h-10 mr-2" alt="">
+              </div>
+
+              <!-- Content -->
+              <div class=" grow">2</div>
+            </article>
+
+            <?php 
+            $counter++;
+            endwhile; 
+            wp_reset_postdata();
+          endif;  
           ?>
+
+          <article class="v2-feed-update-container">
+            asfdsf
+          </article>
+          <article class="v2-feed-update-container">
+            asfdsf
+          </article>
+          <article class="v2-feed-update-container">
+            asfdsf
+          </article>
+        </section>
+
+        <section class="v2-primary-container-inner w-[300px] p-2" aria-labelledby="main-stats" >
+          <h2 id="main-stats" class="font-mainHead text-2xl text-primary500 uppercase p-2"><?php echo $season_name; ?> Stats</h2>
+
+
+        </section>
+        
+
       </div>
 
 
-      <?php //if (!is_paged()):  // If Paged ?>
-      <!-- Feed Updates and Featured Post block -->
-      
-
-
-
       <div class="flex flex-grow p-2 flex-col " id="main-feeds">   
-        <?php
-        $args = [
-          "post_type" => "post",
-          "post_status" => "publish",
-          "posts_per_page" => 5,
-          "orderby" => "modified",
-          "order" => "DESC",
-        ];
 
-        $recent_posts_query = new WP_Query($args);
-        $recent_posts = $recent_posts_query->posts;
 
-        // Featured Post
-        $featured_post = array_shift($recent_posts);
+ 
 
-        global $post;
-        $post = $featured_post;
-        setup_postdata($post);
-        ?>
-
-        <!-- <div class="border border-red-500 p-2 w-full my-4 bg-red-50 text-sm"><b>Important Notice:</b> Updates from Friday afternoon to Saturday evening may be less frequent. After a long season, we need a brief break to recharge for the final stretch. However, we will continue to provide updates on our Facebook page.
-          <div class="font-semibold text-center text-lg"><a href="https://www.facebook.com/bigbrotherjunkies" target="_blank">Click here to visit the Facebook Page!</a></div>
-        </div> -->
-        <?php if (!is_paged()):  // If Paged ?>
-        <div id="highlight-posts" class="w-full  flex-grow mt-4 md:mt-0">
-          <h2 class="font-mainHead text-2xl text-primary500">Latest Post</h2>
-          <div class="h-[6px] bg-second500 w-[100px] mb-4"></div>
-
-          <!-- Featured Post -->
-          <div class="w-full bg-neutral-100 shadow-frontBox flex flex-col md:flex-row p-1 md:p-2">
-            <div class="w-full md:w-[350px] flex-shrink-0"><a href="<?php the_permalink(); ?>"><img src="<?php echo the_post_thumbnail_url("featured-thumbnail"); ?>" class="w-full h-[225px] rounded-md" alt="<?= $curSeason ?> featured post"></a></div>
-            <div class="flex flex-col min-h-[225px] h-full px-1 md:px-2">
-              <h2 class="font-mainHead text-2xl font-bold mt-2 md:mt-0"><a href="<?php the_permalink(); ?>"><?= $featured_post->post_title ?></a></h2>
-              <?php $post_time_data = my_post_time_ago_function(); ?>
-              <time class="published flex font-ibm text-sm border-gray-200 mb-2 <?= $post_time_data["class"] ?>"
-                  datetime="<?php echo get_the_modified_date('c'); ?>"
-                  itemprop="datePublished">
-                  <?= $post_time_data["time_diff"] ?>
-            </time>
-            
-              <div class="text-sm flex-grow"><?php echo wp_trim_words(get_the_content(), 85, "..."); ?> <span class="read-more"><a href="<?php the_permalink(); ?>" >Read More...</a></span></div>
-              <div class="flex justify-between font-ibm text-sm mt-auto">
-                  <div>By: <?= get_the_author_meta("display_name") ?></div>
-                  <div><?= $featured_post->comment_count ?> comments</div>
-              </div>
-            </div>
-          </div>
-
-          <?php wp_reset_postdata(); ?>
-        </div>
-
-        <?php endif; ?>
-
-        <div class="my-6">
-          <?php if (!newPremiumCheck()): ?>
+          <?php 
+          /*
+          if (!newPremiumCheck()): ?>
             <!-- Tag ID: bigbrotherjunkies_incontent_reusable -->
             <div align="center" data-freestar-ad="__336x280 __336x280" id="bigbrotherjunkies_incontent_reusable">
               <script data-cfasync="false" type="text/javascript">
                 freestar.config.enabled_slots.push({ placementName: "bigbrotherjunkies_incontent_reusable", slotId: "bigbrotherjunkies_incontent_reusable" });
               </script>
             </div>
-          <?php endif; ?>
+          <?php endif; */ ?>
           <?php //spot_two(); ?>
-        </div>
+        
 
         
 
@@ -147,15 +228,7 @@ global $bbj_is_admin;
           </div>
 
          
-          <?php
-          $args = [
-            "post_type" => "live-feed-updates",
-            "posts_per_page" => $posts_per_page_setting,
-            "orderby" => "modified",
-            "order" => "DESC",
-          ];
-          $feed_updates = new WP_Query($args);
-          ?>
+
 
           <?php if ($feed_updates->have_posts()): // If Feed Update Query?>
             <?php 
@@ -322,7 +395,7 @@ global $bbj_is_admin;
           <?php endif; ?>
         </div>
 
-<?php endif;  // End first page stuff?>
+      <?php endif;  // End first page stuff?>
         <div id="more-posts" class="w-full mt-6 border-t border-gray-200 pt-4">
         
           <h3 class="font-mainHead text-2xl text-primary500">More Stories & News</h3>
@@ -462,7 +535,7 @@ global $bbj_is_admin;
 
   
   
-</div>
+</main>
 
 <script>
   window.userLoggedIn = <?php echo is_user_logged_in() ? 'true' : 'false'; ?>;
