@@ -131,3 +131,35 @@ register_activation_hook( __FILE__, 'bbj_create_player_season_table' );
 register_activation_hook( __FILE__, 'bbj_create_players_table' );
 register_activation_hook( __FILE__, 'bbj_create_seasons_table' );
 
+add_filter( 'aioseo_schema_output', function ( $schema ) {
+	if ( ! ( is_front_page() || is_home() ) ) {
+		return $schema;
+	}
+
+	// If AIOSEO returns a @graph structure
+	if ( isset( $schema['@graph'] ) && is_array( $schema['@graph'] ) ) {
+		foreach ( $schema['@graph'] as $i => $node ) {
+			$types = [];
+			if ( ! empty( $node['@type'] ) ) {
+				$types = is_array( $node['@type'] ) ? $node['@type'] : [ $node['@type'] ];
+				$types = array_map( 'strtolower', $types );
+			}
+			if ( array_intersect( $types, [ 'article', 'blogposting', 'newsarticle' ] ) ) {
+				unset( $schema['@graph'][ $i ]['datePublished'], $schema['@graph'][ $i ]['dateModified'] );
+			}
+		}
+		return $schema;
+	}
+
+	// Fallback if it’s an array of nodes
+	foreach ( $schema as $i => $node ) {
+		if ( ! is_array( $node ) ) { continue; }
+		$type = ! empty( $node['@type'] )
+			? ( is_array( $node['@type'] ) ? strtolower( reset( $node['@type'] ) ) : strtolower( $node['@type'] ) )
+			: '';
+		if ( in_array( $type, [ 'article', 'blogposting', 'newsarticle' ], true ) ) {
+			unset( $schema[ $i ]['datePublished'], $schema[ $i ]['dateModified'] );
+		}
+	}
+	return $schema;
+} );

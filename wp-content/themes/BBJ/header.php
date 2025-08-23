@@ -72,26 +72,16 @@
       <div class="text-right text-xs hidden md:block">
         <span class="text-gray-500 dark:text-gray-400">Current BB Time: </span>
         <?php echo esc_html( $current_date_time_pst->format('D, M jS h:i A') ); ?>
-        <span class="text-gray-500 dark:text-gray-400"> | </span>
-        Last updated:
-            <time class="updated"
-                  datetime="<?php echo date('c', $latest_unix); ?>"
-                  itemprop="dateModified">
-              <?php echo human_time_diff( $latest_unix, current_time('timestamp') ) . ' ago'; ?>
-            </time>
+        
+        
       </div>
       <!-- Mobile Date/Time -->
       <div class="text-xs md:hidden">
         <span class="text-gray-500 dark:text-gray-400">BB Time: </span>
         <?php echo esc_html( $current_date_time_pst->format('h:i A') ); ?>
-        <span class="text-gray-500 dark:text-gray-400"> | </span>
-        Last updated:
-            <time class="updated"
-                  datetime="<?php echo date('c', $latest_unix); ?>"
-                  itemprop="dateModified">
-              <?php echo human_time_diff( $latest_unix, current_time('timestamp') ) . ' ago'; ?>
-            </time>
+
       </div>
+
     </div>
 
     <!-- Primary Header Bar -->
@@ -192,7 +182,7 @@
         <div class="container mx-auto hidden lg:flex" id="mobile-menu-2">
           <div class="md:hidden"><?php get_template_part("template-parts/search-bar"); ?></div>
           <ul id="bbj-main-menu" class="menu list-none p-0">
-            <li class="nav-class-li"><a href="<?= esc_url( site_url() ) ?>" class="nav-class-a">afdsdafads</a></li>
+            
             <?php 
             
             wp_nav_menu([
