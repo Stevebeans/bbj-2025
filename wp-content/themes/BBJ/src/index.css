@@ -11,12 +11,21 @@
     @apply flex items-center justify-center;
   }
 
-  h2 {
-    @apply py-2 text-xl font-bold text-primary500 dark:text-primarySoft;
-  }
+  /* h2 {
+    @apply py-2 text-xl text-primary500 dark:text-primarySoft;
+  } */
 }
 
 @layer components {
+  /* Ensure links inside the h2 follow the same color behavior */
+  #v2-featured-post-title h2 a {
+    color: inherit;
+  }
+  #v2-featured-post-title h2 a:hover,
+  #v2-featured-post-title h2 a:visited {
+    color: inherit;
+  }
+
   .v2-input-text {
     @apply block w-full appearance-none rounded-lg border border-gray-300 bg-gray-50 p-1 text-center text-xs text-gray-900 [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none;
   }
@@ -58,19 +67,53 @@
   }
 
   .v2-primary-container {
-    @apply mx-auto mb-4 mt-2 max-w-screen-xl;
+    @apply mx-auto mb-4 mt-4 max-w-screen-xl;
   }
 
   .v2-primary-container-inner {
-    @apply relative  overflow-hidden rounded-lg bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
+    @apply relative  overflow-hidden rounded-lg  bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
   }
 
   .v2-feed-update-container {
-    @apply flex  gap-2 border-b border-gray-200 p-4 last:border-0 first-of-type:border-t dark:border-gray-700;
+    @apply flex flex-col gap-2 border-b-0 border-l border-r border-t
+         border-gray-200 p-4 hover:bg-gray-100
+         dark:border-gray-700 dark:hover:bg-gray-700;
+  }
+
+  section[aria-labelledby="main-feeds"] > a.group:last-child .v2-feed-update-container {
+    @apply border-b;
+  }
+  /* .v2-feed-update-container {
+    @apply flex gap-2 border-b border-gray-200 p-4 
+         last:border-0 first-of-type:border-t 
+         dark:border-gray-700;
+  } */
+
+  .group:hover .v2-feed-update-container {
+    @apply bg-gray-100 dark:bg-gray-700;
+  }
+
+  .v2-feed-update-container a,
+  .v2-feed-update-container a:visited {
+    @apply text-inherit no-underline;
+  }
+
+  .v2-feed-update-container a:hover {
+    @apply text-inherit;
+  }
+
+  .group:hover h3,
+  .group:hover p,
+  .group:hover span {
+    @apply text-primary500 dark:text-primarySoft;
   }
 
   .v2-ad-container {
     @apply mx-auto border-b border-t border-gray-300  dark:border-gray-700 dark:bg-gray-900;
+  }
+
+  .v2-summary-card {
+    @apply relative mb-4 w-full overflow-hidden rounded-lg bg-slate-100 shadow-md dark:border dark:border-gray-600 dark:bg-gray-700;
   }
 
   .desktop-nav a,
@@ -338,6 +381,10 @@
 }
 
 /* Version 2 Components BELOW */
+
+.bbj-feed-content {
+  white-space: pre-line;
+}
 
 .bbj-spoiler-bar {
   @apply mx-auto w-full max-w-screen-xl overflow-hidden rounded-b-md  bg-white shadow-md dark:border-gray-700 dark:bg-gray-800;

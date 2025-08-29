@@ -31,14 +31,23 @@ add_action ('admin_init', function() {
 
   // define slots 
    $slots = [
-        'above_header' => 'Above Header',
-        'in_header'    => 'Inside Header Ads (hidden)',
-        'in_header_misc' => 'Inside Header Misc (visible)',
-        'below_header' => 'Below Header',
-        'after_post'   => 'After Post',
-        'index_top'   => 'Index Top',
-        'sidebar_top'  => 'Sidebar (Top)',
-        'footer'       => 'Footer',
+        'above_header'        => 'Above Header',
+        'in_header'           => 'Inside Header Ads (hidden)',
+        'in_header_misc'      => 'Inside Header Misc (visible)',
+        'below_header'        => 'Below Header',
+        'below_header_mobile' => 'Below Header Mobile',
+        'after_post'          => 'After Post',
+        'index_top'           => 'Index Top',
+        'index_top_mobile'    => 'Index Top Mobile',
+        'index_mid'           => 'Index Mid',
+        'index_bottom'        => 'Index Bottom',
+        'in_content_feeds'    => 'In Content Feeds',
+        'single_top'          => 'Single Post Top',
+        'single_mid'          => 'Single Post Mid',
+        'single_bottom'       => 'Single Post Bottom',
+        'sidebar_bottom'      => 'Sidebar (Bottom)',
+        'sidebar_top'         => 'Sidebar (Top)',
+        'footer'              => 'Footer',
     ];
 
   // register each slot

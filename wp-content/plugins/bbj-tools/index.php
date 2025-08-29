@@ -28,7 +28,7 @@ require_once(LIB_PATH . 'create-tables.php');
 require_once(LIB_PATH . 'global-variables.php');
 require_once(LIB_PATH . 'functions.php');
 require_once(LIB_PATH . 'small-functions.php');
-require_once(LIB_PATH . 'photo-uploads.php');
+//require_once(LIB_PATH . 'photo-uploads.php');
 require_once(LIB_PATH . 'add-fields.php');
 require_once(API_PATH . 'stripe.php');
 require_once(API_PATH . 'paypal.php');

@@ -11,6 +11,17 @@ function bbj_spoiler_bar_cache_key( $season_id, $is_admin ) {
 function bbj_players_cache_key( $season_id, $size ) {
     return sprintf('season_players:s%u:size:%s', (int)$season_id, $size);
 }
+
+// cache key for summary table
+function bbj_spoiler_bar_summary_cache( $season_id, $is_admin ) {
+    return sprintf('spoiler_bar_summary:s%u:a%s', (int)$season_id, $is_admin ? '1' : '0');
+}
+
+function bbj_standings_table_cache( $season_id, $is_admin ) {
+    return sprintf('standings_table:s%u:a%s', (int)$season_id, $is_admin ? '1' : '0');
+}
+
+
 function bbj_spoiler_bar_bust_cache( $season_id ) {
     // bust both admin/non-admin HTML
     wp_cache_delete( bbj_spoiler_bar_cache_key($season_id, false), BBJ_CACHE_GROUP );
@@ -18,6 +29,12 @@ function bbj_spoiler_bar_bust_cache( $season_id ) {
     // bust common players queries (add more sizes if you use them)
     wp_cache_delete( bbj_players_cache_key($season_id, 'bbj_v2_spoiler_bar'), BBJ_CACHE_GROUP );
     wp_cache_delete( bbj_players_cache_key($season_id, 'bbj_v2_profile_image'), BBJ_CACHE_GROUP );
+    // bust summary table cache
+    wp_cache_delete( bbj_spoiler_bar_summary_cache($season_id, false), BBJ_CACHE_GROUP );
+    wp_cache_delete( bbj_spoiler_bar_summary_cache($season_id, true),  BBJ_CACHE_GROUP );
+    // bust standings table cache
+    wp_cache_delete( bbj_standings_table_cache($season_id, false), BBJ_CACHE_GROUP );
+    wp_cache_delete( bbj_standings_table_cache($season_id, true),  BBJ_CACHE_GROUP );
 }
 
 
@@ -43,11 +60,15 @@ function bbj_v2_get_season_players($season_id, $size = 'bbj_v2_profile_image') {
         ARRAY_A
     );
 
+    
+
     // 2) Loop & pull in the MetaBox image
     foreach ( $players as &$player ) {
         
         $post_id = $player['id'];
         $player_id = $player[ 'bbj_player' ];
+
+        
 
         // get permalink 
         $player['permalink'] = get_permalink($player_id);
@@ -75,9 +96,9 @@ function bbj_v2_get_season_players($season_id, $size = 'bbj_v2_profile_image') {
 
         
     }
-
     
     wp_cache_set($pk, $players, BBJ_CACHE_GROUP, BBJ_CACHE_TTL);
+    
     return $players;
 }
 
@@ -236,6 +257,40 @@ function bbj_echo_ad( string $slot ): void {
     }
 }
 
+function bbj_echo_ad_responsive( string $desktop_slot, string $mobile_slot = '', string $extra_class = '', bool $hide_mobile = false ): void {
+    // keep your gating exactly the same
+    if ( bbj_user_has_role('updater') || bbj_user_has_role('administrator') ||
+         bbj_user_has_role('supporter') || bbj_user_has_role('comment_mod') ||
+         bbj_user_has_role('second_in_command') || is_page('log-in') || is_admin() ) {
+        return;
+    }
+
+    // Desktop (md+)
+    $desktop_code = bbj_get_ad( $desktop_slot );
+    if ( $desktop_code ) {
+        echo '<div class="hidden md:block ' . esc_attr($extra_class) . '">';
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+        echo $desktop_code;
+        echo '</div>';
+    }
+
+    // Mobile (< md): if mobile slot empty, fall back to desktop (unless hide)
+    if ( ! $hide_mobile ) {
+        $mobile_code = $mobile_slot ? bbj_get_ad( $mobile_slot ) : '';
+        if ( ! $mobile_code ) {
+            $mobile_code = $desktop_code; // fallback
+        }
+        if ( $mobile_code ) {
+            echo '<div class="block md:hidden ' . esc_attr($extra_class) . '">';
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+            echo $mobile_code;
+            echo '</div>';
+        }
+    }
+}
+
+
+
 // This is showing the code that is not blocked by user role or page.  Mostly meaning like google analyitcs
 function bbj_echo_code( string $slot ): void {
     
@@ -250,4 +305,109 @@ function bbj_echo_code( string $slot ): void {
 function bbj_user_has_role( string $role ): bool {
     $user = wp_get_current_user();
     return in_array( $role, (array) $user->roles, true );
+}
+
+
+
+function bbj_time_tags( $post_id = null, $show_updated_text = false, $opts = [] ) {
+    $post_id = $post_id ?: get_the_ID();
+
+    // Options (sensible defaults)
+    $defaults = [
+        // Only add microdata itemprop=... on singular pages.
+        'microdata'  => is_singular(),
+        // Never print OG meta from here if AIOSEO is active (AIOSEO adds OG in <head>).
+        'og'         => false,
+        // Use the site timezone (ISO 8601 with offset, not Zulu).
+        'use_site_tz'=> true,
+        // Only show "Updated" if modified is > 5 minutes after published.
+        'min_delta_s'=> 300,
+        // Visible date format
+        'format'     => get_option('date_format'),
+    ];
+    $o = wp_parse_args( $opts, $defaults );
+
+    // Choose GMT flag based on desired timezone for machine-readable times
+    $gmt_flag = $o['use_site_tz'] ? false : true;
+
+    // ISO 8601 + visible strings
+    $pub_iso  = get_post_time( DATE_W3C, $gmt_flag, $post_id );
+    $mod_iso  = get_post_modified_time( DATE_W3C, $gmt_flag, $post_id );
+
+    $pub_ts   = get_post_time( 'U', false, $post_id );
+    $mod_ts   = get_post_modified_time( 'U', false, $post_id );
+
+    $pub_disp = get_the_date( $o['format'], $post_id );
+    $mod_disp = get_the_modified_date( $o['format'], $post_id );
+
+    $show_updated = ( $mod_ts - $pub_ts ) > (int) $o['min_delta_s'];
+
+    // Only add itemprop=... when microdata is appropriate
+    $ip_pub = $o['microdata'] ? ' itemprop="datePublished"' : '';
+    $ip_mod = $o['microdata'] ? ' itemprop="dateModified"'  : '';
+
+    ob_start(); ?>
+      <time class="published" datetime="<?= esc_attr($pub_iso) ?>"<?= $ip_pub ?>>
+        <?= esc_html($pub_disp) ?>
+      </time>
+      <?php if ( $show_updated_text && $show_updated ) : ?>
+        <span aria-hidden="true" class="px-2">•</span>
+        <time class="updated" datetime="<?= esc_attr($mod_iso) ?>"<?= $ip_mod ?>>
+          Updated <?= esc_html($mod_disp) ?>
+        </time>
+      <?php else : ?>
+        <?php if ( $o['microdata'] ) : ?>
+          <meta<?= $ip_mod ?> content="<?= esc_attr($mod_iso) ?>">
+        <?php endif; ?>
+      <?php endif; ?>
+
+      <?php
+      // Only add OG article times if explicitly requested AND AIOSEO isn't active.
+      if ( ! bbj_is_aioseo_active() && ! empty($o['og']) ) : ?>
+        <meta property="article:published_time" content="<?= esc_attr($pub_iso) ?>">
+        <meta property="article:modified_time"  content="<?= esc_attr($mod_iso) ?>">
+      <?php endif;
+
+    return ob_get_clean();
+}
+
+
+// functions.php — replace the function body with the guard + dynamic @type
+function bbj_print_article_jsonld( $post_id = null ) {
+    // Let AIOSEO own schema on pages where it runs.
+    if ( bbj_is_aioseo_active() || ! is_singular() ) {
+        return;
+    }
+
+    $post_id   = $post_id ?: get_the_ID();
+    $author_id = (int) get_post_field('post_author', $post_id);
+    $image_url = wp_get_attachment_image_url( get_post_thumbnail_id($post_id), 'full' );
+
+    // Use LiveBlogPosting for your feed CPT, BlogPosting for regular posts
+    $ptype = get_post_type( $post_id );
+    $schema_type = ( $ptype === 'live-feed-updates' ) ? 'LiveBlogPosting' : 'BlogPosting';
+
+    $data = [
+        '@context'          => 'https://schema.org',
+        '@type'             => $schema_type,
+        'mainEntityOfPage'  => get_permalink($post_id),
+        'headline'          => get_the_title($post_id),
+        'datePublished'     => get_post_time(DATE_W3C, false, $post_id),
+        'dateModified'      => get_post_modified_time(DATE_W3C, false, $post_id),
+        'author'            => [
+            '@type' => 'Person',
+            'name'  => get_the_author_meta('display_name', $author_id),
+        ],
+        'publisher'         => [
+            '@type' => 'Organization',
+            'name'  => get_bloginfo('name'),
+            'logo'  => [
+                '@type' => 'ImageObject',
+                'url'   => get_site_icon_url() ?: ( get_template_directory_uri() . '/screenshot.png' ),
+            ],
+        ],
+        'image'             => $image_url ?: null,
+        'description'       => wp_strip_all_tags( get_the_excerpt($post_id) ),
+    ];
+    echo '<script type="application/ld+json">' . wp_json_encode($data, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) . '</script>';
 }

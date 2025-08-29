@@ -1,6 +1,7 @@
 <?php
-
-
+define( 'WP_CACHE', true ); 
+ 
+/** Enable W3 Total Cache */
 /**
  * The base configurations of the WordPress.
  *
@@ -15,23 +16,17 @@
  *
  * @package WordPress
  */
-
 // ** MySQL settings - You can get this info from your web host ** //
 /** The name of the database for WordPress */
-define("DB_NAME", "tkjhtfxvrb");
-
+define("DB_NAME", "ftgtnduhbt");
 /** MySQL database username */
-define("DB_USER", "tkjhtfxvrb");
-
+define("DB_USER", "ftgtnduhbt");
 /** MySQL database password */
-define("DB_PASSWORD", "9BpKMNDmUx");
-
+define("DB_PASSWORD", "vY8SbUq9fD");
 /** MySQL hostname */
 define("DB_HOST", "localhost");
-
 /** Database Charset to use in creating database tables. */
 define("DB_CHARSET", "utf8");
-
 /** The Database Collate type. Don't change this if in doubt. */
 define("DB_COLLATE", "");
 /**#@+
@@ -46,7 +41,6 @@ require "wp-salt.php";
  * You can have multiple installations in one database if you give each a unique
  * prefix. Only numbers, letters, and underscores please!
  */
-
 /**
  * WordPress Database Table prefix.
  *
@@ -54,7 +48,6 @@ require "wp-salt.php";
  * prefix. Only numbers, letters, and underscores please!
  */
 $table_prefix = "wp_";
-
 /**
  * WordPress Localized Language, defaults to English.
  *
@@ -63,7 +56,6 @@ $table_prefix = "wp_";
  * de_DE.mo to wp-content/languages and set WPLANG to 'de_DE' to enable German
  * language support.
  */
-
 define("FS_METHOD", "direct");
 define("WPLANG", "");
 define("FS_CHMOD_DIR", 0775 & ~umask());
@@ -78,13 +70,14 @@ define("FS_CHMOD_FILE", 0664 & ~umask());
 define( 'WP_DEBUG', true );
 define( 'WP_DEBUG_LOG', true );
 define( 'WP_DEBUG_DISPLAY', true );
-
+define( 'CDN_SITE_ID', '4998725' );
+define( 'CDN_SITE_TOKEN', '2e2d112b9f298287c64fb6f8907680d3' );
+define('JWT_AUTH_SECRET_KEY', 'N2ZP8t7vXZ65aVg719O9ZO5qfmoJC1KL');
+define('JWT_AUTH_CORS_ENABLE', true);
 /* That's all, stop editing! Happy blogging. */
-
 /** Absolute path to the WordPress directory. */
 if (!defined("ABSPATH")) {
   define("ABSPATH", dirname(__FILE__) . "/");
 }
-
 /** Sets up WordPress vars and included files. */
 require_once ABSPATH . "wp-settings.php";

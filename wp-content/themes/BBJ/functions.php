@@ -1,6 +1,6 @@
 <?php
 
-define("BBJ_THEME_VERSION", "3.2.7");
+define("BBJ_THEME_VERSION", "3.2.9");
 define("BBJ_ROOT", dirname(__FILE__));
 define("BBJ_INCLUDES", BBJ_ROOT . "/includes");
 define("BBJ_IMAGES", get_theme_file_uri("/images"));
@@ -146,33 +146,23 @@ function get_google_db_connection() {
 }
 
 
-function bbj_get_latest_unix() {
-    $latest = get_posts([
-        'post_type'      => ['post','live-feed-updates'],
-        'posts_per_page' => 1,
-        'orderby'        => 'modified',
-        'order'          => 'DESC',
-        'fields'         => 'ids',
-    ]);
-    if ( empty($latest) ) {
-        return current_time('timestamp');
-    }
-    return get_post_modified_time('U', false, $latest[0]);
-}
-// Then elsewhere you can do:
-$latest_unix = bbj_get_latest_unix();
+add_action('wp_head', function () {
+    if (!is_front_page()) return;
 
-add_action('wp_head', function(){
-  if ( is_front_page() ) {
-    $latest = bbj_get_latest_unix();
-    echo '<script type="application/ld+json">'
-       . wp_json_encode([
-           '@context'     => 'https://schema.org',
-           '@type'        => 'CollectionPage',
-           'url'          => home_url(),
-           'name'         => get_bloginfo('name'),
-           'dateModified' => date('c', $latest),
-         ])
-       . '</script>';
-  }
+    global $hero_id;
+    if (!$hero_id) return;
+
+    $src    = wp_get_attachment_image_url(get_post_thumbnail_id($hero_id), 'bbj_v2_index_mobile');
+    $srcset = wp_get_attachment_image_srcset(get_post_thumbnail_id($hero_id), 'bbj_v2_index_mobile');
+
+    if ($src): ?>
+      <link rel="preload"
+            as="image"
+            href="<?= esc_url($src) ?>"
+            imagesrcset="<?= esc_attr($srcset) ?>"
+            imagesizes="100vw"
+            fetchpriority="high"
+            media="(max-width: 767px)">
+    <?php endif;
 });
+

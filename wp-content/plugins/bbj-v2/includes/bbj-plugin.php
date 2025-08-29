@@ -27,11 +27,16 @@ require_once BBJ_V2_INCLUDES . 'Helpers/admin-menu.php';
 
 // include routes
 require_once BBJ_V2_ROUTES   . 'Search/search-route.php';
+require_once BBJ_V2_ROUTES   . 'feed-update.php';
 
 // include actions 
 require_once BBJ_V2_INCLUDES . 'Actions/action-list.php';
 
 // include shortcodes
 require_once BBJ_V2_INCLUDES . 'Public/shortcodes/spoiler-bar.php';
+require_once BBJ_V2_INCLUDES . 'Public/shortcodes/summary-table.php';
+require_once BBJ_V2_INCLUDES . 'Public/shortcodes/standings-table.php';
 
-
+function bbj_is_aioseo_active() {
+  return function_exists('aioseo') || defined('AIOSEO_VERSION');
+}

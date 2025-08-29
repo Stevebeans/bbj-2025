@@ -28,6 +28,7 @@
   <meta charset="<?php bloginfo("charset"); ?>">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name='ir-site-verification-token' value='2012599910'>
+  <meta name="robots" content="max-image-preview:large">
 
   <?php bbj_echo_ad('in_header'); ?>
   <?php bbj_echo_code('in_header_misc'); ?>
@@ -39,11 +40,12 @@
 
   <?php 
   $current_date_time_pst = new DateTime('now', new DateTimeZone('America/Los_Angeles'));
-  $latest_unix = bbj_get_latest_unix();
+  //$latest_unix = bbj_get_latest_unix();
   ?>
 </head>
 
 <body <?php body_class(); ?>>
+<?php wp_body_open(); ?>
 
 <header>
   <script>
@@ -65,21 +67,25 @@
         <a href="/contact/" class="hidden md:inline">Contact |</a>   
         
         <a href="/privacy-policy/"  class="hidden md:inline">Privacy |</a> 
-      Follow: <a href="https://www.facebook.com/bigbrotherjunkies" target="_blank"><i class="fa-brands fa-facebook ml-1"></i></a>
-      <a href="https://www.instagram.com/bigbrotherjunky/" target="_blank"><i class="fa-brands fa-instagram ml-1"></i></a>
+      Follow: <a href="https://www.facebook.com/bigbrotherjunkies" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-facebook ml-1"></i></a>
+      <a href="https://www.instagram.com/bigbrotherjunky/" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-instagram ml-1"></i></a>
       <!-- <a href="https://x.com/BigBrotherBBJ" target="_blank"><i class="fa-brands fa-square-x-twitter ml-2"></i></a> -->
       </div>
       <div class="text-right text-xs hidden md:block">
         <span class="text-gray-500 dark:text-gray-400">Current BB Time: </span>
-        <?php echo esc_html( $current_date_time_pst->format('D, M jS h:i A') ); ?>
+        <span data-nosnippet>
+          <time><?= esc_html( $current_date_time_pst->format('D, M jS h:i A') ); ?></time>
+        </span>
+
         
         
       </div>
       <!-- Mobile Date/Time -->
       <div class="text-xs md:hidden">
         <span class="text-gray-500 dark:text-gray-400">BB Time: </span>
-        <?php echo esc_html( $current_date_time_pst->format('h:i A') ); ?>
-
+        <span data-nosnippet>
+          <time><?= esc_html( $current_date_time_pst->format('D, M j h:i A') ); ?></time>
+        </span>
       </div>
 
     </div>
@@ -87,12 +93,16 @@
     <!-- Primary Header Bar -->
     <div class="flex flex-wrap items-center justify-between mx-auto px-2 py-1 md:p-2 w-full max-w-screen-xl border-t border-slate-200 dark:border-slate-500">
       <div class="block shrink-0">
-        <h1>
+       
           <a href="<?= esc_url( site_url() ) ?>">
-            <img src="<?= esc_url( BBJ_IMAGES . "/bbjlogo2020.png" ) ?>" alt="<?= esc_attr( get_bloginfo("description") ) ?>" class=" w-48 md:w-auto h-auto">
+            <img src="<?= esc_url( BBJ_IMAGES . "/bbjlogo2020.png" ) ?>"
+              alt="<?= esc_attr( get_bloginfo("description") ) ?>"
+              class="w-48 md:w-auto h-auto"
+              decoding="async" loading="eager" fetchpriority="high">
+
           </a>
           <span class="clip-rect-1 clip-path-inset-50 h-1 m-0 overflow-hidden p-0 absolute w-1 word-wrap-normal">Big Brother Junkies</span>
-        </h1>
+        
       </div>
 
       <div class="hidden lg:flex grow">
@@ -207,7 +217,13 @@
 
 <section id="main-body" class="bg-slate-200 dark:bg-slate-700">
   <?php echo do_shortcode( '[bbj_spoiler_bar]' ); ?>  
-  <?php bbj_echo_ad('below_header'); ?>
+  <?php bbj_echo_ad_responsive(
+      'below_header',            // desktop slot
+      'below_header_mobile',     // mobile slot (leave empty string to fallback)
+      'w-full md:min-h-[250px] min-h-[50px] max-h-[100px] md:max-h-[260px]' // optional: reserve space different by breakpoint
+      , true  // uncomment to hide on mobile instead
+    );
+ ?>
 
   <div id="user-role" data-role="<?= esc_attr($bbjAdCheck) ?>"></div>
 

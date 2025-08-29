@@ -27,6 +27,7 @@ function bbj_render_spoiler_bar() {
     $season_players = bbj_v2_get_season_players( $current_season_id, 'bbj_v2_spoiler_bar' );
 
     
+    
 
     // sort players by their spoiler weight
     usort($season_players, function ($a, $b) {
@@ -187,7 +188,7 @@ function bbj_spoiler_label( array $player ): string {
     if ( ! empty( $player['current_hoh'] ) )     { $labels[] = 'HoH'; }
     if ( ! empty( $player['current_pov'] ) )     { $labels[] = 'PoV'; }
     if ( ! empty( $player['current_nom'] ) )     { $labels[] = 'Nom'; }
-    if ( ! empty( $player['current_havenot'] ) ) { $labels[] = 'HaveNot'; }
+    if ( ! empty( $player['current_havenot'] ) ) { $labels[] = 'HN'; }
     if ( ! empty( $player['current_jury'] ) )   { $labels[] = 'Jury'; }
     if ( ! empty( $player['current_evicted'] ) ){ $labels[] = 'Evicted'; }
     if ( empty( $labels ) && ! empty( $player['current_safe'] ) ) { $labels[] = 'Safe'; }

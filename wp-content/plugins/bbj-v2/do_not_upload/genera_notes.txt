@@ -1,0 +1,30 @@
+I am going to start really optimizing the index page. 
+
+Using query monitor, when I load the index, it shows:
+
+0.94s - 51 MB - 0.31s - 164q 
+
+for referece, that is:
+
+Page Generation Time - Peak Memory Usage - Database Queries (164 total queries) - Object Cache (not on local)
+
+
+
+Uploading Notes 
+
+1 - Be sure to remember the old plugin 
+2 - Be sure to add the ad code for the ad blocks
+
+
+
+
+
+SPOILERS BELOW ===>
+
+===
+
+===
+
+===
+
+===
