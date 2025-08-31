@@ -40,13 +40,14 @@ function bbj_register_player_image_sizes() {
 
     add_image_size( 'bbj_v2_index_hero',  1350, 450, array( 'center', 'top' ) );
     add_image_size( 'bbj_v2_index_mobile', 400, 333, array( 'center', 'top' ) );
-
+    add_image_size ( 'bbj_hot_thumbnail', 128, 80, true );
+    add_image_size("featured-thumbnail", 400, 200, true);  
         // Old, need to review
         add_theme_support("title-tag");
         add_theme_support("post-thumbnails");
         add_theme_support("block-templates");
 
-        add_image_size("featured-thumbnail", 400, 200, true);        
+              
         add_image_size('featured-feed-update', 700, 0, false);
         add_image_size("featured-image-header", 1600, 500, true);
         add_image_size("player-banner", 1200, 350, true);
@@ -176,3 +177,33 @@ add_filter( 'aioseo_schema_output', function ( $schema ) {
 	}
 	return $schema;
 } );
+
+
+// Show an "Open in your browser" banner inside in‑app browsers (FB, IG, etc).
+add_action('wp_body_open', function () { ?>
+  <div id="iab-banner" style="display:none;position:sticky;top:0;z-index:9999;background:#222;color:#fff;padding:8px;text-align:center;font-size:14px;">
+    You’re viewing this inside an in‑app browser. Logins may not stick.
+    <a id="iab-open" href="" style="text-decoration:underline;color:#fff;">Open in your browser</a>
+  </div>
+  <script>
+  (function(){
+    var ua = navigator.userAgent||'';
+    var inApp = /(FBAN|FBAV|FB_IAB|Instagram|Twitter|LinkedInApp|Line|Snapchat|WhatsApp|Pinterest)/i.test(ua);
+    if(!inApp) return;
+    var banner=document.getElementById('iab-banner'); if(banner){banner.style.display='block';}
+    var a=document.getElementById('iab-open'); if(!a) return;
+    var url=window.location.href;
+    if(/Android/i.test(ua)){
+      a.href='intent://' + url.replace(/^https?:\/\//,'') + '#Intent;scheme=https;package=com.android.chrome;end';
+    } else {
+      a.href=url; // iOS will show "Open in Safari" from the share menu; this keeps the URL handy.
+    }
+  })();
+  </script>
+<?php });
+
+
+// Extend login cookie lifetime: 14 days normal, 30 days if "Remember Me".
+add_filter('auth_cookie_expiration', function ($length, $user_id, $remember) {
+  return $remember ? 30 * DAY_IN_SECONDS : 14 * DAY_IN_SECONDS;
+}, 10, 3);

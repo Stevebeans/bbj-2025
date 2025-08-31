@@ -98,7 +98,7 @@
             <img src="<?= esc_url( BBJ_IMAGES . "/bbjlogo2020.png" ) ?>"
               alt="<?= esc_attr( get_bloginfo("description") ) ?>"
               class="w-48 md:w-auto h-auto"
-              decoding="async" loading="eager" fetchpriority="high">
+              decoding="async" loading="lazy">
 
           </a>
           <span class="clip-rect-1 clip-path-inset-50 h-1 m-0 overflow-hidden p-0 absolute w-1 word-wrap-normal">Big Brother Junkies</span>
@@ -215,7 +215,7 @@
   </nav>
 </header>
 
-<section id="main-body" class="bg-slate-200 dark:bg-slate-700">
+<section id="main-body" class="bg-slate-200 dark:bg-slate-700 pb-8">
   <?php echo do_shortcode( '[bbj_spoiler_bar]' ); ?>  
   <?php bbj_echo_ad_responsive(
       'below_header',            // desktop slot

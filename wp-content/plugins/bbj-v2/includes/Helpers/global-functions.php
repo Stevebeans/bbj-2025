@@ -21,6 +21,11 @@ function bbj_standings_table_cache( $season_id, $is_admin ) {
     return sprintf('standings_table:s%u:a%s', (int)$season_id, $is_admin ? '1' : '0');
 }
 
+function bbj_hot_posts_cache( $count, $is_admin, $days = 14 ) {
+  $ver = (int) ( wp_cache_get('hot_posts:ver', BBJ_CACHE_GROUP) ?: 1 );
+  return sprintf('hot_posts:v%u:c%u:d%u:a%s', $ver, (int) $count, (int) $days, $is_admin ? '1' : '0');
+}
+
 
 function bbj_spoiler_bar_bust_cache( $season_id ) {
     // bust both admin/non-admin HTML
@@ -35,8 +40,38 @@ function bbj_spoiler_bar_bust_cache( $season_id ) {
     // bust standings table cache
     wp_cache_delete( bbj_standings_table_cache($season_id, false), BBJ_CACHE_GROUP );
     wp_cache_delete( bbj_standings_table_cache($season_id, true),  BBJ_CACHE_GROUP );
+
+    // delete hot posts 
+    bbj_hot_posts_bump_cache_ver();
+
 }
 
+function bbj_hot_posts_bump_cache_ver() {
+  $k = 'hot_posts:ver';
+
+  // Prefer an atomic increment when available.
+  if ( function_exists('wp_cache_incr') ) {
+    $v = wp_cache_incr($k, 1, BBJ_CACHE_GROUP);
+    if ( false === $v ) {
+      // initialize if missing
+      wp_cache_set($k, 1, BBJ_CACHE_GROUP);
+    }
+  } else {
+    $v = (int) wp_cache_get($k, BBJ_CACHE_GROUP);
+    wp_cache_set($k, $v ? ($v + 1) : 1, BBJ_CACHE_GROUP);
+  }
+}
+
+// New or status-changed comments can reorder results
+add_action('comment_post',               'bbj_hot_posts_bump_cache_ver', 10, 3);
+add_action('edit_comment',               'bbj_hot_posts_bump_cache_ver');
+add_action('deleted_comment',            'bbj_hot_posts_bump_cache_ver');
+add_action('trashed_comment',            'bbj_hot_posts_bump_cache_ver');
+add_action('transition_comment_status',  'bbj_hot_posts_bump_cache_ver', 10, 3);
+add_action('wp_set_comment_status',      'bbj_hot_posts_bump_cache_ver', 10, 2);
+
+// New/updated posts within the window can affect the set
+add_action('save_post',                  'bbj_hot_posts_bump_cache_ver', 10, 3);
 
 function bbj_v2_get_season_players($season_id, $size = 'bbj_v2_profile_image') {
     global $wpdb;

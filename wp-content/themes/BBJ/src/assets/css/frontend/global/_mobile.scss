@@ -48,15 +48,8 @@
   }
 
   aside {
-    display: block;
-    flex-shrink: 0;
-    flex-basis: 300px;
-    padding: toRem(10);
-    margin-top: toRem(10);
-    align-self: start;
     position: sticky;
     position: -webkit-sticky; /* for Safari */
-    top: 10px;
   }
 
   .aside-sticky {

@@ -3,6 +3,66 @@ get_header(); ?>
 
 
 <div id="page-id" data-id="<?= get_the_ID() ?>"></div>
+
+<main class="v2-primary-container">
+  <div class="flex w-full flex-col mb-4  lg:flex-row dark:text-gray-200">  
+    <section id="main-left" class="flex-grow space-y-4">
+      <?php while (have_posts()):
+      the_post(); 
+        $mobile_thumbnail = get_the_post_thumbnail_url(get_the_ID(), 'bbj_v2_index_mobile');
+        $post_thumbnail = get_the_post_thumbnail_url(get_the_ID(), 'bbj_v2_index_hero');
+      
+      ?>
+      <article <?php echo is_singular() ? 'itemscope itemtype="https://schema.org/BlogPosting"' : ''; ?> class="v2-primary-container-inner">
+        <h1 class="font-mainHead text-2xl text-primary500 p-2"><?php the_title(); ?></h1>
+
+        <div class="relative h-[333px] bg-gray-100 overflow-hidden">
+          <div class="absolute inset-0">
+            <a href="<?= esc_url( get_permalink($hero_id) ) ?>">
+            <img
+              src="<?= esc_url( $desktop_thumbnail ) ?>"
+              class="w-full h-full hidden md:block object-cover bbj-hero-img"
+              alt="<?= esc_attr( get_the_title($hero_id) ) ?>"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+              sizes="(min-width:768px) 100vw, 0px"
+              width="1920" height="333"
+            />
+            <img
+              src="<?= esc_url( $mobile_thumbnail ) ?>"
+              class="w-full h-full md:hidden object-cover bbj-hero-img"
+              alt="<?= esc_attr( get_the_title($hero_id) ) ?>"
+              loading="eager"
+              fetchpriority="high"
+              decoding="async"
+              sizes="100vw"
+              width="750" height="333"
+            />
+
+            </a>
+          </div>
+        </div>
+
+        <div class="p-2">
+          <div class="prose-base prose-slate">
+            <?php the_content(); ?>
+          </div>
+        </div>
+      </article>
+      <?php endwhile; ?>
+
+    </section>
+    
+    <?php get_template_part("template-parts/sidebar-default"); ?>
+  </div>
+</main>
+
+
+<?php 
+  // Old stuff below
+?>
+
 <div class="bbj-container-inner">
 
   <?php while (have_posts()):

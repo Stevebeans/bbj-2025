@@ -118,7 +118,8 @@ function get_player_season_route() {
 }
 
 function get_season_route() {
-    bbj_log3(print_r('get seasons', true));
+    
+    
     include_once (BBJ_ADMIN_ROUTES . '/get-seasons.php');
     return get_seasons();
 }

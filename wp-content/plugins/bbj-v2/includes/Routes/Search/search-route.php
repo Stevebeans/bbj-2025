@@ -13,7 +13,7 @@ function bbj_search_results($request)
   
   $search_query = $request->get_param("query");
 
-  bbj_log3(print_r($search_query, true));
+  // bbj_log3(print_r($search_query, true));
 
   $args = [
     "post_type" => ["post", "page", "bigbrother-players", "bigbrother-seasons"],

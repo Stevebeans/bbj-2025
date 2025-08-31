@@ -74,6 +74,22 @@
     @apply relative  overflow-hidden rounded-lg  bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
   }
 
+  .v2-sidebar-container {
+    @apply relative w-full overflow-hidden rounded-lg bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
+  }
+
+  .v2-sidebar-container-adbox {
+    @apply flex flex-col items-center justify-center rounded-lg bg-white p-1 shadow dark:bg-gray-800;
+  }
+
+  .v2-primary-subheader {
+    @apply font-mainHead text-2xl uppercase text-primary500;
+  }
+
+  .v2-ad-subheader {
+    @apply mb-2 w-full border-b border-gray-200 text-center font-mainHead text-sm uppercase text-primary500;
+  }
+
   .v2-feed-update-container {
     @apply flex flex-col gap-2 border-b-0 border-l border-r border-t
          border-gray-200 p-4 hover:bg-gray-100

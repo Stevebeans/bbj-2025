@@ -36,6 +36,7 @@ require_once BBJ_V2_INCLUDES . 'Actions/action-list.php';
 require_once BBJ_V2_INCLUDES . 'Public/shortcodes/spoiler-bar.php';
 require_once BBJ_V2_INCLUDES . 'Public/shortcodes/summary-table.php';
 require_once BBJ_V2_INCLUDES . 'Public/shortcodes/standings-table.php';
+require_once BBJ_V2_INCLUDES . 'Public/shortcodes/hot-posts.php';
 
 function bbj_is_aioseo_active() {
   return function_exists('aioseo') || defined('AIOSEO_VERSION');

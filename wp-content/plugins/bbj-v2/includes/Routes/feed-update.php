@@ -29,6 +29,7 @@ function update_feed(WP_REST_Request $request) {
   ]);
 
   
+  
 
   if ($post_id) {
     // Handle the image upload

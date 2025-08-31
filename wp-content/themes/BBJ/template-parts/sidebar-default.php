@@ -1,40 +1,28 @@
 
-<section class="flex-grow basis-[310px] p-2 relative shrink-0 bg-white dark:bg-slate-800 rounded-lg shadow-md ml-4">
+<aside class="w-full lg:w-[310px] relative shrink-0 ml-4 space-y-4">
 
-  <?php get_template_part("template-parts/socials"); ?>
-  <?php get_template_part("template-parts/sidebar-newsletter"); ?>
+  <section class="v2-sidebar-container p-2">
+    <?php get_template_part("template-parts/socials"); ?>
+  </section>
 
+  <section class="v2-sidebar-container p-2">
+    <?php get_template_part("template-parts/sidebar-newsletter"); ?>
+  </section>
 
+  <section class="v2-sidebar-container-adbox">
+    <h2 class="v2-ad-subheader">Advertisement</h2>
+    <?php bbj_echo_ad( 'sidebar_top' ); ?>
+  </section>
 
-  <?php if (!newPremiumCheck()): ?>
-    <!-- Tag ID: bigbrotherjunkies_siderail_right_1 -->
-    <div align="center" data-freestar-ad="__300x600" id="bigbrotherjunkies_siderail_right_1">
-      <script data-cfasync="false" type="text/javascript">
-        freestar.config.enabled_slots.push({ placementName: "bigbrotherjunkies_siderail_right_1", slotId: "bigbrotherjunkies_siderail_right_1" });
-      </script>
-    </div> 
-  <?php endif; ?>
+  <section class="v2-sidebar-container p-2">
+    <h2 class="v2-primary-subheader mb-2">Hot Posts</h2>
+    <?= do_shortcode("[bbj_hot_posts]") ?>
+  </section>
 
+  <!-- insert most popular posts section // perhaps top 10 posts with most comments in last 30 days--> 
 
-  
-
-  
-  
-
- 
-  
-      <?php if (!newPremiumCheck()): ?> 
-        <div class="sticky top-4 pt-4">
-          <div class="">
-            <!-- Tag ID: bigbrotherjunkies_siderail_right_2 -->
-            <div align="center" data-freestar-ad="__300x600" id="bigbrotherjunkies_siderail_right_2">
-            <script data-cfasync="false" type="text/javascript">
-              freestar.config.enabled_slots.push({ placementName: "bigbrotherjunkies_siderail_right_2", slotId: "bigbrotherjunkies_siderail_right_2" });
-            </script>
-            </div>
-          </div>
-        </div>
-      <?php endif; ?>
-  
-
-</section>
+  <section class="v2-sidebar-container-adbox sticky top-4">
+    <h2 class="v2-ad-subheader">Advertisement</h2>
+    <?php bbj_echo_ad( 'sidebar_bottom' ); ?>
+  </section>
+</aside>

@@ -39,7 +39,7 @@ $city              = '';
 
 if ( $player_id > 0 ) {
     $player = bbj_v2_get_player( $player_id );
-bbj_log3(print_r($player, true));
+//bbj_log3(print_r($player, true));
     $first_name        = $player['first_name']        ?? '';
     $last_name         = $player['last_name']         ?? '';
     $official_nickname = $player['official_nickname'] ?? '';

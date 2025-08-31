@@ -36,7 +36,7 @@ function bbj_render_standings_table($atts) {
     $season_name = $season_info['full_name'] ?? esc_html__('Unknown Season', 'bbj');
     $season_players = bbj_v2_get_season_players($season_id, 'bbj_v2_spoiler_bar');
 
-    bbj_log3(print_r($season_players, true));
+    //bbj_log3(print_r($season_players, true));
 
     if (empty($season_players) || !is_array($season_players)) {
         return '<p>' . esc_html__('No players found for this season.', 'bbj') . '</p>';
