@@ -399,8 +399,7 @@ usort($season_players, function ($a, $b) {
               <select name="season_winner" id="season_winner" class="bbj-input-select">
             <option value="">Select Winner</option>
             <?php foreach ( $season_players as $player ) : ?>
-              
-              <option value="<?php echo esc_attr( $player['id'] ); ?>" <?php selected( $season_winner, $player['id'] ); ?>>
+              <option value="<?php echo esc_attr( $player['bbj_player'] ); ?>" <?php selected( $season_winner, $player['bbj_player'] ); ?>>
                 <?php echo esc_html( $player['first_name'] . ' ' . $player['last_name'] ); ?>
               </option>
             <?php endforeach; ?>
@@ -410,7 +409,7 @@ usort($season_players, function ($a, $b) {
               <select name="season_runner_up" id="season_runner_up" class="bbj-input-select">
                 <option value="">Select Runner Up</option>
                 <?php foreach ( $season_players as $player ) : ?> 
-                  <option value="<?php echo esc_attr( $player['id'] ); ?>" <?php selected( $season_runner_up, $player['id'] ); ?>>
+                  <option value="<?php echo esc_attr( $player['bbj_player'] ); ?>" <?php selected( $season_runner_up, $player['bbj_player'] ); ?>>
                     <?php echo esc_html( $player['first_name'] . ' ' . $player['last_name'] ); ?>
                   </option>
                 <?php endforeach; ?>
@@ -420,7 +419,7 @@ usort($season_players, function ($a, $b) {
               <select name="season_afp" id="season_afp" class="bbj-input-select">
                 <option value="">Select AFP</option>
                 <?php foreach ( $season_players as $player ) : ?>
-                  <option value="<?php echo esc_attr( $player['id'] ); ?>" <?php selected( $season_afp, $player['id'] ); ?>>
+                  <option value="<?php echo esc_attr( $player['bbj_player'] ); ?>" <?php selected( $season_afp, $player['bbj_player'] ); ?>>
                     <?php echo esc_html( $player['first_name'] . ' ' . $player['last_name'] ); ?>
                   </option>
                 <?php endforeach; ?>

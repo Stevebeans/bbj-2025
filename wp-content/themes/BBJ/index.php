@@ -47,6 +47,11 @@ wp_reset_postdata();
 ?>
 
 <main class="v2-primary-container">
+<?php if (feedUpdater()): ?>  
+  <div id="index-feed-updater"></div>
+<?php endif ?>
+
+
 
 	<div class="flex w-full flex-col mb-4  lg:flex-row dark:text-gray-200">
     <section id="main-left" class="flex-grow space-y-4">
@@ -110,7 +115,7 @@ wp_reset_postdata();
               </a>
             </h2> 
             
-            <div class="-mt-2 bg-white pb-1 w-fit flex items-center rounded-tr-md font-ibm text-xs text-slate-700 v2-dark-reg">              
+            <div class="-mt-1 bg-white pb-1 w-fit flex items-center rounded-tr-md font-ibm text-xs text-slate-700 v2-dark-reg">              
               <?php $post_time_data = my_post_time_ago_function(); ?>
               <?= bbj_time_tags( $hero_id, true ); ?>
               <span class="ml-2 text-xs hidden lg:block <?php echo $post_time_data["class"] ?>"  data-nosnippet>
@@ -154,7 +159,7 @@ wp_reset_postdata();
 
           <h2 id="main-feeds" class="v2-primary-subheader" itemprop="headline">Latest Feed Updates</h2>
           <div class="lg:h-[1300px] lg:min-h-0 lg:overflow-y-auto ">
-
+          
           <?php
           $args = [
             "post_type"             => "live-feed-updates",
@@ -267,6 +272,13 @@ wp_reset_postdata();
             </a>
             <?php 
             $counter++;
+            if ( in_array( $counter, [2, 7], true ) ) {
+              if ( function_exists('bbj_echo_ad') ) {
+             
+               bbj_echo_ad('between_feeds');
+                
+              }
+            }
             endwhile; 
             wp_reset_postdata();            
           endif;  
@@ -411,7 +423,6 @@ wp_reset_postdata();
 <script>
   window.userLoggedIn = <?php echo is_user_logged_in() ? 'true' : 'false'; ?>;
 </script>
-
 
 
 <?php get_footer();

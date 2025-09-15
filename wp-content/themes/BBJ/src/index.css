@@ -3,6 +3,24 @@
 @tailwind utilities;
 
 @layer base {
+  html,
+  body {
+    max-width: 100%;
+    /* Use 'clip' where supported; fall back to hidden */
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+    touch-action: pan-y;
+  }
+
+  /* Constrain media by default */
+  img,
+  video,
+  iframe,
+  table {
+    max-width: 100%;
+    height: auto;
+  }
+
   a {
     @apply text-primary500 transition visited:text-primary500 hover:text-second500 hover:transition dark:text-primary500 dark:hover:text-second500;
   }
@@ -14,6 +32,15 @@
   /* h2 {
     @apply py-2 text-xl text-primary500 dark:text-primarySoft;
   } */
+}
+
+@supports (overflow: clip) {
+  @layer base {
+    html,
+    body {
+      overflow-x: clip;
+    }
+  }
 }
 
 @layer components {
@@ -74,8 +101,12 @@
     @apply relative  overflow-hidden rounded-lg  bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
   }
 
+  .v2-player-season-card {
+    @apply overflow-hidden rounded-lg  bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
+  }
+
   .v2-sidebar-container {
-    @apply relative w-full overflow-hidden rounded-lg bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800;
+    @apply relative m-2 overflow-hidden rounded-lg bg-white shadow dark:border dark:border-gray-700 dark:bg-gray-800 md:m-0;
   }
 
   .v2-sidebar-container-adbox {
@@ -125,11 +156,26 @@
   }
 
   .v2-ad-container {
-    @apply mx-auto border-b border-t border-gray-300  dark:border-gray-700 dark:bg-gray-900;
+    @apply mx-auto flex items-center justify-center  border-b border-t border-gray-300 dark:border-gray-700 dark:bg-gray-900;
   }
 
   .v2-summary-card {
     @apply relative mb-4 w-full overflow-hidden rounded-lg bg-slate-100 shadow-md dark:border dark:border-gray-600 dark:bg-gray-700;
+  }
+  .v2-player-stat-bubble {
+    @apply mx-auto flex w-full flex-col rounded-lg bg-slate-50 p-1 text-center shadow-lg md:p-2;
+  }
+
+  .v2-player-stat {
+    @apply font-mainHead text-3xl font-bold text-second500;
+  }
+
+  .v2-player-stat-sm {
+    @apply font-mainHead text-xl font-bold text-primary500 dark:text-primarySoft;
+  }
+
+  .v2-player-stat-label {
+    @apply font-mono text-xs text-gray-600 dark:text-gray-300  md:text-sm;
   }
 
   .desktop-nav a,
@@ -394,6 +440,10 @@
   #ajax-load-more {
     @apply text-base;
   }
+}
+
+#wpdcom {
+  @apply !max-w-full;
 }
 
 /* Version 2 Components BELOW */

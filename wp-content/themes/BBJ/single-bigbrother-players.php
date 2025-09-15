@@ -6,305 +6,351 @@ global $wpdb;
 // get some player variables
 
 $playerID = get_the_ID();
-$playerName = explode(" ", get_the_title($playerID));
 
-//echo $playerID;
+// get player info 
+$player_info = bbj_v2_get_player($playerID);
+$all_seasons = bbj_v2_get_seasons_by_player($playerID);
 
-$first_name = $playerName[0];
-$last_name = end($playerName);
 
-$first_name = esc_html(ucwords(strtolower($first_name)));
-$last_name = esc_html(ucwords(strtolower($last_name)));
-$nickname = esc_html(ucwords(strtolower(rwmb_meta("official_nickname"))));
-$profile_pic = rwmb_meta("profile_picture", ["size" => "prof-pic-lg"]);
 
-$fbLink = rwmb_meta("facebook");
-$igLink = rwmb_meta("instagram");
-$twLink = rwmb_meta("twitter");
-$ttLink = rwmb_meta("tiktok");
-$dob = rwmb_meta("date_of_birth");
 
-$city = rwmb_meta("locality");
-$state = rwmb_meta("administrative_area_level_1");
-$job = rwmb_meta("occupation");
+$first_name = $player_info['first_name'];
+$last_name = $player_info['last_name'];
+$nickname = $player_info['official_nickname'];
+$picture_id = $player_info['profile_picture'];
+$profile_picture = wp_get_attachment_image_url( $picture_id, 'bbj_v2_profile_image' );
 
-$weeks_players_table = $wpdb->prefix . "bbj_weeks_players";
-$play_season_rel_table = $wpdb->prefix . "bbj_play_season_rel";
-$seasons = $wpdb->prefix . "bbj_seasons";
-$players = $wpdb->prefix . "bbj_players";
+// NEW: awards + totals + per-season rows (single pass)
+$winner = $runner_up = $afp = false;
 
-// $player_results = $wpdb->get_results(
-//   $wpdb->prepare(
-//     "SELECT wp.*, w.hoh, w.pov, w.nom, w.saved, w.evicted, w.voted_for, w.vote_to_win, s.season_number AS seasonNum, s.start_date AS season_start, s.end_date AS season_end, s.full_name AS season_name
-//          FROM $weeks_players_table AS w
-//          LEFT JOIN $play_season_rel_table AS wp
-//          ON w.player_id = wp.player_id
-// 				 LEFT JOIN $seasons AS s
-// 				 ON wp.season_id = s.ID
-//          WHERE wp.player_id = %d
-// 				 GROUP BY wp.season_id",
-//     $playerID
-//   )
-// );
+$total_hoh = $total_pov = $total_nom = $total_votes = $total_days = 0;
+$total_house_days = 0;
+$season_rows = [];
 
-$overall_totals = $wpdb->get_results(
-  $wpdb->prepare(
-    "SELECT COUNT(DISTINCT w.season_id) AS season_count, SUM(w.hoh) AS hoh, SUM(w.pov) AS pov, SUM(w.nom) AS nom, SUM(w.saved) AS saved, SUM(w.evicted) AS evicted, 
-				(SELECT COUNT(voted_for) FROM $weeks_players_table WHERE voted_for = %d) AS voted_for
-     FROM $weeks_players_table AS w
-     WHERE w.player_id = %d",
-    $playerID,
-    $playerID
-  )
-);
+foreach ($all_seasons as $s) {
+  if (!is_array($s)) continue;
 
-//echo "<pre>", print_r($overall_totals, 1), "</pre>";
+  $sid   = (int)($s['season_number'] ?? 0);
+  $name  = !empty($s['abbreviation']) ? $s['abbreviation'] : (!empty($s['full_name']) ? $s['full_name'] : "Season $sid");
+	$season_name = $s['full_name'] ?? '';
 
-$total_season = !empty($overall_totals[0]->season_count) ? $overall_totals[0]->season_count : 0;
-$total_hoh = !empty($overall_totals[0]->hoh) ? $overall_totals[0]->hoh : 0;
-$total_pov = !empty($overall_totals[0]->pov) ? $overall_totals[0]->pov : 0;
-$total_nom = !empty($overall_totals[0]->nom) ? $overall_totals[0]->nom : 0;
+  $hoh   = (int)($s['bbj_total_hoh'] ?? 0);
+  $pov   = (int)($s['bbj_total_pov'] ?? 0);
+  $nom   = (int)($s['bbj_total_nom'] ?? 0);
+  $votes = (int)($s['bbj_votes_received'] ?? 0);
 
-$total_saved = $overall_totals[0]->saved;
-$total_evicted = $overall_totals[0]->evicted;
-$total_voted_for = $overall_totals[0]->voted_for;
+	$evictedRaw = trim((string)($s['bbj_evicted_date'] ?? ''));
+	$evicted    = ($evictedRaw && $evictedRaw !== '0000-00-00') ? new DateTime($evictedRaw) : null;
+  $start = !empty($s['start_date']) ? new DateTime($s['start_date']) : null;
+  $end   = !empty($s['end_date'])   ? new DateTime($s['end_date'])   : null;
+  $days  = ($start && $end) ? $end->diff($start)->days + 1 : null;
 
-$season_results = $wpdb->get_results(
-  $wpdb->prepare(
-    "SELECT w.season_id, s.season_number AS seasonNum, s.start_date AS season_start, s.end_date AS season_end, s.abbreviation AS seasonAb, s.full_name AS season_name, SUM(w.hoh) AS hoh_sum, SUM(w.pov) AS pov_sum, SUM(w.nom) AS nom_sum, SUM(w.saved) AS saved_sum, SUM(w.evicted) AS evicted_sum, p.date_of_birth AS dob, 
-				(SELECT COUNT(voted_for) FROM $weeks_players_table WHERE voted_for = %d AND season_id = w.season_id AND voted_for = %d) AS vote_count
-     FROM $weeks_players_table AS w
-     LEFT JOIN $seasons AS s
-     ON w.season_id = s.ID
-		 LEFT JOIN $players AS p
-		 ON w.player_id = p.ID
-     WHERE w.player_id = %d
-     GROUP BY w.season_id
-     ORDER BY s.start_date ASC",
-    $playerID,
-    $playerID,
-    $playerID
-  )
-);
+	// get days in house by $start and bbj_evicted_date difference
+	$evicted    = ($evictedRaw && $evictedRaw !== '0000-00-00') ? new DateTime($evictedRaw) : null;
 
-$winner_check = $wpdb->get_results(
-  $wpdb->prepare(
-    "SELECT winner, runner_up, afp 
-		FROM $play_season_rel_table
-		WHERE player_id = %d",
-    $playerID
-  )
-);
+	$age_during_season = null;
+	if (!empty($player_info['date_of_birth']) && $start) {
+		$dob = new DateTime($player_info['date_of_birth']);
+		$age_during_season = $dob->diff($start)->y;
+	}
+	
+	$exit = $evicted ?: $end;	
+	$days_in_house = ($start && $exit) ? $exit->diff($start)->days + 1 : null;
+	
+	$progress_pct = ($days && $days_in_house)
+  ? max(0, min(100, (int) round(($days_in_house / $days) * 100)))
+  : null;
 
-//echo "<pre>", print_r($season_results, 1), "</pre>";
+	
+	$season_permalink = get_permalink($s['bbj_season'] ?? 0);
 
-// Calculate the unique season count
-//echo "<pre>", print_r($profile_pic["url"], 1), "</pre>";
+
+  // result label + flip awards
+  $result = '—';
+  if (!empty($s['season_winner']) && (int)$s['season_winner'] === (int)$playerID) { 
+		$result = 'Winner';    $winner = true; 
+	}
+  elseif (!empty($s['runner_up']) && (int)$s['runner_up'] === (int)$playerID)      { 
+		$result = 'Runner Up'; $runner_up = true; 
+	}
+  elseif (!empty($s['afp']) && (int)$s['afp'] === (int)$playerID)                  { 
+		$result = 'AFP';       $afp = true; 
+	}
+	// jury and evicted
+	elseif (!empty($s['current_jury']) && (int)$s['current_jury'] === 1) {
+		$result = 'Jury';      $jury = true;
+	}
+	elseif (!empty($s['current_evicted']) && (int)$s['current_evicted'] === 1) {
+		$result = 'Evicted';   $evicted = true;
+	}
+
+	
+
+  $season_rows[] = [
+    'season' 					=> $name,
+		'season_name' 		=> $season_name,
+		'season_link' 		=> $season_permalink,
+    'hoh'    					=> $hoh,
+    'pov'    					=> $pov,
+    'nom'    					=> $nom,
+    'votes'  					=> $votes,
+    'total_days'			=> $days,
+		'days_in_house'	  => $days_in_house,
+		'progress_pct'		=> $progress_pct,
+		'age_during' 			=> $age_during_season,
+    'result' 					=> $result,
+  ];
+
+  // grand totals
+  $total_hoh   += $hoh;
+  $total_pov   += $pov;
+  $total_nom   += $nom;
+  $total_votes += $votes;
+  $total_days  += $days ?: 0;
+	$total_house_days += $days_in_house ?: 0;
+}
+$total_seasons = count($season_rows);
+
+$fbLink = $player_info['facebook'] ?? '';
+$igLink = $player_info['instagram'] ?? '';
+$twLink = $player_info['twitter'] ?? '';
+$ttLink = $player_info['tiktok'] ?? '';
+$dob = $player_info['date_of_birth'] ?? '';
+$city = $player_info['locality'] ?? '';
+$state = $player_info['administrative_area_level_1'] ?? '';
+$dob = $player_info['date_of_birth'] ?? '';
+$job = $player_info['occupation'] ?? '';
+
 ?>
 
-<div class="bbj-container-inner">
-	<div class="my-2 flex w-full flex-col rounded-md bg-white lg:flex-row overflow-hidden">
-		<div class="flex-grow">
-			<section id="profile-head" class="w-full flex h-fit md:h-[375px] flex-wrap md:flex-nowrap">
-				<div class="w-full flex-grow relative order-2 md:order-1">
-					<div class="absolute top-2 right-2">
-							<?php if ($fbLink || $igLink || $twLink || $ttLink) { ?>
-							<div class="text-xs text-white p">Offical Socials:</div>
-							<?php } ?>
-							<div class="flex">
-								<?php if ($fbLink): ?>
-								<div class="mr-2 "><a href="<?php echo $fbLink; ?>" target="_blank" class="text-second500 active:text-second500 hover:text-secondSoft visited:text-second500"><i class="fa-brands fa-facebook-f"></i></a></div>
-							<?php endif; ?>
-							<?php if ($igLink): ?>
-								<div class="mr-2"><a href="<?php echo $igLink; ?>" target="_blank" class="text-second500 active:text-second500 hover:text-secondSoft visited:text-second500"><i class="fa-brands fa-instagram"></i></a></div>
-							<?php endif; ?>
-							
-							<?php if ($twLink): ?>
-								<div class="mr-2"><a href="<?php echo $twLink; ?>" target="_blank" class="text-second500 active:text-second500 hover:text-secondSoft visited:text-second500"><i class="fa-brands fa-twitter"></i></a></div>
-							<?php endif; ?>
-							
-							<?php if ($ttLink): ?>
-								<div><a href="<?php echo $ttLink; ?>" target="_blank" class="text-second500 active:text-second500 hover:text-secondSoft visited:text-second500"><i class="fa-brands fa-tiktok"></i></a></div>
-							<?php endif; ?>
-							</div>
-							
-					</div>
-					<div class="h-[120px] md:h-[50%] bg-primary500 flex justify-center px-2 md:px-8 flex-col" >
-						<h1 class="font-mainHead text-2xl md:text-5xl text-white"><?= $first_name ?><br /><?= $last_name ?></h1>
+<main class="v2-primary-container">
+	<div class="flex w-full flex-col mb-4 lg:flex-row dark:text-gray-200">
+		<section id="main-left" class="flex-grow space-y-4">
+
+			<div class="v2-primary-container-inner grid grid-cols-1 md:grid-cols-[1.5fr_1fr] gap-4 mb-4 text-center text-sm md:text-base p-2 rounded-lg">
+				<div class="border bg-primary500 p-2 flex flex-col justify-between">					
+					<div class="mb-2">
+						<h1 class="font-mainHead text-2xl md:text-4xl text-white"><?= $first_name ?> <?= $last_name ?></h1>
 						<h2 class="font-hand text-xl md:text-3xl text-white"><?= $nickname ? "\"{$nickname}\"" : "" ?></h2>
 					</div>
-					<div class="h-[25px] md:h-[10%] bg-gradient-to-b from-primary500 to-white ">
-
-					</div>
-					<div class="h-[100px] md:h-[40%] w-full ">
-
-						<div class="grid grid-cols-4 h-full pt-4">
-							<div class="text-center">
-							<div class="text-3xl md:text-5xl font-bold text-second500"><?= $total_season ?></div>
-								<div class="text-sm md:text-xl">Season<?= $total_season > 1 ? "s" : "" ?>
-								</div>
+					<div class='flex justify-around'>
+						<?php if ($winner): ?>
+							<div class="tracking-wider text-primary500 bg-yellow-300 px-4 py-1 text-sm rounded mx-1 font-semibold my-1">
+								<i class="fa-solid fa-trophy"></i> Winner
 							</div>
-							<div class="text-center">
-								<div class="text-3xl md:text-5xl font-bold text-second500"><?= $total_hoh ?></div>
-								<div class="text-sm md:text-xl">Head of Household</div>
-							</div>
-							<div class="text-center">
-							<div class="text-3xl md:text-5xl font-bold text-second500"><?= $total_pov ?></div>
-								<div class="text-sm md:text-xl">Power of Veto</div>
-							</div>
-							<div class="text-center">
-							<div class="text-3xl md:text-5xl font-bold text-second500"><?= $total_nom ?></div>
-								<div class="text-sm md:text-xl">Nominated</div>
-							</div>
-						</div>
+						<?php endif; ?>
 
-					</div>
-				</div>
-				<div class="w-full md:w-[375px] flex-shrink-0 order-1 md:order-2 relative">
-					<div class="absolute top-2 right-2 flex flex-wrap justify-end">
-					<?php $res = s_results_overall($winner_check); ?>
-						<?php foreach ($res as $value): ?>
-							<?php if ($value == 1): ?>
-								<div class="tracking-wider text-primary500 bg-yellow-300 px-4 py-1 text-sm rounded mx-1 font-semibold my-1" title="">
-									<i class="fa-solid fa-trophy"></i> Winner
-								</div>
-							<?php elseif ($value == 2): ?>
-								<div class="tracking-wider text-primary500 bg-violet-300 px-4 py-1 text-sm rounded mx-1 font-semibold my-1" title="">
-									<i class="fa-solid fa-heart"></i> America's Favorite
-								</div>
-							<?php elseif ($value == 3): ?>
-								<div class="tracking-wider text-primary500 bg-slate-300 px-4 py-1 text-sm rounded mx-1 font-semibold my-1" title="">
-									<i class="fas fa-award" aria-hidden="true"></i> Runner Up
-								</div>
-							<?php endif; ?>
-						<?php endforeach; ?>
+						<?php if ($afp): ?>
+							<div class="tracking-wider text-primary500 bg-violet-300 px-4 py-1 text-sm rounded mx-1 font-semibold my-1">
+								<i class="fa-solid fa-heart"></i> America’s Favorite
+							</div>
+						<?php endif; ?>
 
-						<?php if (is_user_logged_in()): ?>
-							<?php if (is_user_logged_in() && current_user_can("edit_posts")): ?>
-								<a href="<?php echo get_edit_post_link(); ?>" class="text-white active:text-white visited:text-white hover:text-secondSoft"><i class="fa-solid fa-edit"></i></a>
-							<?php endif; ?>
+						<?php if ($runner_up): ?>
+							<div class="tracking-wider text-primary500 bg-slate-300 px-4 py-1 text-sm rounded mx-1 font-semibold my-1">
+								<i class="fa-solid fa-award"></i> Runner Up
+							</div>
 						<?php endif; ?>
 					</div>
-					<img class="w-[375px] h-[375px] md:rounded-bl-3xl  " src="<?= $profile_pic["url"] ?>" alt="Big Brother <?= $first_name . " " . $last_name . " profile picture" ?>">
-				</div>
-			</section>
 
-			
-			<section id="spacer2" class="w-full flex justify-center items-center my-4">
-				<div class="w-[90%] h-[2px] bg-slate-400"></div>
-			</section>
-
-			<section id="player-bio" class="w-full flex justify-center items-center my-4 flex-wrap md:flex-nowrap">
-				<div class="w-full md:w-[300px] grid grid-cols-2 flex-shrink p-2 bg-sky-100 rounded-lg ml-1 mr-1 md:ml-2 md:mr-4 text-sm">
 					
-					<div>City:</div><div><?= $city ?> </div>
-					<div>State:</div><div><?= $state ?></div>
-					<div>Occupation:</div><div><?= $job ?></div>
-					<div>Current Age:</div><div>
-					<?php if (!empty($season_results[0]->dob)): ?>
-						<?= current_age_calc($season_results[0]->dob) ?>
-					<?php endif; ?>
+					<div class="grow grid grid-cols-2 lg:grid-cols-4 gap-2 items-center">
+						<div class="v2-player-stat-bubble">
+							<div class="v2-player-stat"><?php echo $total_hoh; ?></div>
+							<div class="v2-player-stat-label">Total HoH</div>
+						</div>
+						<div class="v2-player-stat-bubble">
+							<div class="v2-player-stat"><?php echo $total_pov; ?></div>
+							<div class="v2-player-stat-label">Total PoV</div>
+						</div>
+						<div class="v2-player-stat-bubble">
+							<div class="v2-player-stat"><?php echo $total_nom; ?></div>
+							<div class="v2-player-stat-label">Nominated</div>
+						</div>
+						<div class="v2-player-stat-bubble">
+							<div class="v2-player-stat"><?php echo $total_votes; ?></div>
+							<div class="v2-player-stat-label">Votes</div>
+						</div>
+					</div>
+
+					<div class='flex justify-end text-xs'>
+						<?php
+							$social_cfg = [
+								'facebook'  => ['url' => $fbLink ?? '', 'icon' => 'fa-brands fa-facebook-f', 'label' => 'Facebook'],
+								'instagram' => ['url' => $igLink ?? '', 'icon' => 'fa-brands fa-instagram',  'label' => 'Instagram'],
+								'twitter'   => ['url' => $twLink ?? '', 'icon' => 'fa-brands fa-x-twitter',    'label' => 'Twitter'],  
+								'tiktok'    => ['url' => $ttLink ?? '', 'icon' => 'fa-brands fa-tiktok',     'label' => 'TikTok'],
+							];
+
+							// keep only non-empty links
+							$socials = array_filter($social_cfg, static fn($s) => is_string($s['url']) && trim($s['url']) !== '');
+							?>
+
+						<?php if (!empty($socials)): ?>
+							<nav class="mt-2 flex items-center justify-end gap-2 text-xs" aria-label="Player social links">
+								<span class="text-white/85 mr-1">Socials:</span>
+								<ul class="flex items-center gap-1">
+									<?php foreach ($socials as $net => $s): ?>
+										<li>
+											<a
+												href="<?= esc_url($s['url']) ?>"
+												target="_blank"
+												rel="noopener nofollow"
+												aria-label="<?= esc_attr($s['label']) ?>"
+												class="group inline-flex h-8 w-8 items-center justify-center rounded-full border border-white/25 text-white hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/60"
+												title="<?= esc_attr($s['label']) ?>"
+											>
+												<i class="<?= esc_attr($s['icon']) ?> text-[15px]"></i>
+												<span class="sr-only"><?= esc_html($s['label']) ?></span>
+											</a>
+										</li>
+									<?php endforeach; ?>
+								</ul>
+							</nav>
+						<?php else: ?>
+							<div class="flex justify-end text-xs text-white/80">None Listed Yet</div>
+						<?php endif; ?>
 
 					</div>
-					
-					
+				</div>
+				<div class="flex justify-center items-center">
+					<img class="w-full h-full rounded-xl overflow-hidden border-2 border-gray-500  " src="<?php echo $profile_picture ?>" alt="Big Brother <?= $first_name . " " . $last_name . " profile picture" ?>">
+				</div>
+			</div>
+
+			<!-- player info -->
+			<section id="player-info" class="grid grid-cols-2 md:grid-cols-4 p-2 md:p-0 gap-2 md:gap-4 mb-4 text-center text-sm md:text-base rounded-lg">
+				<div class="v2-primary-container-inner">
+					<div class="v2-player-stat-label">City</div>
+					<div class="v2-player-stat-sm"><?= $city ?: "N/A" ?></div>
+				</div>
+				<div class="v2-primary-container-inner">
+					<div class="v2-player-stat-label">State</div>
+					<div class="v2-player-stat-sm"><?= $state ?: "N/A" ?></div>
+				</div>
+				<div class="v2-primary-container-inner">
+					<div class="v2-player-stat-label">Occupation</div>
+					<div class="v2-player-stat-sm"><?= $job ?: "N/A" ?></div>
+				</div>
+				<div class="v2-primary-container-inner">
+					<div class="v2-player-stat-label">Current Age</div>
+					<div class="v2-player-stat-sm">
+						<?php if (!empty($dob)): ?>
+							<?= current_age_calc($dob) ?>
+						<?php else: ?>
+							N/A
+						<?php endif; ?>
+					</div>
+				</div>
+			</section>
+
+			<section id="season-breakdown" class="v2-primary-container-inner mt-4 overflow-hidden m-2 md:m-0">
+				<div class="px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:text-gray-300">
+					Season Breakdown
 				</div>
 
-				<?php // Beginning for sum
-
-$total_days = 0; ?>
-
-				<div class="w-full flex-grow  p-2">
-					<table class="w-full" id="stat-table">
-						<tr  class="border-b border-slate-200">
-							<th class="text-sm p-1 text-slate-600"><span class="hidden md:block">SEASON</span></th>
-							<th class="text-sm p-1 text-slate-600 hidden md:block">AGE</th>
-							<th class="text-xs md:text-sm p-0.5 md:p-1 text-slate-600">HOH</th>
-							<th class="text-xs md:text-sm p-0.5 md:p-1 text-slate-600">POV</th>
-							<th class="text-xs md:text-sm p-0.5 md:p-1 text-slate-600">NOM</th>
-							<th class="text-xs md:text-sm p-0.5 md:p-1 text-slate-600"><span class="hidden md:block">VOTES</span><span class="block md:hidden">VTE</span></th>
-							<th class="text-xs md:text-sm p-0.5 md:p-1 text-slate-600">DAYS</th>
-							<th class="text-xs md:text-sm p-0.5 md:p-1 text-slate-600">RESULT</th>
-							<th class="text-sm p-1 text-slate-600 hidden md:block">PROGRESS</th>
-
-						</tr>
-						<?php foreach ($season_results as $season): ?>
-
-							<?php
-       $p_week = $wpdb->get_results(
-         $wpdb->prepare(
-           "SELECT * FROM $play_season_rel_table 
-										WHERE season_id = %d AND player_id = %d",
-           $season->season_id,
-           $playerID
-         )
-       );
-
-       if (isset($p_week[0])) {
-         $evict_date = $p_week[0]->evict_date;
-				 $leaveDate = getLeaveDate($evict_date);
-       } else {
-         // handle the case where $p_week is empty or doesn't have the desired key
-       }
-       ?>
-							<tr class="border-0">
-								<td class="!border-r border-slate-200"><a href="<?= get_permalink($season->season_id) ?>" class="hover:underline visited:underline"><span class="hidden md:block"><?= $season->season_name ?></span><span class="block md:hidden"><?= $season->seasonAb ?></span></a></td>
-								<td class="text-center !border-r border-slate-200  hidden md:block"><?= new_age_calc($season->dob, $season->season_start) ?></td>
-								<td class="text-center  !border-r border-slate-200"><?= $season->hoh_sum ?></td>
-								<td class="text-center  !border-r border-slate-200"><?= $season->pov_sum ?></td>
-								<td class="text-center  !border-r border-slate-200"><?= $season->nom_sum ?></td>
-								<td class="text-center  !border-r border-slate-200"><?= $season->vote_count ?></td>
-								<td class="text-center  !border-r border-slate-200">
-									
-									<?php
-        $days = days_calc_new($season->season_start, $leaveDate);
-        $total_days += $days;
-        echo $days;
-        ?></td>
-								<td class="text-left !pl-2"><?= s_results_week($p_week, "player-page") ?></td>
-								<td>
-									<?php $s_percent = season_percentage_calc($season->season_start, $season->season_end, $leaveDate); ?>
-									
-									<div class="w-full bg-gray-200 rounded-full h-2.5 dark:bg-gray-700">
-									<div class=" hidden md:block <?php if ($s_percent < 50) {
-           echo "bg-green-200";
-         } elseif ($s_percent >= 50 && $s_percent <= 75) {
-           echo "bg-green-400";
-         } elseif ($s_percent > 75 && $s_percent <= 99) {
-           echo "bg-green-600";
-         } elseif ($s_percent == 100) {
-           echo "bg-green-800";
-         } ?> h-2.5 rounded-full" style="width: <?= $s_percent ?>%"></div>
-
-									</div>
-
-								</td>
+				<div class="overflow-x-auto">
+					<table class="min-w-full table-auto text-sm">
+						<thead class="bg-slate-50 text-slate-600 dark:bg-gray-800 dark:text-gray-300 text-xs uppercase">
+							<tr>
+								<th class="px-3 py-2 text-left">Season</th>								
+								<th class="px-3 py-2 text-center">Age</th>
+								<th class="px-3 py-2 text-center">HOH</th>
+								<th class="px-3 py-2 text-center">POV</th>
+								<th class="px-3 py-2 text-center">NOM</th>
+								<th class="px-3 py-2 text-center">Votes</th>
+								<th class="px-3 py-2 text-center">Days</th>
+								<th class="px-3 py-2 text-center">Progress</th>
+								<th class="px-3 py-2 text-center">Result</th>
 							</tr>
-						<?php endforeach; ?>
-							<tr class="border-t border-slate-200">
-								<td class="font-bold text-sm">Totals:</td>
-								<td class=""></td>
-								<td class="font-bold text-second500 text-center"><?= $total_hoh ?></td>
-								<td class="font-bold text-second500 text-center"><?= $total_pov ?></td>
-								<td class="font-bold text-second500 text-center"><?= $total_nom ?></td>
-								<td class="font-bold text-second500 text-center"><?= $total_voted_for ?></td>
-								<td class="font-bold text-second500 text-center"><?= $total_days ?></td>
+						</thead>
+						<tbody>
+							<?php foreach ($season_rows as $r): ?>
 								
+								<tr class="border-t border-slate-200 dark:border-gray-700">
+									<td class="px-3 py-2 font-medium text-left">
+										<a href="<?= esc_url($r['season_link']) ?>" class="hover:underline text-thirdColor visited:text-thirdColor"><?= esc_html($r['season_name']) ?></a>
+									</td>
+									<td class="px-3 py-2 text-gray-600 text-center tabular-nums"><?= $r['age_during'] ?? '—' ?></td>
+									<td class="px-3 py-2 text-gray-600 text-center tabular-nums"><?= $r['hoh'] ?></td>
+									<td class="px-3 py-2 text-gray-600 text-center tabular-nums"><?= $r['pov'] ?></td>
+									<td class="px-3 py-2 text-gray-600 text-center tabular-nums"><?= $r['nom'] ?></td>
+									<td class="px-3 py-2 text-gray-600 text-center tabular-nums"><?= $r['votes'] ?></td>
+									<td class="px-3 py-2 text-gray-600 text-center tabular-nums"><?= $r['days_in_house'] ?: '—' ?></td>
+									
+									<td class="px-3 py-2">
+										<?php if ($r['progress_pct'] !== null): ?>
+											<div class="flex items-center justify-end gap-2">
+												<!-- track -->
+												<div
+													class="relative h-2.5 w-28 overflow-hidden rounded-full bg-slate-200/70 dark:bg-slate-700"
+													role="progressbar"
+													aria-label="Season progress"
+													aria-valuemin="0"
+													aria-valuemax="100"
+													aria-valuenow="<?= $r['progress_pct'] ?>"
+												>
+													<!-- fill -->
+													<div
+														class="h-full rounded-full bg-gradient-to-r from-slate-300 to-primary500"
+														style="width: <?= $r['progress_pct'] ?>%;"
+													></div>
+												</div>
+												<!-- % -->
+												<span class="w-10 text-right text-xs tabular-nums text-slate-600 dark:text-gray-300">
+													<?= $r['progress_pct'] ?>%
+												</span>
+											</div>
+										<?php else: ?>
+											—
+										<?php endif; ?>
+									</td>
+									<td class="px-3 py-2 text-center"><?= $r['result'] ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+						<tfoot class="bg-slate-50 dark:bg-gray-800 font-semibold">
+							<tr>
+								<td class="px-3 py-2 text-left">Totals (<?= $total_seasons ?> seasons)</td>
+								<td class="px-3 py-2 text-center"><?= $total_hoh ?></td>
+								<td class="px-3 py-2 text-center"><?= $total_pov ?></td>
+								<td class="px-3 py-2 text-center"><?= $total_nom ?></td>
+								<td class="px-3 py-2 text-center"><?= $total_votes ?></td>
+								<td class="px-3 py-2 text-center"><?= $total_house_days ?: '—' ?></td>
+								<td class="px-3 py-2"></td>
+								<td class="px-3 py-2"></td>
 							</tr>
+						</tfoot>
 					</table>
 				</div>
 			</section>
 
-			<section id="bio-2" class="p-2 prose w-full">
-				<?php the_content(); ?>
-			</section>
-		</div>
 
-		<div class="w-full md:w-[320px]  flex-shrink-0">
-		<?php get_template_part("template-parts/sidebar-default"); ?>
-		</div>
+		
+			
+			<section id="player-profile" class="v2-primary-container-inner p-2 m-2 md:m-0">
+				<article role="presentation" style="display: contents;" id="bbj-article-body"
+							class="prose-base prose-slate 
+										max-w-none dark:prose-invert
+										break-words selection:bg-yellow-200 selection:text-black
+										prose-headings:font-mainHead prose-h2:scroll-mt-24 prose-h3:scroll-mt-24
+										prose-a:no-underline hover:prose-a:underline prose-a:text-primary500 hover:prose-a:text-primary700 visited:prose-a:text-primary600
+										prose-img:rounded-lg prose-img:mx-auto
+										prose-figcaption:text-sm prose-figcaption:text-slate-500
+										list-disc list-inside prose-li:marker:text-primary500
+										prose-code:bg-slate-100 dark:prose-code:bg-slate-800 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-code:before:content-[''] prose-code:after:content-['']
+										prose-pre:rounded-md prose-pre:p-4
+										prose-table:w-full prose-th:text-left prose-td:p-2"
+							itemprop="articleBody">
+					<?php the_content(); ?>
+				</article>
+			</section>
+		</section>
+
+	  
+    <?php get_template_part('template-parts/sidebar-default'); ?>
 	</div>
-</div>
+</main>
 
 
 

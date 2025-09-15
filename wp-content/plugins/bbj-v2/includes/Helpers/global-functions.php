@@ -76,11 +76,17 @@ add_action('save_post',                  'bbj_hot_posts_bump_cache_ver', 10, 3);
 function bbj_v2_get_season_players($season_id, $size = 'bbj_v2_profile_image') {
     global $wpdb;
 
+
+
     $pk = bbj_players_cache_key( (int)$season_id, (string)$size );
+
+    
+
     if ( false !== ($players = wp_cache_get($pk, BBJ_CACHE_GROUP)) ) {
         return $players;
     }
 
+    
     // 1) Fetch your players exactly like before
     $players = $wpdb->get_results(
         $wpdb->prepare(
@@ -88,6 +94,8 @@ function bbj_v2_get_season_players($season_id, $size = 'bbj_v2_profile_image') {
              FROM " . BBJ_V2_TABLE_PLAYERS . " p
              INNER JOIN " . BBJ_V2_TABLE_LINKS . " l
                ON p.id = l.bbj_player
+             LEFT JOIN " . BBJ_V2_TABLE_GEO . " g
+               ON p.id = g.ID
              WHERE l.bbj_season = %d
              ORDER BY l.bbj_evicted_date ASC",
             $season_id
@@ -95,6 +103,7 @@ function bbj_v2_get_season_players($season_id, $size = 'bbj_v2_profile_image') {
         ARRAY_A
     );
 
+    
     
 
     // 2) Loop & pull in the MetaBox image
@@ -128,7 +137,6 @@ function bbj_v2_get_season_players($season_id, $size = 'bbj_v2_profile_image') {
             $player['profile_picture_width'] = 0;
             $player['profile_picture_height'] = 0;
         }
-
         
     }
     
@@ -262,6 +270,33 @@ function bbj_v2_get_season_by_id($season_id) {
     
 
     return $season;
+}
+
+
+function bbj_v2_get_seasons_by_player($player_id) {
+    global $wpdb;
+
+    // Validate player_id
+    if ( ! is_numeric($player_id) || $player_id <= 0 ) {
+        return []; // Invalid player ID
+    }
+
+    // Fetch seasons for the given player
+    $seasons = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT s.*, l.*
+            FROM " . BBJ_V2_TABLE_SEASONS . " s
+            INNER JOIN " . BBJ_V2_TABLE_LINKS . " l ON s.id = l.bbj_season
+            WHERE l.bbj_player = %d
+            ORDER BY s.season_number DESC",
+            $player_id
+        ),
+        ARRAY_A
+    );
+
+    
+
+    return $seasons;
 }
 
 
@@ -445,4 +480,44 @@ function bbj_print_article_jsonld( $post_id = null ) {
         'description'       => wp_strip_all_tags( get_the_excerpt($post_id) ),
     ];
     echo '<script type="application/ld+json">' . wp_json_encode($data, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE) . '</script>';
+}
+
+
+
+/**
+ * Calculate player's age at the start of a season.
+ *
+ * @param string|null|DateTime $dob          Player date of birth (Y-m-d string or DateTime)
+ * @param string|null|DateTime $season_start Season start date (Y-m-d string or DateTime)
+ * @return int|null Player age in years, or null if missing/invalid input
+ */
+function age_calc_player_season($dob, $season_start) {
+    if (empty($dob) || empty($season_start)) {
+        return null;
+    }
+
+    try {
+        // Normalize $dob
+        if ($dob instanceof DateTime) {
+            $dob_dt = $dob;
+        } elseif (is_string($dob) && $dob !== '' && $dob !== '0000-00-00') {
+            $dob_dt = new DateTime($dob);
+        } else {
+            return null;
+        }
+
+        // Normalize $season_start
+        if ($season_start instanceof DateTime) {
+            $season_dt = $season_start;
+        } elseif (is_string($season_start) && $season_start !== '' && $season_start !== '0000-00-00') {
+            $season_dt = new DateTime($season_start);
+        } else {
+            return null;
+        }
+
+        // Calculate age
+        return $dob_dt->diff($season_dt)->y;
+    } catch (Exception $e) {
+        return null;
+    }
 }

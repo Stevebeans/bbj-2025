@@ -28,3 +28,20 @@ SPOILERS BELOW ===>
 ===
 
 ===
+
+
+
+--- TODO:
+
+Short Term
+- Put ads around single and season pages 
+- Fix up the seasons list page 
+- Ensure log-in and register look normal and ad free 
+- Fix up the feed update solo page 
+
+Long term 
+- Build out the settings page that lets people update their info 
+- This page will also be where billing is handled for premium 
+- Add dark mode toggle to settings 
+
+- Rebuild comment section 

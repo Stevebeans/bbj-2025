@@ -3,6 +3,15 @@ module.exports = {
   content: ["./**/*.php", "./src/**/*.js", "./node_modules/flowbite/**/*.js", "../../plugins/bbj-v2/includes/Public/shortcodes/**/*.php"],
   theme: {
     extend: {
+      typography: {
+        DEFAULT: {
+          css: {
+            ul: { listStyleType: "disc", paddingLeft: "1.5em" },
+            ol: { listStyleType: "decimal", paddingLeft: "1.5em" },
+            "li::marker": { color: "#ef4444" }
+          }
+        }
+      },
       dropShadow: {
         "ca-text": "0 1 1 rgba(0,0,0, 0.7)"
       },

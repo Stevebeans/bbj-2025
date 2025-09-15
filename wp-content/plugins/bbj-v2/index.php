@@ -37,6 +37,7 @@ function bbj_register_player_image_sizes() {
     // hard crops
     add_image_size( 'bbj_v2_spoiler_bar',    100, 100, true );
     add_image_size( 'bbj_v2_profile_image',  375, 375, true );
+    add_image_size("profile-picture", 200, 200, true);
 
     add_image_size( 'bbj_v2_index_hero',  1350, 450, array( 'center', 'top' ) );
     add_image_size( 'bbj_v2_index_mobile', 400, 333, array( 'center', 'top' ) );
@@ -51,7 +52,6 @@ function bbj_register_player_image_sizes() {
         add_image_size('featured-feed-update', 700, 0, false);
         add_image_size("featured-image-header", 1600, 500, true);
         add_image_size("player-banner", 1200, 350, true);
-        add_image_size("profile-picture", 200, 200, true);
         add_image_size("prof-pic-lg", 375, 375, true);
         add_image_size("tiny", 50, 50, true);
 }

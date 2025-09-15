@@ -220,8 +220,8 @@
   <?php bbj_echo_ad_responsive(
       'below_header',            // desktop slot
       'below_header_mobile',     // mobile slot (leave empty string to fallback)
-      'w-full md:min-h-[250px] min-h-[50px] max-h-[100px] md:max-h-[260px]' // optional: reserve space different by breakpoint
-      , true  // uncomment to hide on mobile instead
+      'w-full md:min-h-[250px] min-h-[50px] max-h-[100px] md:max-h-[260px] flex items-center justify-center mb-4', // container classes
+      //, true  // uncomment to hide on mobile instead
     );
  ?>
 

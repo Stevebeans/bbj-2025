@@ -1,5 +1,5 @@
 
-<aside class="w-full lg:w-[310px] relative shrink-0 ml-4 space-y-4">
+<aside class="w-full lg:w-[310px] relative shrink-0 mt-2 lg:mt-0 lg:ml-4 ml-0 space-y-4">
 
   <section class="v2-sidebar-container p-2">
     <?php get_template_part("template-parts/socials"); ?>
