@@ -44,7 +44,6 @@
 
 # bigbrotherjunkies-data build folders
 /wp-content/plugins/bigbrotherjunkies-data/node_modules/
-/wp-content/plugins/bigbrotherjunkies-data/vendor/
 
 # Misc
 *.log
