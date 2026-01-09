@@ -1,5 +1,5 @@
 <?php
-// Auto-deploy test - this comment proves it works!
+// Auto-deploy test v2
 get_header(); ?>
 
 <?php
