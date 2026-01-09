@@ -45,3 +45,4 @@ Long term
 - Add dark mode toggle to settings 
 
 - Rebuild comment section 
+- Look into some sort of chat 
