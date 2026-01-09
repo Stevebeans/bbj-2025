@@ -21,12 +21,17 @@ header('Content-Type: application/json');
 // Change to the web root
 chdir(__DIR__);
 
-// Run git commands
 $output = [];
 $return = 0;
 
-// Fetch and reset to origin
-exec('git fetch origin 2>&1', $output, $return);
+// Check if git repo exists, if not initialize it
+if (!is_dir('.git')) {
+    exec('git init 2>&1', $output, $return);
+    exec('git remote add origin https://github.com/Stevebeans/bbj-2025.git 2>&1', $output, $return);
+}
+
+// Fetch and reset to origin/staging
+exec('git fetch origin staging 2>&1', $output, $return);
 exec('git reset --hard origin/staging 2>&1', $output, $return);
 
 echo json_encode([
