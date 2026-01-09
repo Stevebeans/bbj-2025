@@ -1,5 +1,5 @@
 <?php
-// Auto-deploy test v2
+// Auto-deploy is WORKING!
 get_header(); ?>
 
 <?php
@@ -157,7 +157,7 @@ wp_reset_postdata();
         <section class="v2-primary-container-inner grow p-2 mb-4 lg:mb-0" aria-labelledby="main-feeds" itemscope itemtype="https://schema.org/LiveBlogPosting">
          
 
-          <h2 id="main-feeds" class="v2-primary-subheader" itemprop="headline">Latest Feed Updatessss</h2>
+          <h2 id="main-feeds" class="v2-primary-subheader" itemprop="headline">Latest Feed Updates</h2>
           <div class="lg:h-[1300px] lg:min-h-0 lg:overflow-y-auto ">
           
           <?php
