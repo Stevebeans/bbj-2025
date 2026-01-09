@@ -13,7 +13,7 @@ jobs:
       - name: Deploy to Staging
         if: github.ref_name == 'staging'
         run: |
-          curl -s "https://wordpress-1358704-4998730.cloudwaysapps.com/gitautodeploy.php?server_id=1358704&app_id=4998730&git_url=git@github.com:Stevebeans/bbj-2025.git&branch_name=staging"
+          curl -s "https://staging.bigbrotherjunkies.com/gitautodeploy.php?server_id=1358704&app_id=4998730&git_url=git@github.com:Stevebeans/bbj-2025.git&branch_name=staging"
           echo "Triggered staging deployment"
 
       - name: Deploy to Production
