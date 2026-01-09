@@ -14,7 +14,7 @@ jobs:
         if: github.ref_name == 'staging'
         run: |
           echo "Calling deploy.php..."
-          RESPONSE=$(curl -s "https://staging.bigbrotherjunkies.com/deploy.php?key=bbj_deploy_2025")
+          RESPONSE=$(curl -s "https://staging.bigbrotherjunkies.com/deploy.php?key=bbj_deploy_2025&t=$(date +%s)")
           echo "Response: $RESPONSE"
           sleep 5
 
