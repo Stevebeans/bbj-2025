@@ -13,8 +13,9 @@ jobs:
       - name: Deploy to Staging
         if: github.ref_name == 'staging'
         run: |
-          curl -s "https://staging.bigbrotherjunkies.com/deploy.php?key=bbj_deploy_2025"
-          echo "Triggered staging deployment"
+          echo "Calling deploy.php..."
+          RESPONSE=$(curl -s "https://staging.bigbrotherjunkies.com/deploy.php?key=bbj_deploy_2025")
+          echo "Response: $RESPONSE"
           sleep 5
 
       - name: Clear Staging Cache
