@@ -38,7 +38,7 @@ class AdminLoader
             'bbjd-dashboard',
             [$this, 'renderDashboard'],
             'dashicons-database',
-            30
+            2
         );
 
         $this->pageHooks[] = $this->pageHook;
@@ -49,7 +49,20 @@ class AdminLoader
      */
     private function isPluginPage(string $hook): bool
     {
-        return $hook === $this->pageHook || in_array($hook, $this->pageHooks, true);
+        // Check direct page hooks
+        if ($hook === $this->pageHook || in_array($hook, $this->pageHooks, true)) {
+            return true;
+        }
+
+        // Check for Ad Manager pages by slug
+        $adManagerSlugs = ['bbjd-ads', 'bbjd-ad-edit', 'bbjd-slots', 'bbjd-dev-tools'];
+        foreach ($adManagerSlugs as $slug) {
+            if (strpos($hook, $slug) !== false) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
