@@ -10,24 +10,14 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Set deployment path
-        id: set-path
+      - name: Deploy to Staging
+        if: github.ref_name == 'staging'
         run: |
-          if [ "${{ github.ref_name }}" == "staging" ]; then
-            echo "deploy_path=/home/master/applications/ftgtnduhbt/public_html" >> $GITHUB_OUTPUT
-            echo "environment=staging" >> $GITHUB_OUTPUT
-          else
-            echo "deploy_path=/home/master/applications/duesaptjae/public_html" >> $GITHUB_OUTPUT
-            echo "environment=production" >> $GITHUB_OUTPUT
-          fi
+          curl -s "https://wordpress-1358704-4998730.cloudwaysapps.com/gitautodeploy.php?server_id=1358704&app_id=4998730&git_url=git@github.com:Stevebeans/bbj-2025.git&branch_name=staging"
+          echo "Triggered staging deployment"
 
-      - name: Setup SSH
+      - name: Deploy to Production
+        if: github.ref_name == 'master'
         run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.CLOUDWAYS_SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.CLOUDWAYS_HOST }} >> ~/.ssh/known_hosts
-
-      - name: Deploy via SSH
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.CLOUDWAYS_USER }}@${{ secrets.CLOUDWAYS_HOST }} "cd ${{ steps.set-path.outputs.deploy_path }} && git fetch origin && git reset --hard origin/${{ github.ref_name }} && echo 'Deployed ${{ github.ref_name }}'"
+          curl -s "https://${{ secrets.LIVE_DOMAIN }}/gitautodeploy.php?server_id=1358704&app_id=${{ secrets.LIVE_APP_ID }}&git_url=git@github.com:Stevebeans/bbj-2025.git&branch_name=master"
+          echo "Triggered production deployment"
