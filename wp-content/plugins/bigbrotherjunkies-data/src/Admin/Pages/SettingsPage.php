@@ -43,12 +43,19 @@ class SettingsPage
             ? array_map('sanitize_text_field', (array) $_POST['auto_insert_post_types'])
             : ['post'];
 
+        // Header/Footer code - allow scripts for ad networks
+        // Using wp_kses with allowed HTML for scripts
+        $headerCode = isset($_POST['header_code']) ? wp_unslash($_POST['header_code']) : '';
+        $footerCode = isset($_POST['footer_code']) ? wp_unslash($_POST['footer_code']) : '';
+
         $settings = [
             'global_hidden_roles' => $globalHiddenRoles,
             'auto_insert_post_types' => $autoInsertPostTypes,
             'auto_insert_default_interval' => intval($_POST['auto_insert_default_interval'] ?? 4),
             'auto_insert_max_per_post' => intval($_POST['auto_insert_max_per_post'] ?? 3),
             'cache_ttl' => intval($_POST['cache_ttl'] ?? 300),
+            'header_code' => $headerCode,
+            'footer_code' => $footerCode,
         ];
 
         $adManager->updateSettings($settings);
@@ -114,6 +121,50 @@ class SettingsPage
                         <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mt-3">
                             Tip: Use this for ad-free membership tiers. Users with checked roles get a completely ad-free experience.
                         </p>
+                    </div>
+
+                    <!-- Header/Footer Code -->
+                    <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6 bbjd-mb-6">
+                        <h2 class="bbjd-text-xl bbjd-font-semibold bbjd-text-gray-800 bbjd-mb-2">
+                            Header &amp; Footer Code
+                        </h2>
+                        <p class="bbjd-text-gray-600 bbjd-text-sm bbjd-mb-4">
+                            Add scripts from ad networks (Freestar, Google AdSense, etc.) that need to be loaded in the header or footer.
+                            These will be injected on all frontend pages.
+                        </p>
+
+                        <div class="bbjd-space-y-4">
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-2">
+                                    Header Code <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs in &lt;head&gt;)</span>
+                                </label>
+                                <textarea name="header_code" rows="6"
+                                          class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-font-mono bbjd-text-sm"
+                                          placeholder="<!-- Paste your header scripts here -->"><?php echo esc_textarea($settings['header_code'] ?? ''); ?></textarea>
+                                <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mt-1">
+                                    Common uses: Google AdSense async script, Freestar initialization, analytics scripts.
+                                </p>
+                            </div>
+
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-2">
+                                    Footer Code <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs before &lt;/body&gt;)</span>
+                                </label>
+                                <textarea name="footer_code" rows="6"
+                                          class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-font-mono bbjd-text-sm"
+                                          placeholder="<!-- Paste your footer scripts here -->"><?php echo esc_textarea($settings['footer_code'] ?? ''); ?></textarea>
+                                <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mt-1">
+                                    Common uses: Scripts that should load after page content, tracking pixels.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="bbjd-mt-4 bbjd-p-3 bbjd-bg-yellow-50 bbjd-rounded bbjd-border bbjd-border-yellow-200">
+                            <p class="bbjd-text-xs bbjd-text-yellow-800">
+                                <strong>Note:</strong> Code here is output for all users. If you want to hide scripts for ad-free roles,
+                                the ad network scripts should handle that via their own targeting, or you can use conditional logic in your theme.
+                            </p>
+                        </div>
                     </div>
 
                     <!-- Auto-Insert Settings -->

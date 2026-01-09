@@ -11,6 +11,7 @@ use BigBrotherJunkies\Data\Admin\Pages\SettingsPage;
 use BigBrotherJunkies\Data\Admin\Pages\DevToolsPage;
 use BigBrotherJunkies\Data\Ads\AdManager;
 use BigBrotherJunkies\Data\Ads\ContentInserter;
+use BigBrotherJunkies\Data\Hooks\HeaderFooterCode;
 
 /**
  * Main plugin class
@@ -183,6 +184,10 @@ class Plugin
         // Content inserter for auto-insertion
         $contentInserter = new ContentInserter();
         $contentInserter->init();
+
+        // Header/Footer code injection (ad network scripts)
+        $headerFooterCode = new HeaderFooterCode();
+        $headerFooterCode->init();
     }
 
     /**
