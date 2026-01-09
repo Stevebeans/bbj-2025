@@ -24,10 +24,15 @@ chdir(__DIR__);
 $output = [];
 $return = 0;
 
-// Check if git repo exists, if not initialize it
-if (!is_dir('.git')) {
+// Check if valid git repo exists
+exec('git status 2>&1', $check, $git_status);
+
+if ($git_status !== 0) {
+    // Not a valid git repo - remove any .git folder and initialize fresh
+    exec('rm -rf .git 2>&1', $output, $return);
     exec('git init 2>&1', $output, $return);
     exec('git remote add origin https://github.com/Stevebeans/bbj-2025.git 2>&1', $output, $return);
+    $output[] = "Initialized new git repo";
 }
 
 // Fetch and reset to origin/staging
