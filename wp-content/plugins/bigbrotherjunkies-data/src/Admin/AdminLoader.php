@@ -1,0 +1,127 @@
+<?php
+
+namespace BigBrotherJunkies\Data\Admin;
+
+/**
+ * Handles admin page registration and asset loading
+ */
+class AdminLoader
+{
+    /**
+     * Admin page hook suffix
+     */
+    private string $pageHook = '';
+
+    /**
+     * Additional page hooks for subpages
+     */
+    private array $pageHooks = [];
+
+    /**
+     * Initialize admin functionality
+     */
+    public function init(): void
+    {
+        add_action('admin_menu', [$this, 'registerAdminMenu']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
+    }
+
+    /**
+     * Register admin menu pages
+     */
+    public function registerAdminMenu(): void
+    {
+        $this->pageHook = add_menu_page(
+            __('BBJ Data', 'bigbrotherjunkies-data'),
+            __('BBJ Data', 'bigbrotherjunkies-data'),
+            'manage_options',
+            'bbjd-dashboard',
+            [$this, 'renderDashboard'],
+            'dashicons-database',
+            30
+        );
+
+        $this->pageHooks[] = $this->pageHook;
+    }
+
+    /**
+     * Check if current hook is a plugin admin page
+     */
+    private function isPluginPage(string $hook): bool
+    {
+        return $hook === $this->pageHook || in_array($hook, $this->pageHooks, true);
+    }
+
+    /**
+     * Get cache-busting version based on file modification time
+     */
+    private function getAssetVersion(string $relativePath): string
+    {
+        $filePath = BBJD_PATH . $relativePath;
+        if (file_exists($filePath)) {
+            return (string) filemtime($filePath);
+        }
+        return BBJD_VERSION;
+    }
+
+    /**
+     * Enqueue admin assets only on plugin pages
+     */
+    public function enqueueAdminAssets(string $hook): void
+    {
+        // Only load on this plugin's admin pages
+        if (!$this->isPluginPage($hook)) {
+            return;
+        }
+
+        // Enqueue CSS with cache busting
+        wp_enqueue_style(
+            'bbjd-admin',
+            BBJD_URL . 'build/css/admin.css',
+            [],
+            $this->getAssetVersion('build/css/admin.css')
+        );
+
+        // Enqueue JS if it exists (ready for future scripts)
+        $jsPath = 'build/js/admin.js';
+        if (file_exists(BBJD_PATH . $jsPath)) {
+            wp_enqueue_script(
+                'bbjd-admin',
+                BBJD_URL . $jsPath,
+                ['jquery'],
+                $this->getAssetVersion($jsPath),
+                true
+            );
+
+            // Localize script data if needed
+            wp_localize_script('bbjd-admin', 'bbjdAdmin', [
+                'ajaxUrl' => admin_url('admin-ajax.php'),
+                'nonce'   => wp_create_nonce('bbjd_admin_nonce'),
+            ]);
+        }
+    }
+
+    /**
+     * Render the dashboard page
+     */
+    public function renderDashboard(): void
+    {
+        ?>
+        <div class="bbjd-admin">
+            <div class="bbjd-p-6 bbjd-max-w-4xl">
+                <h1 class="bbjd-text-3xl bbjd-font-bold bbjd-text-primary500 bbjd-mb-4">
+                    Big Brother Junkies Data
+                </h1>
+                <p class="bbjd-text-gray-600 bbjd-mb-6">
+                    Plugin is active and autoloading is working!
+                </p>
+                <div class="bbjd-bg-second500 bbjd-p-4 bbjd-rounded-lg">
+                    <p class="bbjd-text-primaryHard bbjd-font-semibold">
+                        Tailwind CSS is loaded with the bbjd- prefix.
+                    </p>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+}

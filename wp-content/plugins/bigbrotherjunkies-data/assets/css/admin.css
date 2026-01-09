@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scope all styles to plugin admin pages */
+.bbjd-admin {
+    /* Reset box-sizing for plugin admin area */
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+}

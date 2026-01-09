@@ -1,0 +1,12 @@
+{
+    "name": "bigbrotherjunkies-data",
+    "version": "1.0.0",
+    "description": "Big Brother Junkies Data Plugin",
+    "scripts": {
+        "build": "npx tailwindcss -i ./assets/css/admin.css -o ./build/css/admin.css --minify",
+        "start": "npx tailwindcss -i ./assets/css/admin.css -o ./build/css/admin.css --watch"
+    },
+    "devDependencies": {
+        "tailwindcss": "^3.4.0"
+    }
+}

@@ -20,6 +20,10 @@
 !/wp-content/plugins/bbj-v2/
 !/wp-content/plugins/bbj-v2/**
 
+# Allow bigbrotherjunkies-data plugin and everything under it
+!/wp-content/plugins/bigbrotherjunkies-data/
+!/wp-content/plugins/bigbrotherjunkies-data/**
+
 # allow BBJ theme and everything under it
 !/wp-content/themes/BBJ/
 !/wp-content/themes/BBJ/**
@@ -37,7 +41,10 @@
 # BBJ theme build folders
 /wp-content/themes/BBJ/node_modules/
 /wp-content/themes/BBJ/vendor/
-# …etc.
+
+# bigbrotherjunkies-data build folders
+/wp-content/plugins/bigbrotherjunkies-data/node_modules/
+/wp-content/plugins/bigbrotherjunkies-data/vendor/
 
 # Misc
 *.log

@@ -1,0 +1,14 @@
+{
+    "name": "bigbrotherjunkies/data",
+    "description": "Big Brother Junkies Data Plugin - Core data management",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": "^7.4 || ^8.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "BigBrotherJunkies\\Data\\": "src/"
+        }
+    }
+}
