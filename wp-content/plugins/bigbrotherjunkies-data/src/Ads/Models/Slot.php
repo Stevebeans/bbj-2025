@@ -102,6 +102,30 @@ class Slot
     }
 
     /**
+     * Get roles that should not see this slot
+     */
+    public function getHiddenRoles(): array
+    {
+        return $this->settings['hidden_roles'] ?? [];
+    }
+
+    /**
+     * Set roles that should not see this slot
+     */
+    public function setHiddenRoles(array $roles): void
+    {
+        $this->settings['hidden_roles'] = $roles;
+    }
+
+    /**
+     * Check if a specific role should be hidden for this slot
+     */
+    public function isHiddenForRole(string $role): bool
+    {
+        return in_array($role, $this->getHiddenRoles(), true);
+    }
+
+    /**
      * Get default settings for auto-content insertion
      */
     public static function getAutoContentDefaults(): array

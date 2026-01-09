@@ -63,6 +63,13 @@ class SlotsPage
                 'min_paragraphs' => intval($_POST['min_paragraphs'] ?? 6),
             ];
         }
+
+        // Per-slot role hiding (applies to all slot types)
+        $hiddenRoles = isset($_POST['slot_hidden_roles'])
+            ? array_map('sanitize_text_field', (array) $_POST['slot_hidden_roles'])
+            : [];
+        $settings['hidden_roles'] = $hiddenRoles;
+
         $slot->settings = $settings;
 
         if ($isNew) {
@@ -174,6 +181,33 @@ class SlotsPage
                                         <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">Description</label>
                                         <textarea name="slot_description" rows="2"
                                                   class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-text-sm"><?php echo esc_textarea($editSlot->description ?? ''); ?></textarea>
+                                    </div>
+
+                                    <!-- Per-slot role hiding -->
+                                    <div class="bbjd-pt-3 bbjd-border-t">
+                                        <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-2">
+                                            Hide This Slot for Roles
+                                        </label>
+                                        <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mb-2">
+                                            Users with checked roles won't see this specific slot (in addition to global settings).
+                                        </p>
+                                        <div class="bbjd-grid bbjd-grid-cols-2 bbjd-gap-1 bbjd-max-h-32 bbjd-overflow-y-auto bbjd-bg-gray-50 bbjd-p-2 bbjd-rounded">
+                                            <?php
+                                            $wpRoles = wp_roles();
+                                            $allRoles = $wpRoles->get_names();
+                                            $slotHiddenRoles = $editSlot ? $editSlot->getHiddenRoles() : [];
+                                            foreach ($allRoles as $roleSlug => $roleName):
+                                            ?>
+                                            <label class="bbjd-flex bbjd-items-center bbjd-space-x-1">
+                                                <input type="checkbox"
+                                                       name="slot_hidden_roles[]"
+                                                       value="<?php echo esc_attr($roleSlug); ?>"
+                                                       <?php checked(in_array($roleSlug, $slotHiddenRoles)); ?>
+                                                       class="bbjd-rounded bbjd-border-gray-300 bbjd-text-primary500 bbjd-h-3 bbjd-w-3">
+                                                <span class="bbjd-text-xs bbjd-text-gray-700"><?php echo esc_html($roleName); ?></span>
+                                            </label>
+                                            <?php endforeach; ?>
+                                        </div>
                                     </div>
 
                                     <!-- Auto-content settings -->

@@ -70,12 +70,18 @@ class AdManager
      */
     public function displaySlot(string $slotSlug, array $options = []): void
     {
+        // Global check first (admin pages, global role hiding, page override)
         if (!$this->shouldShowAds()) {
             return;
         }
 
         $slot = $this->slotRepository->findBySlug($slotSlug);
         if (!$slot || !$slot->isActive()) {
+            return;
+        }
+
+        // Per-slot check (slot-specific role hiding)
+        if (!$this->conditionChecker->shouldShowSlot($slot)) {
             return;
         }
 
@@ -95,12 +101,18 @@ class AdManager
      */
     public function displayResponsive(string $slotSlug, array $options = []): void
     {
+        // Global check first
         if (!$this->shouldShowAds()) {
             return;
         }
 
         $slot = $this->slotRepository->findBySlug($slotSlug);
         if (!$slot || !$slot->isActive()) {
+            return;
+        }
+
+        // Per-slot check (slot-specific role hiding)
+        if (!$this->conditionChecker->shouldShowSlot($slot)) {
             return;
         }
 

@@ -7,6 +7,7 @@ use BigBrotherJunkies\Data\Admin\MetaBoxes\AdSettingsMetaBox;
 use BigBrotherJunkies\Data\Admin\Pages\AdsListPage;
 use BigBrotherJunkies\Data\Admin\Pages\AdEditPage;
 use BigBrotherJunkies\Data\Admin\Pages\SlotsPage;
+use BigBrotherJunkies\Data\Admin\Pages\SettingsPage;
 use BigBrotherJunkies\Data\Admin\Pages\DevToolsPage;
 use BigBrotherJunkies\Data\Ads\AdManager;
 use BigBrotherJunkies\Data\Ads\ContentInserter;
@@ -88,6 +89,7 @@ class Plugin
             'ads_list' => new AdsListPage(),
             'ad_edit' => new AdEditPage(),
             'slots' => new SlotsPage(),
+            'settings' => new SettingsPage(),
             'dev_tools' => new DevToolsPage(),
         ];
 
@@ -150,6 +152,16 @@ class Plugin
             'manage_options',
             SlotsPage::MENU_SLUG,
             [$this->adminPages['slots'], 'render']
+        );
+
+        // Settings
+        add_submenu_page(
+            AdsListPage::MENU_SLUG,
+            __('Ad Settings', 'bigbrotherjunkies-data'),
+            __('Settings', 'bigbrotherjunkies-data'),
+            'manage_options',
+            SettingsPage::MENU_SLUG,
+            [$this->adminPages['settings'], 'render']
         );
 
         // Dev Tools

@@ -55,7 +55,7 @@ class AdminLoader
         }
 
         // Check for Ad Manager pages by slug
-        $adManagerSlugs = ['bbjd-ads', 'bbjd-ad-edit', 'bbjd-slots', 'bbjd-dev-tools'];
+        $adManagerSlugs = ['bbjd-ads', 'bbjd-ad-edit', 'bbjd-slots', 'bbjd-settings', 'bbjd-dev-tools'];
         foreach ($adManagerSlugs as $slug) {
             if (strpos($hook, $slug) !== false) {
                 return true;

@@ -2,6 +2,8 @@
 
 namespace BigBrotherJunkies\Data\Ads;
 
+use BigBrotherJunkies\Data\Ads\Models\Slot;
+
 /**
  * Evaluates conditions for ad display
  */
@@ -18,7 +20,8 @@ class ConditionChecker
     private const CACHE_GROUP = 'bbjd_conditions';
 
     /**
-     * Check if ads should show for the current context
+     * Check if ads should show for the current context (global check)
+     * This checks: admin pages, global role hiding, page-level override, excluded pages
      */
     public function shouldShowAds(?int $postId = null): bool
     {
@@ -27,8 +30,8 @@ class ConditionChecker
             return false;
         }
 
-        // Check user role
-        if ($this->userHasHiddenRole()) {
+        // Check GLOBAL role hiding (complete ad-free experience)
+        if ($this->userHasGlobalHiddenRole()) {
             return false;
         }
 
@@ -48,18 +51,41 @@ class ConditionChecker
     }
 
     /**
-     * Check if current user has a role that hides ads
+     * Check if a specific slot should show for the current user
+     * This is checked AFTER shouldShowAds() passes
+     *
+     * @param Slot $slot The slot to check
+     * @return bool True if the slot should be displayed
      */
-    public function userHasHiddenRole(): bool
+    public function shouldShowSlot(Slot $slot): bool
+    {
+        // Check per-slot role hiding
+        if ($this->userHasSlotHiddenRole($slot)) {
+            return false;
+        }
+
+        // Allow filtering
+        return apply_filters('bbjd_should_show_slot', true, $slot);
+    }
+
+    /**
+     * Check if current user has a GLOBAL ad-free role
+     * These roles see NO ads anywhere on the site
+     */
+    public function userHasGlobalHiddenRole(): bool
     {
         if (!is_user_logged_in()) {
             return false;
         }
 
-        $hiddenRoles = $this->getHiddenRoles();
+        $globalHiddenRoles = $this->getGlobalHiddenRoles();
+        if (empty($globalHiddenRoles)) {
+            return false;
+        }
+
         $user = wp_get_current_user();
 
-        foreach ($hiddenRoles as $role) {
+        foreach ($globalHiddenRoles as $role) {
             if (in_array($role, (array) $user->roles, true)) {
                 return true;
             }
@@ -69,18 +95,58 @@ class ConditionChecker
     }
 
     /**
-     * Get roles that should not see ads
+     * Check if current user has a role that hides a specific slot
+     *
+     * @param Slot $slot The slot to check
+     * @return bool True if user should NOT see this slot
+     */
+    public function userHasSlotHiddenRole(Slot $slot): bool
+    {
+        if (!is_user_logged_in()) {
+            return false;
+        }
+
+        $slotHiddenRoles = $slot->getHiddenRoles();
+        if (empty($slotHiddenRoles)) {
+            return false;
+        }
+
+        $user = wp_get_current_user();
+
+        foreach ($slotHiddenRoles as $role) {
+            if (in_array($role, (array) $user->roles, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Get roles that should not see ANY ads (global setting)
+     */
+    public function getGlobalHiddenRoles(): array
+    {
+        $settings = get_option(AdManager::SETTINGS_OPTION, []);
+        return $settings['global_hidden_roles'] ?? [];
+    }
+
+    /**
+     * Legacy method - now uses global hidden roles
+     * @deprecated Use getGlobalHiddenRoles() instead
      */
     public function getHiddenRoles(): array
     {
-        $settings = get_option(AdManager::SETTINGS_OPTION, []);
-        return $settings['default_user_roles_hide'] ?? [
-            'administrator',
-            'supporter',
-            'updater',
-            'comment_mod',
-            'second_in_command',
-        ];
+        return $this->getGlobalHiddenRoles();
+    }
+
+    /**
+     * Legacy method - now uses global role check
+     * @deprecated Use userHasGlobalHiddenRole() instead
+     */
+    public function userHasHiddenRole(): bool
+    {
+        return $this->userHasGlobalHiddenRole();
     }
 
     /**
