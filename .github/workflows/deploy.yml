@@ -15,9 +15,31 @@ jobs:
         run: |
           curl -s "https://staging.bigbrotherjunkies.com/gitautodeploy.php?server_id=1358704&app_id=4998730&git_url=git@github.com:Stevebeans/bbj-2025.git&branch_name=staging"
           echo "Triggered staging deployment"
+          sleep 5
+
+      - name: Clear Staging Cache
+        if: github.ref_name == 'staging'
+        run: |
+          curl -s "https://staging.bigbrotherjunkies.com/clear-cache.php?key=bbj_cache_clear_2025"
+          echo "Server cache cleared"
 
       - name: Deploy to Production
         if: github.ref_name == 'master'
         run: |
-          curl -s "https://${{ secrets.LIVE_DOMAIN }}/gitautodeploy.php?server_id=1358704&app_id=${{ secrets.LIVE_APP_ID }}&git_url=git@github.com:Stevebeans/bbj-2025.git&branch_name=master"
+          curl -s "https://bigbrotherjunkies.com/gitautodeploy.php?server_id=1358704&app_id=${{ secrets.LIVE_APP_ID }}&git_url=git@github.com:Stevebeans/bbj-2025.git&branch_name=master"
           echo "Triggered production deployment"
+          sleep 5
+
+      - name: Clear Production Cache
+        if: github.ref_name == 'master'
+        run: |
+          curl -s "https://bigbrotherjunkies.com/clear-cache.php?key=bbj_cache_clear_2025"
+          echo "Server cache cleared"
+
+      - name: Purge Cloudflare Cache
+        run: |
+          curl -s -X POST "https://api.cloudflare.com/client/v4/zones/89fec31456d31dbfee7cc9b204899a9e/purge_cache" \
+            -H "Authorization: Bearer ${{ secrets.CLOUDFLARE_API_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            --data '{"purge_everything":true}'
+          echo "Cloudflare cache purged"
