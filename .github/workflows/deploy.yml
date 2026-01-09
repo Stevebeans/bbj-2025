@@ -1,0 +1,49 @@
+name: Deploy to Cloudways
+
+on:
+  push:
+    branches:
+      - staging
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set deployment path
+        id: set-path
+        run: |
+          if [ "${{ github.ref_name }}" == "staging" ]; then
+            echo "deploy_path=/home/master/applications/ftgtnduhbt/public_html" >> $GITHUB_OUTPUT
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_path=/home/master/applications/duesaptjae/public_html" >> $GITHUB_OUTPUT
+            echo "environment=production" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy to Cloudways
+        uses: easingthemes/ssh-deploy@main
+        with:
+          SSH_PRIVATE_KEY: ${{ secrets.CLOUDWAYS_SSH_KEY }}
+          REMOTE_HOST: ${{ secrets.CLOUDWAYS_HOST }}
+          REMOTE_USER: ${{ secrets.CLOUDWAYS_USER }}
+          TARGET: ${{ steps.set-path.outputs.deploy_path }}
+          EXCLUDE: ".git, .github, node_modules, .claude, *.code-workspace, .gitignore, package-lock.json"
+
+      - name: Clear cache on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.CLOUDWAYS_HOST }}
+          username: ${{ secrets.CLOUDWAYS_USER }}
+          key: ${{ secrets.CLOUDWAYS_SSH_KEY }}
+          script: |
+            cd ${{ steps.set-path.outputs.deploy_path }}
+            # Clear Breeze cache if it exists
+            if [ -d "wp-content/cache/breeze" ]; then
+              rm -rf wp-content/cache/breeze/*
+              echo "Breeze cache cleared"
+            fi
+            echo "Deployed to ${{ steps.set-path.outputs.environment }}"
