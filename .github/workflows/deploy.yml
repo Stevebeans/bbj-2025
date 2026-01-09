@@ -21,19 +21,22 @@ jobs:
             echo "environment=production" >> $GITHUB_OUTPUT
           fi
 
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.CLOUDWAYS_SSH_KEY }}" | base64 -d > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.CLOUDWAYS_HOST }} >> ~/.ssh/known_hosts
+
       - name: Deploy via SSH
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.CLOUDWAYS_HOST }}
-          username: ${{ secrets.CLOUDWAYS_USER }}
-          key: ${{ secrets.CLOUDWAYS_SSH_KEY }}
-          script: |
+        run: |
+          ssh ${{ secrets.CLOUDWAYS_USER }}@${{ secrets.CLOUDWAYS_HOST }} << 'ENDSSH'
             cd ${{ steps.set-path.outputs.deploy_path }}
             git fetch origin
             git reset --hard origin/${{ github.ref_name }}
-            # Clear Breeze cache if it exists
             if [ -d "wp-content/cache/breeze" ]; then
               rm -rf wp-content/cache/breeze/*
               echo "Breeze cache cleared"
             fi
             echo "Deployed ${{ github.ref_name }} to ${{ steps.set-path.outputs.environment }}"
+          ENDSSH
