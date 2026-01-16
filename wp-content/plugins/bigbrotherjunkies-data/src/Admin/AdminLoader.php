@@ -2,6 +2,8 @@
 
 namespace BigBrotherJunkies\Data\Admin;
 
+use BigBrotherJunkies\Data\Admin\Pages\RegistrationsPage;
+
 /**
  * Handles admin page registration and asset loading
  */
@@ -18,10 +20,18 @@ class AdminLoader
     private array $pageHooks = [];
 
     /**
+     * Registrations page instance
+     */
+    private ?RegistrationsPage $registrationsPage = null;
+
+    /**
      * Initialize admin functionality
      */
     public function init(): void
     {
+        $this->registrationsPage = new RegistrationsPage();
+        $this->registrationsPage->handleActions();
+
         add_action('admin_menu', [$this, 'registerAdminMenu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
     }
@@ -42,6 +52,16 @@ class AdminLoader
         );
 
         $this->pageHooks[] = $this->pageHook;
+
+        // Registrations submenu
+        $this->pageHooks[] = add_submenu_page(
+            'bbjd-dashboard',
+            __('Registrations', 'bigbrotherjunkies-data'),
+            __('Registrations', 'bigbrotherjunkies-data'),
+            'manage_options',
+            RegistrationsPage::MENU_SLUG,
+            [$this->registrationsPage, 'render']
+        );
     }
 
     /**
@@ -54,9 +74,9 @@ class AdminLoader
             return true;
         }
 
-        // Check for Ad Manager pages by slug
-        $adManagerSlugs = ['bbjd-ads', 'bbjd-ad-edit', 'bbjd-slots', 'bbjd-settings', 'bbjd-dev-tools'];
-        foreach ($adManagerSlugs as $slug) {
+        // Check for plugin pages by slug
+        $pluginSlugs = ['bbjd-ads', 'bbjd-ad-edit', 'bbjd-slots', 'bbjd-settings', 'bbjd-dev-tools', 'bbjd-registrations'];
+        foreach ($pluginSlugs as $slug) {
             if (strpos($hook, $slug) !== false) {
                 return true;
             }

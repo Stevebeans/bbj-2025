@@ -4,6 +4,7 @@ namespace BigBrotherJunkies\Data\Admin\Pages;
 
 use BigBrotherJunkies\Data\Database\Migrator;
 use BigBrotherJunkies\Data\Database\Schema;
+use BigBrotherJunkies\Data\Api\AuthRoutes;
 
 /**
  * Dev Tools admin page for database management
@@ -20,6 +21,27 @@ class DevToolsPage
         add_action('admin_post_bbjd_create_tables', [$this, 'handleCreateTables']);
         add_action('admin_post_bbjd_drop_tables', [$this, 'handleDropTables']);
         add_action('admin_post_bbjd_import_v2', [$this, 'handleImportV2']);
+        add_action('admin_post_bbjd_clear_registration_logs', [$this, 'handleClearRegistrationLogs']);
+    }
+
+    /**
+     * Handle clear registration logs action
+     */
+    public function handleClearRegistrationLogs(): void
+    {
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        check_admin_referer('bbjd_clear_registration_logs');
+
+        AuthRoutes::clearRegistrationLogs();
+
+        wp_redirect(add_query_arg([
+            'page' => self::MENU_SLUG,
+            'message' => 'logs_cleared',
+        ], admin_url('admin.php')));
+        exit;
     }
 
     /**
@@ -194,7 +216,7 @@ class DevToolsPage
                 </div>
 
                 <!-- Debug Info -->
-                <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6">
+                <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6 bbjd-mb-6">
                     <h2 class="bbjd-text-xl bbjd-font-semibold bbjd-text-gray-800 bbjd-mb-4">
                         Debug Information
                     </h2>
@@ -229,6 +251,9 @@ class DevToolsPage
                         </div>
                     </dl>
                 </div>
+
+                <!-- Registration Logs -->
+                <?php $this->renderRegistrationLogs(); ?>
             </div>
         </div>
         <?php
@@ -253,6 +278,7 @@ class DevToolsPage
                 intval($_GET['slots'] ?? 0),
                 intval($_GET['ads'] ?? 0)
             )],
+            'logs_cleared' => ['success', 'Registration logs cleared successfully.'],
         ];
 
         if (!isset($messages[$message])) {
@@ -264,6 +290,99 @@ class DevToolsPage
         ?>
         <div class="<?php echo $bgColor; ?> bbjd-border-l-4 bbjd-p-4 bbjd-mb-6 bbjd-rounded">
             <p><?php echo esc_html($text); ?></p>
+        </div>
+        <?php
+    }
+
+    /**
+     * Render registration logs section
+     */
+    private function renderRegistrationLogs(): void
+    {
+        $logs = AuthRoutes::getRegistrationLogs(50);
+        ?>
+        <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6">
+            <div class="bbjd-flex bbjd-justify-between bbjd-items-center bbjd-mb-4">
+                <h2 class="bbjd-text-xl bbjd-font-semibold bbjd-text-gray-800">
+                    Registration Logs
+                </h2>
+                <?php if (!empty($logs)): ?>
+                <form method="post" action="<?php echo admin_url('admin-post.php'); ?>"
+                      onsubmit="return confirm('Are you sure you want to clear all registration logs?');">
+                    <?php wp_nonce_field('bbjd_clear_registration_logs'); ?>
+                    <input type="hidden" name="action" value="bbjd_clear_registration_logs">
+                    <button type="submit" class="bbjd-text-sm bbjd-text-red-600 hover:bbjd-text-red-800">
+                        Clear Logs
+                    </button>
+                </form>
+                <?php endif; ?>
+            </div>
+
+            <?php if (empty($logs)): ?>
+                <p class="bbjd-text-gray-500 bbjd-text-sm">No registration attempts logged yet.</p>
+            <?php else: ?>
+                <div class="bbjd-overflow-x-auto">
+                    <table class="bbjd-min-w-full bbjd-divide-y bbjd-divide-gray-200 bbjd-text-sm">
+                        <thead class="bbjd-bg-gray-50">
+                            <tr>
+                                <th class="bbjd-px-3 bbjd-py-2 bbjd-text-left bbjd-text-xs bbjd-font-medium bbjd-text-gray-500 bbjd-uppercase">Time</th>
+                                <th class="bbjd-px-3 bbjd-py-2 bbjd-text-left bbjd-text-xs bbjd-font-medium bbjd-text-gray-500 bbjd-uppercase">Username</th>
+                                <th class="bbjd-px-3 bbjd-py-2 bbjd-text-left bbjd-text-xs bbjd-font-medium bbjd-text-gray-500 bbjd-uppercase">Email</th>
+                                <th class="bbjd-px-3 bbjd-py-2 bbjd-text-left bbjd-text-xs bbjd-font-medium bbjd-text-gray-500 bbjd-uppercase">Method</th>
+                                <th class="bbjd-px-3 bbjd-py-2 bbjd-text-left bbjd-text-xs bbjd-font-medium bbjd-text-gray-500 bbjd-uppercase">reCAPTCHA</th>
+                                <th class="bbjd-px-3 bbjd-py-2 bbjd-text-left bbjd-text-xs bbjd-font-medium bbjd-text-gray-500 bbjd-uppercase">Status</th>
+                                <th class="bbjd-px-3 bbjd-py-2 bbjd-text-left bbjd-text-xs bbjd-font-medium bbjd-text-gray-500 bbjd-uppercase">IP</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bbjd-bg-white bbjd-divide-y bbjd-divide-gray-200">
+                            <?php foreach ($logs as $log): ?>
+                            <tr>
+                                <td class="bbjd-px-3 bbjd-py-2 bbjd-text-gray-500 bbjd-whitespace-nowrap">
+                                    <?php echo esc_html($log['timestamp'] ?? '-'); ?>
+                                </td>
+                                <td class="bbjd-px-3 bbjd-py-2 bbjd-text-gray-900">
+                                    <?php echo esc_html($log['username'] ?? '-'); ?>
+                                </td>
+                                <td class="bbjd-px-3 bbjd-py-2 bbjd-text-gray-900">
+                                    <?php echo esc_html($log['email'] ?? '-'); ?>
+                                </td>
+                                <td class="bbjd-px-3 bbjd-py-2 bbjd-text-gray-500">
+                                    <?php echo esc_html($log['method'] ?? '-'); ?>
+                                </td>
+                                <td class="bbjd-px-3 bbjd-py-2">
+                                    <?php
+                                    $score = $log['recaptcha_score'] ?? null;
+                                    if ($score === null) {
+                                        echo '<span class="bbjd-text-gray-400">N/A</span>';
+                                    } else {
+                                        $scoreColor = $score >= 0.7 ? 'bbjd-text-green-600' : ($score >= 0.5 ? 'bbjd-text-yellow-600' : 'bbjd-text-red-600');
+                                        echo '<span class="' . $scoreColor . ' bbjd-font-mono">' . number_format($score, 2) . '</span>';
+                                    }
+                                    ?>
+                                </td>
+                                <td class="bbjd-px-3 bbjd-py-2">
+                                    <?php
+                                    $status = $log['status'] ?? 'unknown';
+                                    $statusClass = $status === 'success'
+                                        ? 'bbjd-bg-green-100 bbjd-text-green-800'
+                                        : 'bbjd-bg-red-100 bbjd-text-red-800';
+                                    ?>
+                                    <span class="bbjd-inline-flex bbjd-items-center bbjd-px-2 bbjd-py-0.5 bbjd-rounded-full bbjd-text-xs bbjd-font-medium <?php echo $statusClass; ?>">
+                                        <?php echo esc_html($status); ?>
+                                    </span>
+                                    <?php if (!empty($log['reason'])): ?>
+                                        <span class="bbjd-text-xs bbjd-text-gray-400 bbjd-ml-1">(<?php echo esc_html($log['reason']); ?>)</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="bbjd-px-3 bbjd-py-2 bbjd-text-gray-500 bbjd-font-mono bbjd-text-xs">
+                                    <?php echo esc_html($log['ip'] ?? '-'); ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            <?php endif; ?>
         </div>
         <?php
     }
