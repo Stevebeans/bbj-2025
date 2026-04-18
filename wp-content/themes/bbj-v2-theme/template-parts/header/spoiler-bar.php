@@ -112,3 +112,23 @@ $initials = static function (string $name): string {
         </div>
     </div>
 </div>
+<script>
+// Pre-paint collapse state so mobile users don't see an open→close flash.
+// Mirrors the logic in spoiler-bar.js; main controller wires the click listener.
+(function(){
+    try {
+        var el = document.currentScript.previousElementSibling;
+        if (!el || !el.matches('[data-bbj-spoiler]')) return;
+        var v = localStorage.getItem('bbj:spoiler:collapsed');
+        var collapsed = v !== null ? v === '1' : window.innerWidth < 768;
+        if (!collapsed) return;
+        el.classList.add('is-collapsed');
+        var btn = el.querySelector('[data-bbj-spoiler-toggle]');
+        if (btn) btn.setAttribute('aria-expanded', 'false');
+        var label = el.querySelector('[data-bbj-spoiler-label]');
+        if (label) label.textContent = 'Expand';
+        var icon = el.querySelector('.bbj-spoiler-toggle-icon');
+        if (icon) icon.textContent = '+';
+    } catch (_) {}
+})();
+</script>

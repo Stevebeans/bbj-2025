@@ -32,9 +32,10 @@ if (!defined('ABSPATH')) {
 // Leaderboard ad slot — placeholder until wired to bbjd_ad().
 // Tracked in docs/ad-slots.md.
 get_template_part('template-parts/components/ad-placeholder', null, [
-    'slot' => 'leaderboard_top',
-    'size' => '970x90',
-    'note' => __('Below nav · above content · eager-load', 'bbj-v2-theme'),
+    'slot'        => 'leaderboard_top',
+    'size'        => '970x90',
+    'mobile_size' => '320x50',
+    'note'        => __('Below nav · above content · eager-load', 'bbj-v2-theme'),
 ]);
 ?>
 
