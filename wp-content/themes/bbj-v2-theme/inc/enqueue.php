@@ -60,6 +60,13 @@ function bbj_v2_enqueue_assets(): void
             filemtime(BBJ_V2_THEME_PATH . '/src/js/auth-forms.js'),
             true
         );
+        wp_enqueue_script(
+            'bbj-v2-auth-google',
+            BBJ_V2_THEME_URL . '/src/js/auth-google.js',
+            ['bbj-v2-auth-modal'],
+            filemtime(BBJ_V2_THEME_PATH . '/src/js/auth-google.js'),
+            true
+        );
     }
 
     // WP core block styles are frontend-unused for our theme — dequeue
