@@ -83,6 +83,34 @@
         window.location.href = target.toString();
     }
 
+    function setFieldError(form, fieldName, message) {
+        const el = form.querySelector('[data-bbj-field-error="' + fieldName + '"]');
+        if (!el) return;
+        if (!message) {
+            el.classList.add('hidden');
+            el.textContent = '';
+            return;
+        }
+        el.classList.remove('hidden');
+        el.textContent = message;
+    }
+
+    function clearAllFieldErrors(form) {
+        form.querySelectorAll('[data-bbj-field-error]').forEach(el => {
+            el.classList.add('hidden');
+            el.textContent = '';
+        });
+    }
+
+    function debounce(fn, ms) {
+        let t;
+        return function () {
+            clearTimeout(t);
+            const args = arguments, self = this;
+            t = setTimeout(() => fn.apply(self, args), ms);
+        };
+    }
+
     async function handleLogin(form) {
         const view = form.closest('.bbj-modal-view');
         setFormError(view, '');
@@ -107,13 +135,100 @@
         setFormError(view, (data && (data.error || data.message)) || 'Login failed.');
     }
 
+    async function handleRegister(form) {
+        const view = form.closest('.bbj-modal-view');
+        setFormError(view, '');
+        clearAllFieldErrors(form);
+
+        const fd = new FormData(form);
+        const username = (fd.get('username') || '').toString().toLowerCase().trim();
+        const email = (fd.get('email') || '').toString().trim();
+        const password = (fd.get('password') || '').toString();
+        const confirm = (fd.get('confirm_password') || '').toString();
+        const displayName = (fd.get('display_name') || '').toString().trim();
+        const subscribe = !!fd.get('subscribe_newsletter');
+
+        let failed = false;
+        if (!/^[a-z0-9]{3,}$/.test(username)) {
+            setFieldError(form, 'username', 'Username must be 3+ lowercase letters and numbers only.');
+            failed = true;
+        }
+        if (!/\S+@\S+\.\S+/.test(email)) {
+            setFieldError(form, 'email', 'Please enter a valid email.');
+            failed = true;
+        }
+        if (password.length < 8) {
+            setFieldError(form, 'password', 'Password must be at least 8 characters.');
+            failed = true;
+        }
+        if (password !== confirm) {
+            setFieldError(form, 'confirm_password', 'Passwords do not match.');
+            failed = true;
+        }
+        if (failed) return;
+
+        const restore = busy(form.querySelector('[data-bbj-submit]'), 'Creating account…');
+        const { ok, data } = await postJSON('auth/register', {
+            username,
+            email,
+            password,
+            display_name: displayName,
+            subscribe_newsletter: subscribe,
+        });
+        if (ok && data && data.success) {
+            reloadOnSuccess();
+            setTimeout(restore, 3000);
+            return;
+        }
+        restore();
+        if (data && data.field) {
+            setFieldError(form, data.field, data.error || data.message || 'Invalid.');
+        } else {
+            setFormError(view, (data && (data.error || data.message)) || 'Registration failed.');
+        }
+    }
+
+    // Debounced availability checks.
+    const checkUsername = debounce(async function (input) {
+        const value = (input.value || '').toLowerCase().trim();
+        const form = input.closest('form');
+        if (value.length < 3) { setFieldError(form, 'username', ''); return; }
+        const { ok, data } = await postJSON('auth/check-username', { username: value });
+        if (!ok) return;
+        if (data && data.valid === false) {
+            setFieldError(form, 'username', data.message || 'Username not available.');
+        } else {
+            setFieldError(form, 'username', '');
+        }
+    }, 500);
+
+    const checkEmail = debounce(async function (input) {
+        const value = (input.value || '').trim();
+        const form = input.closest('form');
+        if (!value.includes('@')) { setFieldError(form, 'email', ''); return; }
+        const { ok, data } = await postJSON('auth/check-email', { email: value });
+        if (!ok) return;
+        if (data && data.exists === true) {
+            setFieldError(form, 'email', 'An account with this email already exists.');
+        } else {
+            setFieldError(form, 'email', '');
+        }
+    }, 500);
+
+    document.addEventListener('input', function (e) {
+        if (!modal.contains(e.target)) return;
+        if (e.target.matches('form[data-bbj-auth-form="register"] input[name="username"]')) checkUsername(e.target);
+        if (e.target.matches('form[data-bbj-auth-form="register"] input[name="email"]'))    checkEmail(e.target);
+    });
+
     // Delegated submit listener.
     document.addEventListener('submit', function (e) {
         const form = e.target.closest('[data-bbj-auth-form]');
         if (!form || !modal.contains(form)) return;
         e.preventDefault();
         const kind = form.getAttribute('data-bbj-auth-form');
-        if (kind === 'login') return handleLogin(form);
+        if (kind === 'login')    return handleLogin(form);
+        if (kind === 'register') return handleRegister(form);
         // Other handlers attached in later tasks.
     });
 })();
