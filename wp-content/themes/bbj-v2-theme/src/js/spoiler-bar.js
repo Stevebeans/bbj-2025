@@ -24,8 +24,13 @@
                 if (icon)  icon.textContent  = collapsed ? '+' : '−';
             };
 
+            // Default: collapsed on mobile, expanded on desktop, when no preference set.
+            // Honor an explicit user choice in either direction.
             let initial = false;
-            try { initial = localStorage.getItem(STORAGE_KEY) === '1'; } catch (_) {}
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                initial = stored !== null ? stored === '1' : window.innerWidth < 768;
+            } catch (_) {}
             setState(initial);
 
             btn.addEventListener('click', function () {
