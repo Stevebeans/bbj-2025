@@ -65,7 +65,15 @@
         if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
 
-    // Delegated handlers.
+    // Track where mousedown started so we only close on a true backdrop click.
+    // Without this, dragging text out of a field (release outside the dialog)
+    // lands mouseup on the backdrop and closes the modal mid-selection.
+    let mouseDownTarget = null;
+    document.addEventListener('mousedown', function (e) {
+        mouseDownTarget = e.target;
+    });
+
+    // Delegated click handlers.
     document.addEventListener('click', function (e) {
         const opener = e.target.closest('[data-bbj-auth-open]');
         if (opener) {
@@ -84,8 +92,11 @@
             close();
             return;
         }
-        // Backdrop click: target is the modal root itself.
-        if (e.target === modal) close();
+        // Backdrop click: only close if BOTH mousedown and mouseup landed on
+        // the modal root itself (not inside the dialog).
+        if (e.target === modal && mouseDownTarget === modal) {
+            close();
+        }
     });
 
     // Esc closes; Tab traps focus within dialog.
