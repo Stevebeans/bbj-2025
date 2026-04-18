@@ -221,6 +221,82 @@
         if (e.target.matches('form[data-bbj-auth-form="register"] input[name="email"]'))    checkEmail(e.target);
     });
 
+    function populateLinkCard() {
+        const view = modal.querySelector('[data-bbj-auth-view="link"]');
+        if (!view) return;
+        let gu = {};
+        try { gu = JSON.parse(modal.dataset.googleUser || '{}'); } catch (_) {}
+        const nameEl = view.querySelector('[data-bbj-link-name]');
+        const emailEl = view.querySelector('[data-bbj-link-email]');
+        const avatarEl = view.querySelector('[data-bbj-link-avatar]');
+        if (nameEl) nameEl.textContent = gu.name || '';
+        if (emailEl) emailEl.textContent = gu.email || '';
+        if (avatarEl && gu.picture) {
+            const img = document.createElement('img');
+            img.src = gu.picture;
+            img.alt = '';
+            img.referrerPolicy = 'no-referrer';
+            img.className = 'w-16 h-16 rounded-full mx-auto mb-2';
+            img.setAttribute('data-bbj-link-avatar', '');
+            avatarEl.replaceWith(img);
+        }
+    }
+
+    modal.addEventListener('bbj-auth:view', function (e) {
+        if (e.detail && e.detail.view === 'link') populateLinkCard();
+    });
+
+    async function handleLink(form) {
+        const view = form.closest('.bbj-modal-view');
+        setFormError(view, '');
+        const credential = modal.dataset.googleCredential;
+        if (!credential) { setFormError(view, 'Google sign-in expired. Please try again.'); return; }
+
+        const fd = new FormData(form);
+        const payload = {
+            credential,
+            username: (fd.get('username') || '').toString().trim(),
+            password: (fd.get('password') || '').toString(),
+            remember_me: !!fd.get('remember_me'),
+        };
+        if (!payload.username || !payload.password) {
+            setFormError(view, 'Username and password are required.');
+            return;
+        }
+        const restore = busy(form.querySelector('[data-bbj-submit]'), 'Linking…');
+        const { ok, data } = await postJSON('auth/link-google', payload);
+        if (ok && data && data.success) {
+            reloadOnSuccess();
+            setTimeout(restore, 3000);
+            return;
+        }
+        restore();
+        setFormError(view, (data && (data.error || data.message)) || 'Failed to link account.');
+    }
+
+    async function handleCreateFromGoogle(view, btn) {
+        setFormError(view, '');
+        const credential = modal.dataset.googleCredential;
+        if (!credential) { setFormError(view, 'Google sign-in expired. Please try again.'); return; }
+        const restore = busy(btn, 'Creating…');
+        const { ok, data } = await postJSON('auth/create-from-google', { credential, remember_me: true });
+        if (ok && data && data.success) {
+            reloadOnSuccess();
+            setTimeout(restore, 3000);
+            return;
+        }
+        restore();
+        setFormError(view, (data && (data.error || data.message)) || 'Failed to create account.');
+    }
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('[data-bbj-auth-create-from-google]');
+        if (!btn || !modal.contains(btn)) return;
+        e.preventDefault();
+        const view = btn.closest('.bbj-modal-view');
+        handleCreateFromGoogle(view, btn);
+    });
+
     // Delegated submit listener.
     document.addEventListener('submit', function (e) {
         const form = e.target.closest('[data-bbj-auth-form]');
@@ -229,6 +305,7 @@
         const kind = form.getAttribute('data-bbj-auth-form');
         if (kind === 'login')    return handleLogin(form);
         if (kind === 'register') return handleRegister(form);
+        if (kind === 'link')     return handleLink(form);
         // Other handlers attached in later tasks.
     });
 })();
