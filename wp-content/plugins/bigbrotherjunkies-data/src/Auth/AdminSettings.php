@@ -31,18 +31,44 @@ class AdminSettings
     }
 
     /**
+     * Option keys
+     */
+    public const OPTION_GIPHY_API_KEY = 'bbj_giphy_api_key';
+    public const OPTION_RECAPTCHA_SITE_KEY = 'bbj_recaptcha_site_key';
+    public const OPTION_RECAPTCHA_SECRET_KEY = 'bbj_recaptcha_secret_key';
+
+    /**
      * Register settings
      */
     public function registerSettings(): void
     {
-        // Register settings
+        // Register Google settings
         register_setting('bbjd_auth_settings', GoogleOAuth::OPTION_CLIENT_ID, [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
             'default' => '',
         ]);
 
-        // Add settings section
+        // Register Giphy settings
+        register_setting('bbjd_auth_settings', self::OPTION_GIPHY_API_KEY, [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => '',
+        ]);
+
+        // Register reCAPTCHA settings
+        register_setting('bbjd_auth_settings', self::OPTION_RECAPTCHA_SITE_KEY, [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => '',
+        ]);
+        register_setting('bbjd_auth_settings', self::OPTION_RECAPTCHA_SECRET_KEY, [
+            'type' => 'string',
+            'sanitize_callback' => 'sanitize_text_field',
+            'default' => '',
+        ]);
+
+        // Google OAuth section
         add_settings_section(
             'bbjd_google_oauth_section',
             __('Google Sign-In', 'bigbrotherjunkies-data'),
@@ -50,13 +76,52 @@ class AdminSettings
             'bbjd-auth-settings'
         );
 
-        // Add Client ID field
         add_settings_field(
             'bbjd_google_client_id',
             __('Google Client ID', 'bigbrotherjunkies-data'),
             [$this, 'renderClientIdField'],
             'bbjd-auth-settings',
             'bbjd_google_oauth_section'
+        );
+
+        // reCAPTCHA section
+        add_settings_section(
+            'bbjd_recaptcha_section',
+            __('reCAPTCHA v3', 'bigbrotherjunkies-data'),
+            [$this, 'renderRecaptchaSection'],
+            'bbjd-auth-settings'
+        );
+
+        add_settings_field(
+            'bbjd_recaptcha_site_key',
+            __('Site Key', 'bigbrotherjunkies-data'),
+            [$this, 'renderRecaptchaSiteKeyField'],
+            'bbjd-auth-settings',
+            'bbjd_recaptcha_section'
+        );
+
+        add_settings_field(
+            'bbjd_recaptcha_secret_key',
+            __('Secret Key', 'bigbrotherjunkies-data'),
+            [$this, 'renderRecaptchaSecretKeyField'],
+            'bbjd-auth-settings',
+            'bbjd_recaptcha_section'
+        );
+
+        // Giphy section
+        add_settings_section(
+            'bbjd_giphy_section',
+            __('Giphy API', 'bigbrotherjunkies-data'),
+            [$this, 'renderGiphySection'],
+            'bbjd-auth-settings'
+        );
+
+        add_settings_field(
+            'bbjd_giphy_api_key',
+            __('Giphy API Key', 'bigbrotherjunkies-data'),
+            [$this, 'renderGiphyApiKeyField'],
+            'bbjd-auth-settings',
+            'bbjd_giphy_section'
         );
     }
 
@@ -144,6 +209,131 @@ class AdminSettings
             <p class="description" style="color: #d63638;">
                 <span class="dashicons dashicons-warning"></span>
                 <?php esc_html_e('Google Sign-In is not configured. The Google button will be hidden on forms.', 'bigbrotherjunkies-data'); ?>
+            </p>
+        <?php endif;
+    }
+
+    /**
+     * Render the reCAPTCHA section description
+     */
+    public function renderRecaptchaSection(): void
+    {
+        ?>
+        <p><?php esc_html_e('Configure reCAPTCHA v3 to protect registration forms from bots.', 'bigbrotherjunkies-data'); ?></p>
+        <p><strong><?php esc_html_e('Setup Instructions:', 'bigbrotherjunkies-data'); ?></strong></p>
+        <ol style="margin-left: 20px; list-style: decimal;">
+            <li><?php esc_html_e('Go to', 'bigbrotherjunkies-data'); ?> <a href="https://www.google.com/recaptcha/admin" target="_blank">Google reCAPTCHA Admin</a></li>
+            <li><?php esc_html_e('Register a new site with reCAPTCHA v3', 'bigbrotherjunkies-data'); ?></li>
+            <li><?php esc_html_e('Add your domain:', 'bigbrotherjunkies-data'); ?> <code><?php echo esc_html(wp_parse_url(home_url(), PHP_URL_HOST)); ?></code></li>
+            <li><?php esc_html_e('Copy both keys below', 'bigbrotherjunkies-data'); ?></li>
+        </ol>
+        <?php
+    }
+
+    /**
+     * Render the reCAPTCHA site key field
+     */
+    public function renderRecaptchaSiteKeyField(): void
+    {
+        $siteKey = get_option(self::OPTION_RECAPTCHA_SITE_KEY, '');
+        ?>
+        <input
+            type="text"
+            id="bbjd_recaptcha_site_key"
+            name="<?php echo esc_attr(self::OPTION_RECAPTCHA_SITE_KEY); ?>"
+            value="<?php echo esc_attr($siteKey); ?>"
+            class="regular-text"
+            placeholder="6Le..."
+        >
+        <p class="description">
+            <?php esc_html_e('The public site key (used in frontend).', 'bigbrotherjunkies-data'); ?>
+        </p>
+        <?php
+    }
+
+    /**
+     * Render the reCAPTCHA secret key field
+     */
+    public function renderRecaptchaSecretKeyField(): void
+    {
+        $secretKey = get_option(self::OPTION_RECAPTCHA_SECRET_KEY, '');
+        ?>
+        <input
+            type="password"
+            id="bbjd_recaptcha_secret_key"
+            name="<?php echo esc_attr(self::OPTION_RECAPTCHA_SECRET_KEY); ?>"
+            value="<?php echo esc_attr($secretKey); ?>"
+            class="regular-text"
+            placeholder="6Le..."
+        >
+        <p class="description">
+            <?php esc_html_e('The secret key (used server-side for verification).', 'bigbrotherjunkies-data'); ?>
+        </p>
+        <?php
+        $siteKey = get_option(self::OPTION_RECAPTCHA_SITE_KEY, '');
+        if (!empty($siteKey) && !empty($secretKey)): ?>
+            <p class="description" style="color: green;">
+                <span class="dashicons dashicons-yes-alt"></span>
+                <?php esc_html_e('reCAPTCHA is configured and active.', 'bigbrotherjunkies-data'); ?>
+            </p>
+        <?php elseif (empty($siteKey) && empty($secretKey)): ?>
+            <p class="description" style="color: #d63638;">
+                <span class="dashicons dashicons-warning"></span>
+                <?php esc_html_e('reCAPTCHA is not configured. Registration forms will not have bot protection.', 'bigbrotherjunkies-data'); ?>
+            </p>
+        <?php else: ?>
+            <p class="description" style="color: #dba617;">
+                <span class="dashicons dashicons-warning"></span>
+                <?php esc_html_e('reCAPTCHA is partially configured. Both keys are required.', 'bigbrotherjunkies-data'); ?>
+            </p>
+        <?php endif;
+    }
+
+    /**
+     * Render the Giphy section description
+     */
+    public function renderGiphySection(): void
+    {
+        ?>
+        <p><?php esc_html_e('Configure Giphy API for GIF picker in comments.', 'bigbrotherjunkies-data'); ?></p>
+        <p><strong><?php esc_html_e('Setup Instructions:', 'bigbrotherjunkies-data'); ?></strong></p>
+        <ol style="margin-left: 20px; list-style: decimal;">
+            <li><?php esc_html_e('Go to', 'bigbrotherjunkies-data'); ?> <a href="https://developers.giphy.com/" target="_blank">Giphy Developers</a></li>
+            <li><?php esc_html_e('Create an account and click "Create an App"', 'bigbrotherjunkies-data'); ?></li>
+            <li><?php esc_html_e('Select "API" (not SDK) for the app type', 'bigbrotherjunkies-data'); ?></li>
+            <li><?php esc_html_e('Copy the API key below', 'bigbrotherjunkies-data'); ?></li>
+        </ol>
+        <p class="description"><?php esc_html_e('Free tier allows 100 requests/hour which is plenty for comment GIFs.', 'bigbrotherjunkies-data'); ?></p>
+        <?php
+    }
+
+    /**
+     * Render the Giphy API key field
+     */
+    public function renderGiphyApiKeyField(): void
+    {
+        $apiKey = get_option(self::OPTION_GIPHY_API_KEY, '');
+        ?>
+        <input
+            type="password"
+            id="bbjd_giphy_api_key"
+            name="<?php echo esc_attr(self::OPTION_GIPHY_API_KEY); ?>"
+            value="<?php echo esc_attr($apiKey); ?>"
+            class="regular-text"
+            placeholder="Enter your Giphy API key"
+        >
+        <p class="description">
+            <?php esc_html_e('Your Giphy API key. Kept server-side, never exposed to frontend.', 'bigbrotherjunkies-data'); ?>
+        </p>
+        <?php if (!empty($apiKey)): ?>
+            <p class="description" style="color: green;">
+                <span class="dashicons dashicons-yes-alt"></span>
+                <?php esc_html_e('Giphy API is configured. GIF picker will be available in comments.', 'bigbrotherjunkies-data'); ?>
+            </p>
+        <?php else: ?>
+            <p class="description" style="color: #dba617;">
+                <span class="dashicons dashicons-info"></span>
+                <?php esc_html_e('Giphy not configured. GIF picker will be hidden in comments.', 'bigbrotherjunkies-data'); ?>
             </p>
         <?php endif;
     }

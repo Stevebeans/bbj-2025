@@ -5,6 +5,10 @@ namespace BigBrotherJunkies\Data\Api;
 use BigBrotherJunkies\Data\Comments\CommentSchema;
 use BigBrotherJunkies\Data\Comments\CommentMigrator;
 use BigBrotherJunkies\Data\Comments\RankCalculator;
+use BigBrotherJunkies\Data\BugReports\BugReportSchema;
+use BigBrotherJunkies\Data\BugReports\BugReportMigrator;
+use BigBrotherJunkies\Data\Announcements\AnnouncementService;
+use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 /**
  * Admin API Routes
@@ -16,37 +20,6 @@ use BigBrotherJunkies\Data\Comments\RankCalculator;
  */
 class AdminRoutes
 {
-    /**
-     * Default admin permissions
-     */
-    public const DEFAULT_PERMISSIONS = [
-        'comment_moderation' => [
-            'label' => 'Moderate Comments',
-            'description' => 'View reports, approve/delete comments, manage blacklist',
-            'roles' => ['administrator', 'editor'],
-        ],
-        'feed_updates' => [
-            'label' => 'Feed Updater',
-            'description' => 'Post and edit live feed updates',
-            'roles' => ['administrator', 'updater'],
-        ],
-        'player_management' => [
-            'label' => 'Manage Players',
-            'description' => 'Add/edit player profiles',
-            'roles' => ['administrator', 'editor'],
-        ],
-        'season_management' => [
-            'label' => 'Manage Seasons',
-            'description' => 'Add/edit seasons, set current season',
-            'roles' => ['administrator'],
-        ],
-        'admin_settings' => [
-            'label' => 'Admin Settings',
-            'description' => 'Configure permissions and notifications',
-            'roles' => ['administrator'],
-        ],
-    ];
-
     public function register(): void
     {
         add_action('rest_api_init', [$this, 'registerRoutes']);
@@ -256,6 +229,34 @@ class AdminRoutes
             'permission_callback' => [$this, 'checkAdminSettingsAccess'],
         ]);
 
+        // Get users in a specific role (for info icon popovers)
+        register_rest_route($namespace, '/admin/role-members', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getRoleMembers'],
+            'permission_callback' => [$this, 'checkAdminSettingsAccess'],
+            'args' => [
+                'role' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
+        // Simulate permissions for a role (admin preview)
+        register_rest_route($namespace, '/admin/simulate-permissions', [
+            'methods' => 'GET',
+            'callback' => [$this, 'simulatePermissions'],
+            'permission_callback' => [$this, 'checkAdminSettingsAccess'],
+            'args' => [
+                'role' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+            ],
+        ]);
+
         // ========================================
         // DATABASE / MIGRATION
         // ========================================
@@ -313,6 +314,54 @@ class AdminRoutes
                 ],
             ],
         ]);
+
+        // ========================================
+        // ANNOUNCEMENTS
+        // ========================================
+
+        // Create an announcement
+        register_rest_route($namespace, '/admin/announcements', [
+            'methods' => 'POST',
+            'callback' => [$this, 'createAnnouncement'],
+            'permission_callback' => [$this, 'checkAnnouncementsAccess'],
+            'args' => [
+                'message' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_textarea_field',
+                    'validate_callback' => function ($value) {
+                        $len = strlen(trim($value));
+                        return $len >= 1 && $len <= 500;
+                    },
+                ],
+            ],
+        ]);
+
+        // Get announcements (admin history)
+        register_rest_route($namespace, '/admin/announcements', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getAnnouncements'],
+            'permission_callback' => [$this, 'checkAnnouncementsAccess'],
+            'args' => [
+                'page' => [
+                    'default' => 1,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+                'per_page' => [
+                    'default' => 20,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+            ],
+        ]);
+
+        // Delete an announcement
+        register_rest_route($namespace, '/admin/announcements/(?P<id>\d+)', [
+            'methods' => 'DELETE',
+            'callback' => [$this, 'deleteAnnouncement'],
+            'permission_callback' => [$this, 'checkAnnouncementsAccess'],
+        ]);
     }
 
     // ========================================
@@ -346,10 +395,20 @@ class AdminRoutes
             WHERE DATE(created_at) = %s
         ", $today));
 
+        // Get open bug reports count
+        $openBugReports = 0;
+        $bugTable = BugReportSchema::table(BugReportSchema::TABLE_BUG_REPORTS);
+        if (BugReportMigrator::tableExists(BugReportSchema::TABLE_BUG_REPORTS)) {
+            $openBugReports = (int) $wpdb->get_var("
+                SELECT COUNT(*) FROM {$bugTable} WHERE status IN ('open', 'in_progress')
+            ");
+        }
+
         return new \WP_REST_Response([
             'pending_reports' => $pendingReports,
             'today_comments' => $todayComments,
             'today_votes' => $todayVotes,
+            'open_bug_reports' => $openBugReports,
             'features' => $this->getUserFeatures(),
         ], 200);
     }
@@ -369,22 +428,7 @@ class AdminRoutes
      */
     private function getUserFeatures(): array
     {
-        $permissions = get_option('bbj_admin_permissions', self::DEFAULT_PERMISSIONS);
-        $user = wp_get_current_user();
-        $userRoles = $user->roles;
-
-        $features = [];
-        foreach ($permissions as $key => $permission) {
-            $hasAccess = !empty(array_intersect($userRoles, $permission['roles']));
-            if ($hasAccess) {
-                $features[$key] = [
-                    'label' => $permission['label'],
-                    'description' => $permission['description'],
-                ];
-            }
-        }
-
-        return $features;
+        return PermissionChecker::getUserFeatures();
     }
 
     // ========================================
@@ -946,7 +990,7 @@ class AdminRoutes
      */
     public function getSettings(): \WP_REST_Response
     {
-        $permissions = get_option('bbj_admin_permissions', self::DEFAULT_PERMISSIONS);
+        $permissions = PermissionChecker::getPermissionConfig();
         $notifications = get_option('bbj_admin_notifications', [
             'comment_reports' => [
                 'email' => get_option('admin_email'),
@@ -955,9 +999,35 @@ class AdminRoutes
             ],
         ]);
 
+        $currentSeasonCategory = (int) get_option('bbjd_current_season_category', 0);
+        $currentSeason = (int) get_option('bbj_v2_current_season', 0);
+
+        // Fetch all seasons (bigbrother-seasons CPT) for the dropdown
+        $seasonPosts = get_posts([
+            'post_type' => 'bigbrother-seasons',
+            'posts_per_page' => -1,
+            'post_status' => 'publish',
+            'orderby' => 'title',
+            'order' => 'DESC',
+        ]);
+
+        $seasonsList = array_map(function ($post) {
+            return ['id' => $post->ID, 'name' => $post->post_title];
+        }, $seasonPosts);
+
+        // Sort by season number descending
+        usort($seasonsList, function ($a, $b) {
+            $numA = (int) preg_replace('/\D/', '', $a['name']);
+            $numB = (int) preg_replace('/\D/', '', $b['name']);
+            return $numB - $numA;
+        });
+
         return new \WP_REST_Response([
             'permissions' => $permissions,
             'notifications' => $notifications,
+            'current_season_category' => $currentSeasonCategory,
+            'current_season' => $currentSeason,
+            'seasons_list' => $seasonsList,
         ], 200);
     }
 
@@ -974,6 +1044,19 @@ class AdminRoutes
 
         if (isset($params['notifications'])) {
             update_option('bbj_admin_notifications', $params['notifications']);
+        }
+
+        if (isset($params['current_season_category'])) {
+            update_option('bbjd_current_season_category', (int) $params['current_season_category']);
+        }
+
+        if (isset($params['current_season'])) {
+            update_option('bbj_v2_current_season', (int) $params['current_season']);
+            // Clear homepage cache so the new season shows immediately
+            delete_transient('bbjd_homepage_combined');
+            delete_transient('bbjd_homepage_hero');
+            delete_transient('bbjd_homepage_houseboard');
+            delete_transient('bbjd_homepage_season_stats');
         }
 
         return new \WP_REST_Response([
@@ -998,6 +1081,35 @@ class AdminRoutes
         }
 
         return new \WP_REST_Response($roles, 200);
+    }
+
+    /**
+     * Get users who have a specific role
+     */
+    public function getRoleMembers(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $role = $request->get_param('role');
+
+        $users = get_users([
+            'role' => $role,
+            'number' => 50,
+            'orderby' => 'display_name',
+            'order' => 'ASC',
+        ]);
+
+        $members = array_map(function ($user) {
+            return [
+                'id' => $user->ID,
+                'display_name' => $user->display_name,
+                'avatar' => get_avatar_url($user->ID, ['size' => 32]),
+            ];
+        }, $users);
+
+        return new \WP_REST_Response([
+            'role' => $role,
+            'count' => count($members),
+            'members' => $members,
+        ], 200);
     }
 
     // ========================================
@@ -1086,6 +1198,98 @@ class AdminRoutes
     }
 
     // ========================================
+    // ANNOUNCEMENT ENDPOINTS
+    // ========================================
+
+    /**
+     * Create an announcement
+     */
+    public function createAnnouncement(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $message = trim($request->get_param('message'));
+        $userId = get_current_user_id();
+
+        $id = AnnouncementService::create($message, $userId);
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'id' => $id,
+            'message' => 'Announcement sent',
+        ], 201);
+    }
+
+    /**
+     * Get announcements (admin history)
+     */
+    public function getAnnouncements(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $page = $request->get_param('page');
+        $perPage = min($request->get_param('per_page'), 50);
+
+        $result = AnnouncementService::getAll($page, $perPage);
+
+        return new \WP_REST_Response($result, 200);
+    }
+
+    /**
+     * Delete an announcement
+     */
+    public function deleteAnnouncement(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $id = (int) $request->get_param('id');
+
+        $success = AnnouncementService::delete($id);
+
+        if (!$success) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'Announcement not found',
+            ], 404);
+        }
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'message' => 'Announcement deleted',
+        ], 200);
+    }
+
+    // ========================================
+    // ROLE SIMULATION
+    // ========================================
+
+    /**
+     * Simulate permissions for a given role (admin preview mode)
+     */
+    public function simulatePermissions(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $role = $request->get_param('role');
+
+        global $wp_roles;
+        if (!isset($wp_roles->roles[$role])) {
+            return new \WP_REST_Response([
+                'error' => 'Invalid role',
+            ], 400);
+        }
+
+        $permissions = PermissionChecker::getPermissionConfig();
+
+        $features = [];
+        foreach ($permissions as $key => $permission) {
+            if (in_array($role, $permission['roles'], true)) {
+                $features[$key] = [
+                    'label' => $permission['label'],
+                    'description' => $permission['description'],
+                ];
+            }
+        }
+
+        return new \WP_REST_Response([
+            'role' => $role,
+            'features' => $features,
+        ], 200);
+    }
+
+    // ========================================
     // PERMISSION CALLBACKS
     // ========================================
 
@@ -1094,22 +1298,7 @@ class AdminRoutes
      */
     public function checkAdminAccess(): bool
     {
-        if (!is_user_logged_in()) {
-            return false;
-        }
-
-        $permissions = get_option('bbj_admin_permissions', self::DEFAULT_PERMISSIONS);
-        $user = wp_get_current_user();
-        $userRoles = $user->roles;
-
-        // Check if user has access to any feature
-        foreach ($permissions as $permission) {
-            if (!empty(array_intersect($userRoles, $permission['roles']))) {
-                return true;
-            }
-        }
-
-        return false;
+        return PermissionChecker::userCanAny();
     }
 
     /**
@@ -1129,23 +1318,18 @@ class AdminRoutes
     }
 
     /**
+     * Check if user has announcements access
+     */
+    public function checkAnnouncementsAccess(): bool
+    {
+        return $this->checkFeatureAccess('announcements');
+    }
+
+    /**
      * Check if user has access to a specific feature
      */
     private function checkFeatureAccess(string $feature): bool
     {
-        if (!is_user_logged_in()) {
-            return false;
-        }
-
-        $permissions = get_option('bbj_admin_permissions', self::DEFAULT_PERMISSIONS);
-
-        if (!isset($permissions[$feature])) {
-            return false;
-        }
-
-        $user = wp_get_current_user();
-        $userRoles = $user->roles;
-
-        return !empty(array_intersect($userRoles, $permissions[$feature]['roles']));
+        return PermissionChecker::userCan($feature);
     }
 }

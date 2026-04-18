@@ -2,6 +2,8 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\Comments\AvatarUploader;
+
 /**
  * Home Page API Routes
  *
@@ -35,6 +37,21 @@ class HomeRoutes
                     'default' => 0,
                     'type' => 'integer',
                     'sanitize_callback' => 'absint',
+                ],
+                'sort' => [
+                    'default' => 'newest',
+                    'type' => 'string',
+                    'enum' => ['newest', 'oldest', 'highest', 'lowest'],
+                ],
+                'date_range' => [
+                    'default' => 'all',
+                    'type' => 'string',
+                    'enum' => ['all', 'today', 'yesterday', 'week', 'month', 'year'],
+                ],
+                'search' => [
+                    'default' => '',
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
                 ],
             ],
         ]);
@@ -74,6 +91,42 @@ class HomeRoutes
             ],
         ]);
 
+        // Lightweight posts endpoint (replaces slow wp/v2/posts?_embed)
+        register_rest_route('bbjd/v1', '/posts', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getPosts'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'per_page' => [
+                    'default' => 10,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+                'page' => [
+                    'default' => 1,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+                'category' => [
+                    'default' => 0,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+                'tag' => [
+                    'default' => 0,
+                    'type' => 'integer',
+                    'sanitize_callback' => 'absint',
+                ],
+            ],
+        ]);
+
+        // Combined homepage endpoint (single request for all homepage data)
+        register_rest_route('bbjd/v1', '/homepage', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getHomepage'],
+            'permission_callback' => '__return_true',
+        ]);
+
         // Feed updates by date (for blog post live feed threads)
         register_rest_route('bbjd/v1', '/feed-updates-by-date', [
             'methods' => 'GET',
@@ -95,26 +148,140 @@ class HomeRoutes
      */
     public function getFeedUpdates(\WP_REST_Request $request): array
     {
+        global $wpdb;
+
         $perPage = min($request->get_param('per_page'), 30);
         $offset = $request->get_param('offset');
+        $sort = $request->get_param('sort') ?? 'newest';
+        $dateRange = $request->get_param('date_range') ?? 'all';
+        $search = $request->get_param('search') ?? '';
 
-        $query = new \WP_Query([
+        // Build query args
+        $args = [
             'post_type' => 'live-feed-updates',
             'posts_per_page' => $perPage,
             'offset' => $offset,
-            'orderby' => 'modified',
-            'order' => 'DESC',
             'post_status' => 'publish',
-            'no_found_rows' => true,
             'ignore_sticky_posts' => true,
-        ]);
+        ];
+
+        // Sorting
+        switch ($sort) {
+            case 'oldest':
+                $args['orderby'] = 'modified';
+                $args['order'] = 'ASC';
+                break;
+            case 'highest':
+                // Sort by total rating (requires join with ratings table)
+                $args['orderby'] = 'meta_value_num';
+                $args['meta_key'] = '_total_rating_cache';
+                $args['order'] = 'DESC';
+                break;
+            case 'lowest':
+                $args['orderby'] = 'meta_value_num';
+                $args['meta_key'] = '_total_rating_cache';
+                $args['order'] = 'ASC';
+                break;
+            case 'newest':
+            default:
+                $args['orderby'] = 'modified';
+                $args['order'] = 'DESC';
+                break;
+        }
+
+        // Date range filtering
+        if ($dateRange !== 'all') {
+            $args['date_query'] = [];
+            $tz = wp_timezone();
+            $now = new \DateTime('now', $tz);
+
+            switch ($dateRange) {
+                case 'today':
+                    $args['date_query'][] = [
+                        'after' => $now->format('Y-m-d 00:00:00'),
+                    ];
+                    break;
+                case 'yesterday':
+                    $yesterday = (clone $now)->modify('-1 day');
+                    $args['date_query'][] = [
+                        'after' => $yesterday->format('Y-m-d 00:00:00'),
+                        'before' => $now->format('Y-m-d 00:00:00'),
+                    ];
+                    break;
+                case 'week':
+                    $args['date_query'][] = [
+                        'after' => '1 week ago',
+                    ];
+                    break;
+                case 'month':
+                    $args['date_query'][] = [
+                        'after' => '1 month ago',
+                    ];
+                    break;
+                case 'year':
+                    $args['date_query'][] = [
+                        'after' => '1 year ago',
+                    ];
+                    break;
+            }
+        }
+
+        // Search
+        if (!empty($search)) {
+            $args['s'] = $search;
+        }
+
+        // For rating sort, we need found_rows for proper pagination
+        // For other sorts, we can skip it for performance
+        $args['no_found_rows'] = !in_array($sort, ['highest', 'lowest']);
+
+        $query = new \WP_Query($args);
 
         $updates = [];
+        $ratingsTable = $wpdb->prefix . 'bbj_feed_ratings';
+        $currentUserId = get_current_user_id();
 
         while ($query->have_posts()) {
             $query->the_post();
             $postId = get_the_ID();
             $authorId = (int) get_the_author_meta('ID');
+
+            // Get vote data
+            $totalVotes = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COALESCE(SUM(rating), 0) FROM {$ratingsTable} WHERE update_id = %d",
+                $postId
+            ));
+
+            $userVote = 0;
+            if ($currentUserId > 0) {
+                $userVote = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT rating FROM {$ratingsTable} WHERE update_id = %d AND user_id = %d",
+                    $postId,
+                    $currentUserId
+                ));
+            }
+
+            // Get recent comments (last 3)
+            $recentComments = get_comments([
+                'post_id' => $postId,
+                'status' => 'approve',
+                'number' => 3,
+                'orderby' => 'comment_date',
+                'order' => 'DESC',
+            ]);
+
+            $formattedComments = array_map(function ($comment) {
+                $content = wp_strip_all_tags($comment->comment_content);
+                // Truncate to ~60 chars for single line display
+                $truncated = mb_strlen($content) > 60
+                    ? mb_substr($content, 0, 57) . '...'
+                    : $content;
+
+                return [
+                    'author' => $comment->comment_author,
+                    'content' => $truncated,
+                ];
+            }, $recentComments);
 
             $updates[] = [
                 'id' => $postId,
@@ -130,10 +297,16 @@ class HomeRoutes
                 'time_ago' => human_time_diff(get_the_modified_time('U'), current_time('timestamp')) . ' ago',
                 'thumbnail' => get_the_post_thumbnail_url($postId, 'medium') ?: null,
                 'comment_count' => (int) get_comments_number(),
+                'recent_comments' => $formattedComments,
+                'mode' => get_post_meta($postId, '_feed_update_mode', true) ?: 'feed',
+                'votes' => [
+                    'total' => $totalVotes,
+                    'user_vote' => $userVote,
+                ],
                 'author' => [
                     'id' => $authorId,
                     'name' => get_the_author_meta('display_name'),
-                    'avatar' => get_avatar_url($authorId, ['size' => 64]),
+                    'avatar' => AvatarUploader::getAvatarUrl($authorId, 64),
                 ],
             ];
         }
@@ -351,7 +524,7 @@ class HomeRoutes
             ],
             'author' => [
                 'name' => get_the_author_meta('display_name'),
-                'avatar' => get_avatar_url(get_the_author_meta('ID'), ['size' => 48]),
+                'avatar' => AvatarUploader::getAvatarUrl((int) get_the_author_meta('ID'), 48),
             ],
         ];
 
@@ -428,6 +601,141 @@ class HomeRoutes
     }
 
     /**
+     * Get posts — lightweight replacement for wp/v2/posts?_embed
+     * Single query with joined author/image/category data instead of N+1
+     */
+    public function getPosts(\WP_REST_Request $request): array
+    {
+        $perPage = min($request->get_param('per_page'), 30);
+        $page = max(1, $request->get_param('page'));
+        $category = $request->get_param('category');
+        $tag = $request->get_param('tag');
+
+        // Build a cache key based on params
+        $cacheKey = "bbjd_posts_{$perPage}_{$page}_{$category}_{$tag}";
+        $cached = get_transient($cacheKey);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        $args = [
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => $perPage,
+            'paged' => $page,
+            'orderby' => 'date',
+            'order' => 'DESC',
+            'ignore_sticky_posts' => true,
+            'no_found_rows' => true,
+        ];
+
+        if ($category > 0) {
+            $args['cat'] = $category;
+        }
+
+        if ($tag > 0) {
+            $args['tag_id'] = $tag;
+        }
+
+        $query = new \WP_Query($args);
+        $posts = [];
+
+        while ($query->have_posts()) {
+            $query->the_post();
+            $postId = get_the_ID();
+            $authorId = (int) get_the_author_meta('ID');
+
+            // Get categories directly — cheaper than _embed
+            $cats = get_the_category($postId);
+            $categoryNames = [];
+            $categoryIds = [];
+            foreach ($cats as $cat) {
+                $categoryNames[] = $cat->name;
+                $categoryIds[] = $cat->term_id;
+            }
+
+            // Get featured image URL — single meta lookup
+            $thumbUrl = get_the_post_thumbnail_url($postId, 'medium_large') ?: null;
+
+            // Get excerpt
+            $excerpt = get_the_excerpt($postId);
+
+            $posts[] = [
+                'id' => $postId,
+                'slug' => get_post_field('post_name', $postId),
+                'title' => html_entity_decode(get_the_title(), ENT_QUOTES, 'UTF-8'),
+                'excerpt' => $excerpt,
+                'content' => apply_filters('the_content', get_the_content()),
+                'date' => get_the_date('c'),
+                'modified' => get_the_modified_date('c'),
+                'author' => [
+                    'id' => $authorId,
+                    'name' => get_the_author_meta('display_name'),
+                    'avatar' => AvatarUploader::getAvatarUrl($authorId, 96),
+                ],
+                'featuredImage' => $thumbUrl,
+                'categories' => $categoryNames,
+                'categoryIds' => $categoryIds,
+                'commentCount' => (int) get_comments_number(),
+                'liveFeedThread' => (bool) get_post_meta($postId, '_live_feed_thread', true),
+                'hideAds' => (bool) get_post_meta($postId, '_hide_ads', true),
+            ];
+        }
+
+        wp_reset_postdata();
+
+        $result = ['posts' => $posts];
+
+        // Cache for 60 seconds
+        set_transient($cacheKey, $result, 60);
+
+        return $result;
+    }
+
+    /**
+     * Combined homepage endpoint — all data in one request
+     * Eliminates 6 parallel API calls that compete for PHP workers
+     */
+    public function getHomepage(): array
+    {
+        $cacheKey = 'bbjd_homepage_combined';
+        $cached = get_transient($cacheKey);
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        // Build mock requests with homepage defaults
+        $feedRequest = new \WP_REST_Request('GET', '/bbjd/v1/feed-updates');
+        $feedRequest->set_param('per_page', 15);
+        $feedRequest->set_param('offset', 0);
+        $feedRequest->set_param('sort', 'newest');
+        $feedRequest->set_param('date_range', 'all');
+        $feedRequest->set_param('search', '');
+
+        $commentsRequest = new \WP_REST_Request('GET', '/bbjd/v1/recent-comments');
+        $commentsRequest->set_param('per_page', 5);
+
+        $postsRequest = new \WP_REST_Request('GET', '/bbjd/v1/posts');
+        $postsRequest->set_param('per_page', 10);
+        $postsRequest->set_param('page', 1);
+        $postsRequest->set_param('category', 0);
+
+        $result = [
+            'hero' => $this->getHeroPost(),
+            'feedUpdates' => $this->getFeedUpdates($feedRequest),
+            'houseboard' => $this->getHouseboard(),
+            'seasonStats' => $this->getSeasonStats(),
+            'recentComments' => $this->getRecentComments($commentsRequest),
+            'posts' => $this->getPosts($postsRequest),
+        ];
+
+        // Cache for 60 seconds
+        set_transient($cacheKey, $result, 60);
+
+        return $result;
+    }
+
+    /**
      * Get feed updates for a specific date
      * Used for "Live Feed Thread" feature on blog posts
      */
@@ -480,7 +788,7 @@ class HomeRoutes
                 'author' => [
                     'id' => $authorId,
                     'name' => get_the_author_meta('display_name'),
-                    'avatar' => get_avatar_url($authorId, ['size' => 32]),
+                    'avatar' => AvatarUploader::getAvatarUrl($authorId, 32),
                 ],
             ];
         }

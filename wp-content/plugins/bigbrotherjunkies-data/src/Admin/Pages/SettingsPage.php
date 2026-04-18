@@ -43,19 +43,33 @@ class SettingsPage
             ? array_map('sanitize_text_field', (array) $_POST['auto_insert_post_types'])
             : ['post'];
 
-        // Header/Footer code - allow scripts for ad networks
-        // Using wp_kses with allowed HTML for scripts
-        $headerCode = isset($_POST['header_code']) ? wp_unslash($_POST['header_code']) : '';
-        $footerCode = isset($_POST['footer_code']) ? wp_unslash($_POST['footer_code']) : '';
+        // Global scripts (all users, always loaded)
+        $globalHeaderCode = isset($_POST['global_header_code']) ? wp_unslash($_POST['global_header_code']) : '';
+        $globalFooterCode = isset($_POST['global_footer_code']) ? wp_unslash($_POST['global_footer_code']) : '';
+
+        // Ad network scripts (hidden for ad-free roles)
+        $adHeaderCode = isset($_POST['ad_header_code']) ? wp_unslash($_POST['ad_header_code']) : '';
+        $adFooterCode = isset($_POST['ad_footer_code']) ? wp_unslash($_POST['ad_footer_code']) : '';
+
+        // Migrate old header_code/footer_code to ad fields if they exist and new fields are empty
+        if (empty($adHeaderCode) && !empty($_POST['header_code'])) {
+            $adHeaderCode = wp_unslash($_POST['header_code']);
+        }
+        if (empty($adFooterCode) && !empty($_POST['footer_code'])) {
+            $adFooterCode = wp_unslash($_POST['footer_code']);
+        }
 
         $settings = [
+            'enable_ads' => !empty($_POST['enable_ads']),
             'global_hidden_roles' => $globalHiddenRoles,
             'auto_insert_post_types' => $autoInsertPostTypes,
             'auto_insert_default_interval' => intval($_POST['auto_insert_default_interval'] ?? 4),
             'auto_insert_max_per_post' => intval($_POST['auto_insert_max_per_post'] ?? 3),
             'cache_ttl' => intval($_POST['cache_ttl'] ?? 300),
-            'header_code' => $headerCode,
-            'footer_code' => $footerCode,
+            'global_header_code' => $globalHeaderCode,
+            'global_footer_code' => $globalFooterCode,
+            'ad_header_code' => $adHeaderCode,
+            'ad_footer_code' => $adFooterCode,
         ];
 
         $adManager->updateSettings($settings);
@@ -95,14 +109,36 @@ class SettingsPage
                     <?php wp_nonce_field('bbjd_save_settings'); ?>
                     <input type="hidden" name="action" value="bbjd_save_settings">
 
-                    <!-- Global Role Hiding -->
+                    <!-- Global Ad Toggle -->
+                    <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6 bbjd-mb-6">
+                        <div class="bbjd-flex bbjd-items-center bbjd-justify-between">
+                            <div>
+                                <h2 class="bbjd-text-xl bbjd-font-semibold bbjd-text-gray-800 bbjd-mb-1">
+                                    Enable Ads
+                                </h2>
+                                <p class="bbjd-text-gray-600 bbjd-text-sm">
+                                    Master switch to enable or disable all ads site-wide. When off, no ad slots or ad network scripts will load for anyone.
+                                </p>
+                            </div>
+                            <label class="bbjd-relative bbjd-inline-flex bbjd-items-center bbjd-cursor-pointer bbjd-ml-4 bbjd-shrink-0">
+                                <input type="checkbox"
+                                       name="enable_ads"
+                                       value="1"
+                                       <?php checked($settings['enable_ads'] ?? true); ?>
+                                       class="bbjd-sr-only bbjd-peer">
+                                <div class="bbjd-w-11 bbjd-h-6 bbjd-bg-gray-300 bbjd-rounded-full peer-checked:bbjd-bg-green-500 bbjd-transition-colors after:bbjd-content-[''] after:bbjd-absolute after:bbjd-top-[2px] after:bbjd-left-[2px] after:bbjd-bg-white after:bbjd-rounded-full after:bbjd-h-5 after:bbjd-w-5 after:bbjd-transition-transform peer-checked:after:bbjd-translate-x-5"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Supporter Roles -->
                     <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6 bbjd-mb-6">
                         <h2 class="bbjd-text-xl bbjd-font-semibold bbjd-text-gray-800 bbjd-mb-2">
-                            Global Ad-Free Roles
+                            ⭐ Supporter Roles
                         </h2>
                         <p class="bbjd-text-gray-600 bbjd-text-sm bbjd-mb-4">
-                            Users with these roles will see <strong>NO ads</strong> anywhere on the site.
-                            This setting overrides all per-slot settings.
+                            Users with these roles get <strong>premium/supporter benefits</strong>:
+                            ad-free experience, quick reply on feed updates, priority notifications, and more.
                         </p>
 
                         <div class="bbjd-grid bbjd-grid-cols-2 md:bbjd-grid-cols-3 lg:bbjd-grid-cols-4 bbjd-gap-3">
@@ -119,50 +155,81 @@ class SettingsPage
                         </div>
 
                         <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mt-3">
-                            Tip: Use this for ad-free membership tiers. Users with checked roles get a completely ad-free experience.
+                            Tip: Check roles that should have supporter status. This controls ad-free browsing, quick reply, and other premium features.
                         </p>
                     </div>
 
-                    <!-- Header/Footer Code -->
+                    <!-- Global Scripts (All Users) -->
                     <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6 bbjd-mb-6">
                         <h2 class="bbjd-text-xl bbjd-font-semibold bbjd-text-gray-800 bbjd-mb-2">
-                            Header &amp; Footer Code
+                            🌐 Global Scripts (All Users)
                         </h2>
                         <p class="bbjd-text-gray-600 bbjd-text-sm bbjd-mb-4">
-                            Add scripts from ad networks (Freestar, Google AdSense, etc.) that need to be loaded in the header or footer.
-                            These will be injected on all frontend pages.
+                            Scripts here load for <strong>every user</strong>, including ad-free/premium members.
+                            Use this for analytics, tracking pixels, and site-wide tools.
                         </p>
 
                         <div class="bbjd-space-y-4">
                             <div>
                                 <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-2">
-                                    Header Code <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs in &lt;head&gt;)</span>
+                                    Header <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs in &lt;head&gt;)</span>
                                 </label>
-                                <textarea name="header_code" rows="6"
+                                <textarea name="global_header_code" rows="5"
                                           class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-font-mono bbjd-text-sm"
-                                          placeholder="<!-- Paste your header scripts here -->"><?php echo esc_textarea($settings['header_code'] ?? ''); ?></textarea>
+                                          placeholder="<!-- Google Analytics, tracking pixels, etc. -->"><?php echo esc_textarea($settings['global_header_code'] ?? ''); ?></textarea>
                                 <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mt-1">
-                                    Common uses: Google AdSense async script, Freestar initialization, analytics scripts.
+                                    Example: Google Analytics, Google Tag Manager, site verification tags.
                                 </p>
                             </div>
 
                             <div>
                                 <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-2">
-                                    Footer Code <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs before &lt;/body&gt;)</span>
+                                    Footer <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs before &lt;/body&gt;)</span>
                                 </label>
-                                <textarea name="footer_code" rows="6"
+                                <textarea name="global_footer_code" rows="5"
                                           class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-font-mono bbjd-text-sm"
-                                          placeholder="<!-- Paste your footer scripts here -->"><?php echo esc_textarea($settings['footer_code'] ?? ''); ?></textarea>
+                                          placeholder="<!-- Footer scripts for all users -->"><?php echo esc_textarea($settings['global_footer_code'] ?? ''); ?></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Ad Network Scripts (Hidden for Ad-Free) -->
+                    <div class="bbjd-bg-white bbjd-rounded-lg bbjd-shadow bbjd-p-6 bbjd-mb-6">
+                        <h2 class="bbjd-text-xl bbjd-font-semibold bbjd-text-gray-800 bbjd-mb-2">
+                            🚫 Ad Network Scripts (Hidden for Ad-Free)
+                        </h2>
+                        <p class="bbjd-text-gray-600 bbjd-text-sm bbjd-mb-4">
+                            Scripts here are <strong>completely blocked</strong> for users with supporter roles above.
+                            No ad network code loads at all &mdash; no popups, no overlays, nothing.
+                        </p>
+
+                        <div class="bbjd-space-y-4">
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-2">
+                                    Header <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs in &lt;head&gt;)</span>
+                                </label>
+                                <textarea name="ad_header_code" rows="5"
+                                          class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-font-mono bbjd-text-sm"
+                                          placeholder="<!-- Freestar, AdSense, ad network initialization -->"><?php echo esc_textarea($settings['ad_header_code'] ?? $settings['header_code'] ?? ''); ?></textarea>
                                 <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mt-1">
-                                    Common uses: Scripts that should load after page content, tracking pixels.
+                                    Example: Google AdSense async script, Freestar initialization, ad network SDKs.
                                 </p>
+                            </div>
+
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-2">
+                                    Footer <span class="bbjd-text-gray-400 bbjd-font-normal">(outputs before &lt;/body&gt;)</span>
+                                </label>
+                                <textarea name="ad_footer_code" rows="5"
+                                          class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-font-mono bbjd-text-sm"
+                                          placeholder="<!-- Ad network footer scripts -->"><?php echo esc_textarea($settings['ad_footer_code'] ?? $settings['footer_code'] ?? ''); ?></textarea>
                             </div>
                         </div>
 
-                        <div class="bbjd-mt-4 bbjd-p-3 bbjd-bg-yellow-50 bbjd-rounded bbjd-border bbjd-border-yellow-200">
-                            <p class="bbjd-text-xs bbjd-text-yellow-800">
-                                <strong>Note:</strong> Code here is output for all users. If you want to hide scripts for ad-free roles,
-                                the ad network scripts should handle that via their own targeting, or you can use conditional logic in your theme.
+                        <div class="bbjd-mt-4 bbjd-p-3 bbjd-bg-green-50 bbjd-rounded bbjd-border bbjd-border-green-200">
+                            <p class="bbjd-text-xs bbjd-text-green-800">
+                                <strong>How it works:</strong> Users with supporter roles checked above will never have these scripts loaded.
+                                This prevents ad networks from injecting popups, overlays, or any unwanted content for your premium members.
                             </p>
                         </div>
                     </div>

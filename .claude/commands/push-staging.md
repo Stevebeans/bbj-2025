@@ -17,23 +17,19 @@ If there are merge conflicts, stop and let me know so I can resolve them.
 
 ## Staging deploy (runs after git push succeeds)
 
-The `bigbrotherjunkies-data` plugin lives in the `bbj-app` repo and is
-symlinked into bbj's plugins dir, so that repo needs a separate staging
-push. Do both:
+Both the theme and the `bigbrotherjunkies-data` plugin live in this (bbj)
+repo now — no more bbj-app hop. Run:
 
-8. **Plugin deploy** — in the **bbj-app** repo, switch to its staging branch
-   (also called `staging`), pull, then run:
+8. **Plugin deploy:**
    ```bash
-   cd /c/xampp/htdocs/bbj-app
-   git checkout staging && git pull
    bash .claude/scripts/deploy-plugin.sh --staging
    ```
-9. **Theme deploy** — from the bbj repo:
+9. **Theme deploy:**
    ```bash
-   bash /c/xampp/htdocs/bbj-app/.claude/scripts/deploy-theme.sh --staging
+   bash .claude/scripts/deploy-theme.sh --staging
    ```
-   (Script builds Tailwind before transferring; excludes `node_modules`,
-   `src/`, `.git`, and Tailwind config files.)
+   (Builds Tailwind before transferring; excludes `node_modules`, `src/css`,
+   `.git`, and Tailwind config files.)
 
 Both scripts push via SSH (`bbj-staging` alias) to Cloudways at
 `/home/1358704.cloudwaysapps.com/ftgtnduhbt/public_html/wp-content/`.
@@ -41,7 +37,7 @@ Both scripts push via SSH (`bbj-staging` alias) to Cloudways at
 ## After deploy
 
 10. Remind me that staging is live at **https://stg-wp.bigbrotherjunkies.com/**
-    and I may need to clear the Breeze/Varnish/Redis cache via Cloudways
+    and I may need to clear Breeze/Varnish/Redis cache via the Cloudways
     dashboard or WP admin.
 11. Ask if I want to delete the feature branch (local and remote).
 

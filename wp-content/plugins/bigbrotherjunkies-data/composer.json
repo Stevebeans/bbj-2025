@@ -4,7 +4,9 @@
     "type": "wordpress-plugin",
     "license": "GPL-2.0-or-later",
     "require": {
-        "php": "^7.4 || ^8.0"
+        "php": "^7.4 || ^8.0",
+        "firebase/php-jwt": "^6.0",
+        "google/analytics-data": "^0.23.2"
     },
     "autoload": {
         "psr-4": {

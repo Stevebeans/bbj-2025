@@ -148,6 +148,7 @@ class SpoilerBarRoutes
                 'name' => $season['full_name'] ?? '',
                 'season_number' => (int) ($season['season_number'] ?? 0),
                 'show_type' => $season['show_type'] ?? 'bb',
+                'afp_id' => isset($season['afp']) ? (int) $season['afp'] : null,
             ],
             'players' => $formattedPlayers,
             'count' => count($formattedPlayers),
@@ -196,9 +197,32 @@ class SpoilerBarRoutes
 
     /**
      * Sort players by spoiler weight (HoH > PoV > Active > Nom > Jury > Evicted)
+     *
+     * Sorting priority:
+     * 1. Active players first (no finish_place), sorted by status weight then name
+     * 2. Eliminated players by finish_place ASC (1=winner first, then runner-up, etc.)
+     * 3. Fallback to evicted_date DESC if finish_place not set
      */
     private function sortBySpoilerWeight(array $a, array $b): int
     {
+        // Check if either player has finish_place (is eliminated with placement)
+        $finishA = isset($a['finish_place']) && $a['finish_place'] !== null ? (int)$a['finish_place'] : null;
+        $finishB = isset($b['finish_place']) && $b['finish_place'] !== null ? (int)$b['finish_place'] : null;
+
+        // Both have finish_place - sort by placement (1=winner first)
+        if ($finishA !== null && $finishB !== null) {
+            return $finishA <=> $finishB;
+        }
+
+        // One has finish_place, one doesn't - active players (no finish_place) come first
+        if ($finishA !== null && $finishB === null) {
+            return 1; // A is eliminated, B is active -> B first
+        }
+        if ($finishA === null && $finishB !== null) {
+            return -1; // A is active, B is eliminated -> A first
+        }
+
+        // Neither has finish_place - use status weight sorting
         $wa = $this->getSpoilerWeight($a);
         $wb = $this->getSpoilerWeight($b);
 
@@ -261,6 +285,11 @@ class SpoilerBarRoutes
      */
     private function getStatusLabel(array $player): string
     {
+        // Check finish_place first for winner/runner-up
+        $finishPlace = isset($player['finish_place']) ? (int) $player['finish_place'] : null;
+        if ($finishPlace === 1) return 'Winner';
+        if ($finishPlace === 2) return '2nd';
+
         $labels = [];
         if (!empty($player['current_hoh']))     $labels[] = 'HoH';
         if (!empty($player['current_pov']))     $labels[] = 'PoV';
@@ -280,10 +309,18 @@ class SpoilerBarRoutes
      */
     private function getStatusColor(array $player): string
     {
+        // Check finish_place first for winner/runner-up (takes priority over all other statuses)
+        $finishPlace = isset($player['finish_place']) ? (int) $player['finish_place'] : null;
+        if ($finishPlace === 1) return 'winner';
+        if ($finishPlace === 2) return 'runner_up';
+
+        // Eliminated statuses
+        if (!empty($player['current_jury']))    return 'jury';
+        if (!empty($player['current_evicted'])) return 'evicted';
+
+        // Active game statuses
         if (!empty($player['current_hoh']))     return 'hoh';
         if (!empty($player['current_pov']))     return 'pov';
-        if (!empty($player['current_evicted'])) return 'evicted';
-        if (!empty($player['current_jury']))    return 'jury';
         if (!empty($player['current_nom']))     return 'nom';
         if (!empty($player['current_havenot'])) return 'havenot';
         if (!empty($player['current_safe']))    return 'safe';
@@ -311,6 +348,9 @@ class SpoilerBarRoutes
             'permalink'     => $player['permalink'] ?? '',
             'status'        => $this->getStatusColor($player),
             'status_label'  => $this->getStatusLabel($player),
+            'finish_place'  => isset($player['finish_place']) && $player['finish_place'] !== null
+                                ? (int) $player['finish_place']
+                                : null,
         ];
     }
 
@@ -330,6 +370,9 @@ class SpoilerBarRoutes
             'photo_height'      => (int) ($player['profile_picture_height'] ?? 0),
             'evicted_date'      => $player['bbj_evicted_date'] ?? null,
             'eviction_order'    => (int) ($player['bbj_eviction_order'] ?? 0),
+            'finish_place'      => isset($player['finish_place']) && $player['finish_place'] !== null
+                                    ? (int) $player['finish_place']
+                                    : null,
             'social' => [
                 'twitter'   => $player['bbj_twitter'] ?? null,
                 'instagram' => $player['bbj_instagram'] ?? null,

@@ -70,6 +70,9 @@ class SlotsPage
             : [];
         $settings['hidden_roles'] = $hiddenRoles;
 
+        // Branded display setting
+        $settings['show_branding'] = !empty($_POST['slot_show_branding']);
+
         $slot->settings = $settings;
 
         if ($isNew) {
@@ -181,6 +184,24 @@ class SlotsPage
                                         <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">Description</label>
                                         <textarea name="slot_description" rows="2"
                                                   class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-text-sm"><?php echo esc_textarea($editSlot->description ?? ''); ?></textarea>
+                                    </div>
+
+                                    <!-- Branded display -->
+                                    <div class="bbjd-flex bbjd-items-start bbjd-space-x-3 bbjd-pt-3 bbjd-border-t">
+                                        <input type="checkbox"
+                                               name="slot_show_branding"
+                                               id="slot_show_branding"
+                                               value="1"
+                                               <?php checked($editSlot ? $editSlot->getSetting('show_branding', false) : false); ?>
+                                               class="bbjd-rounded bbjd-border-gray-300 bbjd-text-primary500 bbjd-mt-1">
+                                        <div>
+                                            <label for="slot_show_branding" class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700">
+                                                Branded Display
+                                            </label>
+                                            <p class="bbjd-text-xs bbjd-text-gray-500">
+                                                Shows "Advertisement" header and "Go Ad-Free" footer around the ad slot.
+                                            </p>
+                                        </div>
                                     </div>
 
                                     <!-- Per-slot role hiding -->

@@ -10,6 +10,8 @@ class Schema
     public const TABLE_ADS = 'bbjd_ads';
     public const TABLE_SLOTS = 'bbjd_ad_slots';
     public const TABLE_ASSIGNMENTS = 'bbjd_ad_slot_assignments';
+    public const TABLE_CONTENT_QUEUE = 'bbj_content_queue';
+    public const TABLE_NEWS_FEED = 'bbj_news_feed';
 
     /**
      * Get full table name with prefix
@@ -97,6 +99,66 @@ class Schema
     }
 
     /**
+     * Get the content queue table schema
+     */
+    public static function getContentQueueTableSchema(): string
+    {
+        $table = self::table(self::TABLE_CONTENT_QUEUE);
+        $charset = self::getCharset();
+
+        return "CREATE TABLE IF NOT EXISTS {$table} (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            status ENUM('draft','scheduled','posted','failed') DEFAULT 'draft',
+            source ENUM('manual','image_paste','news_scan','template','on_this_day') DEFAULT 'manual',
+            content_type ENUM('facebook_post','blog_post','both') DEFAULT 'facebook_post',
+            title VARCHAR(255) DEFAULT NULL,
+            body TEXT NOT NULL,
+            image_url VARCHAR(500) DEFAULT NULL,
+            image_data LONGBLOB DEFAULT NULL,
+            target_page VARCHAR(50) DEFAULT NULL,
+            target_page_name VARCHAR(100) DEFAULT NULL,
+            wp_post_id BIGINT DEFAULT NULL,
+            scheduled_at DATETIME DEFAULT NULL,
+            posted_at DATETIME DEFAULT NULL,
+            fb_post_id VARCHAR(100) DEFAULT NULL,
+            template_type VARCHAR(50) DEFAULT NULL,
+            source_url VARCHAR(500) DEFAULT NULL,
+            ai_variations TEXT DEFAULT NULL,
+            author_id BIGINT UNSIGNED DEFAULT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            INDEX idx_status (status),
+            INDEX idx_scheduled (status, scheduled_at),
+            INDEX idx_source (source),
+            INDEX idx_target_page (target_page)
+        ) {$charset};";
+    }
+
+    /**
+     * Get the news feed table schema
+     */
+    public static function getNewsFeedTableSchema(): string
+    {
+        $table = self::table(self::TABLE_NEWS_FEED);
+        $charset = self::getCharset();
+
+        return "CREATE TABLE IF NOT EXISTS {$table} (
+            id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+            title VARCHAR(500) NOT NULL,
+            url VARCHAR(500) NOT NULL,
+            source_name VARCHAR(100) DEFAULT NULL,
+            excerpt TEXT DEFAULT NULL,
+            thumbnail VARCHAR(500) DEFAULT NULL,
+            published_at DATETIME DEFAULT NULL,
+            fetched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            used TINYINT(1) DEFAULT 0,
+            UNIQUE KEY idx_url (url(191)),
+            INDEX idx_published (published_at),
+            INDEX idx_used (used)
+        ) {$charset};";
+    }
+
+    /**
      * Get all table schemas
      */
     public static function getAllSchemas(): array
@@ -105,6 +167,8 @@ class Schema
             self::TABLE_ADS => self::getAdsTableSchema(),
             self::TABLE_SLOTS => self::getSlotsTableSchema(),
             self::TABLE_ASSIGNMENTS => self::getAssignmentsTableSchema(),
+            self::TABLE_CONTENT_QUEUE => self::getContentQueueTableSchema(),
+            self::TABLE_NEWS_FEED => self::getNewsFeedTableSchema(),
         ];
     }
 

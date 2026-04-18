@@ -8,7 +8,7 @@ namespace BigBrotherJunkies\Data\Database;
 class Migrator
 {
     public const DB_VERSION_OPTION = 'bbjd_ad_db_version';
-    public const CURRENT_VERSION = '1.0.0';
+    public const CURRENT_VERSION = '1.1.0';
 
     /**
      * Run migrations if needed
@@ -66,6 +66,8 @@ class Migrator
             Schema::TABLE_ADS,
             Schema::TABLE_SLOTS,
             Schema::TABLE_ASSIGNMENTS,
+            Schema::TABLE_CONTENT_QUEUE,
+            Schema::TABLE_NEWS_FEED,
         ];
 
         $status = [];

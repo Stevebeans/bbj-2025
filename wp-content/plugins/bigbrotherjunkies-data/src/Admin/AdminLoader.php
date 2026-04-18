@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Admin;
 
 use BigBrotherJunkies\Data\Admin\Pages\RegistrationsPage;
+use BigBrotherJunkies\Data\Admin\Pages\UserCleanupPage;
 
 /**
  * Handles admin page registration and asset loading
@@ -24,6 +25,8 @@ class AdminLoader
      */
     private ?RegistrationsPage $registrationsPage = null;
 
+    private ?UserCleanupPage $userCleanupPage = null;
+
     /**
      * Initialize admin functionality
      */
@@ -31,6 +34,9 @@ class AdminLoader
     {
         $this->registrationsPage = new RegistrationsPage();
         $this->registrationsPage->handleActions();
+
+        $this->userCleanupPage = new UserCleanupPage();
+        $this->userCleanupPage->handleActions();
 
         add_action('admin_menu', [$this, 'registerAdminMenu']);
         add_action('admin_enqueue_scripts', [$this, 'enqueueAdminAssets']);
@@ -62,6 +68,16 @@ class AdminLoader
             RegistrationsPage::MENU_SLUG,
             [$this->registrationsPage, 'render']
         );
+
+        // User Cleanup submenu
+        $this->pageHooks[] = add_submenu_page(
+            'bbjd-dashboard',
+            __('User Cleanup', 'bigbrotherjunkies-data'),
+            __('User Cleanup', 'bigbrotherjunkies-data'),
+            'manage_options',
+            UserCleanupPage::MENU_SLUG,
+            [$this->userCleanupPage, 'render']
+        );
     }
 
     /**
@@ -75,7 +91,7 @@ class AdminLoader
         }
 
         // Check for plugin pages by slug
-        $pluginSlugs = ['bbjd-ads', 'bbjd-ad-edit', 'bbjd-slots', 'bbjd-settings', 'bbjd-dev-tools', 'bbjd-registrations'];
+        $pluginSlugs = ['bbjd-ads', 'bbjd-ad-edit', 'bbjd-slots', 'bbjd-settings', 'bbjd-dev-tools', 'bbjd-registrations', 'bbjd-api-settings', 'bbjd-subscriptions', 'bbjd-mailing', 'bbjd-user-cleanup'];
         foreach ($pluginSlugs as $slug) {
             if (strpos($hook, $slug) !== false) {
                 return true;

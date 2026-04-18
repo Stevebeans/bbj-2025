@@ -1,0 +1,16 @@
+# Dependencies (regenerate with composer install)
+/vendor/
+
+# Local config and debug files
+/do-not-upload/
+
+# Composer cache
+composer.lock
+
+# IDE
+.idea/
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
