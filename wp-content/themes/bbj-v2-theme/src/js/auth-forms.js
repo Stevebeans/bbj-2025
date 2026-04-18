@@ -297,6 +297,67 @@
         handleCreateFromGoogle(view, btn);
     });
 
+    async function handleForgot(form) {
+        const view = form.closest('.bbj-modal-view');
+        setFormError(view, '');
+        const success = view.querySelector('[data-bbj-form-success]');
+        if (success) success.classList.add('hidden');
+
+        const fd = new FormData(form);
+        const email = (fd.get('email') || '').toString().trim();
+        if (!/\S+@\S+\.\S+/.test(email)) {
+            setFormError(view, 'Please enter a valid email.');
+            return;
+        }
+        const restore = busy(form.querySelector('[data-bbj-submit]'), 'Sending…');
+        const { ok, data } = await postJSON('auth/forgot-password', { email });
+        restore();
+        if (ok && data && data.success) {
+            if (success) success.classList.remove('hidden');
+            form.reset();
+            return;
+        }
+        setFormError(view, (data && (data.error || data.message)) || 'Failed to send reset link.');
+    }
+
+    async function handleReset(form) {
+        const view = form.closest('.bbj-modal-view');
+        setFormError(view, '');
+        clearAllFieldErrors(form);
+
+        const key = modal.dataset.resetKey || '';
+        const login = modal.dataset.resetLogin || '';
+        if (!key || !login) {
+            setFormError(view, 'Reset link expired or invalid. Please request a new one.');
+            return;
+        }
+
+        const fd = new FormData(form);
+        const password = (fd.get('password') || '').toString();
+        const confirm = (fd.get('confirm_password') || '').toString();
+
+        let failed = false;
+        if (password.length < 8) {
+            setFieldError(form, 'password', 'Password must be at least 8 characters.');
+            failed = true;
+        }
+        if (password !== confirm) {
+            setFieldError(form, 'confirm_password', 'Passwords do not match.');
+            failed = true;
+        }
+        if (failed) return;
+
+        const restore = busy(form.querySelector('[data-bbj-submit]'), 'Saving…');
+        const { ok, data } = await postJSON('auth/reset-password', { key, login, password });
+        if (ok && data && data.success) {
+            reloadOnSuccess();
+            setTimeout(restore, 3000);
+            return;
+        }
+        restore();
+        setFormError(view, (data && (data.error || data.message)) || 'Failed to reset password.');
+    }
+
     // Delegated submit listener.
     document.addEventListener('submit', function (e) {
         const form = e.target.closest('[data-bbj-auth-form]');
@@ -306,6 +367,7 @@
         if (kind === 'login')    return handleLogin(form);
         if (kind === 'register') return handleRegister(form);
         if (kind === 'link')     return handleLink(form);
-        // Other handlers attached in later tasks.
+        if (kind === 'forgot')   return handleForgot(form);
+        if (kind === 'reset')    return handleReset(form);
     });
 })();
