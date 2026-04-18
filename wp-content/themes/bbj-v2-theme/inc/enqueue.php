@@ -38,6 +38,23 @@ function bbj_v2_enqueue_assets(): void
         ['strategy' => 'defer', 'in_footer' => true]
     );
 
+    // Auth assets — anonymous users only.
+    if (!is_user_logged_in()) {
+        wp_enqueue_script(
+            'bbj-v2-auth-modal',
+            BBJ_V2_THEME_URL . '/src/js/auth-modal.js',
+            [],
+            filemtime(BBJ_V2_THEME_PATH . '/src/js/auth-modal.js'),
+            true
+        );
+        wp_localize_script('bbj-v2-auth-modal', 'BBJAuth', [
+            'api'     => esc_url_raw(rest_url('bbjd/v1/')),
+            'nonce'   => wp_create_nonce('bbj_auth'),
+            'debug'   => defined('WP_DEBUG') && WP_DEBUG,
+            'homeUrl' => esc_url_raw(home_url('/')),
+        ]);
+    }
+
     // WP core block styles are frontend-unused for our theme — dequeue
     wp_dequeue_style('wp-block-library');
     wp_dequeue_style('wp-block-library-theme');
