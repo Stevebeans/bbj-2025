@@ -1,0 +1,149 @@
+/**
+ * BBJD Auth Forms Styles
+ * Extends Tailwind classes with custom styles
+ */
+
+/* Form container animations */
+.bbjd-auth-container {
+    animation: bbjd-fade-in 0.3s ease-out;
+}
+
+@keyframes bbjd-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Input focus states */
+.bbjd-auth-container input:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(53, 84, 110, 0.2);
+}
+
+.dark .bbjd-auth-container input:focus {
+    box-shadow: 0 0 0 3px rgba(255, 191, 15, 0.2);
+}
+
+/* Error state for inputs */
+.bbjd-auth-container input.border-red-500 {
+    border-color: #ef4444;
+}
+
+.bbjd-auth-container input.border-red-500:focus {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+}
+
+/* Button spinner animation */
+.bbjd-btn-spinner {
+    animation: bbjd-spin 1s linear infinite;
+}
+
+@keyframes bbjd-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Dropzone styling */
+#bbjd-profile-dropzone {
+    transition: all 0.2s ease;
+}
+
+#bbjd-profile-dropzone:hover {
+    background-color: rgba(53, 84, 110, 0.05);
+}
+
+.dark #bbjd-profile-dropzone:hover {
+    background-color: rgba(255, 191, 15, 0.05);
+}
+
+#bbjd-profile-dropzone.dz-drag-hover {
+    border-color: #35546e;
+    background-color: rgba(53, 84, 110, 0.1);
+}
+
+.dark #bbjd-profile-dropzone.dz-drag-hover {
+    border-color: #FFBF0F;
+    background-color: rgba(255, 191, 15, 0.1);
+}
+
+/* Profile picture preview */
+#bbjd-dropzone-preview img {
+    border: 3px solid #35546e;
+}
+
+.dark #bbjd-dropzone-preview img {
+    border-color: #FFBF0F;
+}
+
+/* Password toggle button */
+.bbjd-toggle-password {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.25rem;
+}
+
+.bbjd-toggle-password:focus {
+    outline: none;
+}
+
+/* Error message animation */
+#bbjd-login-error:not(.hidden),
+#bbjd-register-error:not(.hidden) {
+    animation: bbjd-shake 0.5s ease;
+}
+
+@keyframes bbjd-shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Success message animation */
+#bbjd-register-success:not(.hidden) {
+    animation: bbjd-pulse 1s ease infinite;
+}
+
+@keyframes bbjd-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
+}
+
+/* Honeypot field - extra hiding */
+.bbjd-hp {
+    position: absolute !important;
+    left: -9999px !important;
+    top: -9999px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+    .bbjd-auth-container {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+
+    .bbjd-auth-container .p-8 {
+        padding: 1.5rem;
+    }
+}
+
+/* Form divider line */
+.bbjd-auth-container .relative.my-6::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+}

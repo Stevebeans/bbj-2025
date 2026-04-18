@@ -24,6 +24,7 @@ class AdSettingsMetaBox
     {
         add_action('add_meta_boxes', [$this, 'register']);
         add_action('save_post', [$this, 'save'], 10, 2);
+        add_action('rest_api_init', [$this, 'registerRestField']);
 
         // Bust cache on meta update
         add_action('updated_post_meta', [$this, 'onMetaUpdate'], 10, 4);
@@ -109,6 +110,26 @@ class AdSettingsMetaBox
     {
         if ($metaKey === ConditionChecker::META_KEY_HIDE_ADS) {
             ConditionChecker::bustCache($postId);
+        }
+    }
+
+    /**
+     * Register REST API field for posts and pages
+     * Exposes hide_ads flag to the API for Next.js consumption
+     */
+    public function registerRestField(): void
+    {
+        foreach ($this->postTypes as $postType) {
+            register_rest_field($postType, 'hide_ads', [
+                'get_callback' => function ($post) {
+                    return get_post_meta($post['id'], ConditionChecker::META_KEY_HIDE_ADS, true) === '1';
+                },
+                'schema' => [
+                    'description' => 'Whether ads are hidden on this post/page',
+                    'type' => 'boolean',
+                    'context' => ['view', 'edit'],
+                ],
+            ]);
         }
     }
 }
