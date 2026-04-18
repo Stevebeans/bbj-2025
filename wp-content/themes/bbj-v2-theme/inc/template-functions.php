@@ -113,3 +113,40 @@ function bbj_v2_status_img_class(string $status): string
     if ($key === 'jury')    return 'spoilerbar-jury-img';
     return '';
 }
+
+/**
+ * Append a `link_class` arg (passed to wp_nav_menu) onto every <a> it renders.
+ */
+add_filter('nav_menu_link_attributes', function (array $atts, $item, $args) {
+    if (!empty($args->link_class)) {
+        $atts['class'] = trim(($atts['class'] ?? '') . ' ' . $args->link_class);
+    }
+    return $atts;
+}, 10, 3);
+
+/**
+ * Rewrite menu item URLs that were hardcoded to the production host. Runs at
+ * wp_setup_nav_menu_item so the rewrite happens BEFORE WP computes which item
+ * is the current-menu-item (that detection in _wp_menu_item_classes_by_context
+ * compares the stored URL to the current request URL). Rebasing at render time
+ * would fix the rendered href but leave the current-page class on the wrong item.
+ */
+add_filter('wp_setup_nav_menu_item', function ($item) {
+    if (isset($item->url)) {
+        $item->url = bbj_v2_rebase_prod_url((string) $item->url);
+    }
+    return $item;
+});
+
+/**
+ * If a URL was saved with the canonical production host, swap that host for the
+ * current site's home URL. Keeps menu entries portable across environments.
+ */
+function bbj_v2_rebase_prod_url(string $url): string
+{
+    return preg_replace(
+        '#^https?://(www\.)?bigbrotherjunkies\.com#i',
+        rtrim(home_url(), '/'),
+        $url
+    ) ?: $url;
+}

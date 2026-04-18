@@ -16,8 +16,8 @@ if (!defined('ABSPATH')) {
            aria-label="<?php echo esc_attr(get_bloginfo('name')); ?>">
             <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/images/bbjlogo2020.png'); ?>"
                  alt="<?php echo esc_attr(get_bloginfo('name')); ?>"
-                 class="h-12 md:h-14 w-auto"
-                 width="300" height="60" decoding="async">
+                 class="max-h-10 md:max-h-12 w-auto h-auto"
+                 width="395" height="37" decoding="async">
         </a>
 
         <form role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>"
