@@ -53,6 +53,13 @@ function bbj_v2_enqueue_assets(): void
             'debug'   => defined('WP_DEBUG') && WP_DEBUG,
             'homeUrl' => esc_url_raw(home_url('/')),
         ]);
+        wp_enqueue_script(
+            'bbj-v2-auth-forms',
+            BBJ_V2_THEME_URL . '/src/js/auth-forms.js',
+            ['bbj-v2-auth-modal'],
+            filemtime(BBJ_V2_THEME_PATH . '/src/js/auth-forms.js'),
+            true
+        );
     }
 
     // WP core block styles are frontend-unused for our theme — dequeue
