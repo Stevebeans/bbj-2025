@@ -101,13 +101,14 @@
      darker blue on hover/active, yellow bottom bar on active. */
   .bbj-nav-link {
     @apply relative inline-flex items-center px-4 py-3 font-osw uppercase tracking-wider
-      text-sm text-white hover:text-white hover:bg-primary-600 transition-colors;
+      text-sm text-white hover:text-white hover:bg-primary-600 transition-colors
+      dark:text-white dark:hover:text-white;
   }
   .bbj-nav .current-menu-item > .bbj-nav-link,
   .bbj-nav .current_page_item > .bbj-nav-link,
   .bbj-nav .current-menu-ancestor > .bbj-nav-link,
   .bbj-nav-link.is-active {
-    @apply bg-primary-600 text-white;
+    @apply bg-primary-600 text-white dark:text-white;
   }
   .bbj-nav .current-menu-item > .bbj-nav-link::after,
   .bbj-nav .current_page_item > .bbj-nav-link::after,
@@ -121,7 +122,7 @@
   .bbj-nav-watch {
     @apply ml-auto inline-flex items-center gap-2 px-4 py-3 font-osw uppercase tracking-wider
       text-sm text-white bg-accent-red hover:bg-accent-red/90 hover:text-white transition-colors
-      whitespace-nowrap;
+      whitespace-nowrap dark:text-white dark:hover:text-white;
   }
   .bbj-nav-watch::before {
     content: "";
