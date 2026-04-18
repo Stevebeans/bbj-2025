@@ -39,33 +39,35 @@ function bbj_v2_bb_time(): string
 /**
  * Cached fetch of spoiler bar data from the bigbrotherjunkies-data plugin.
  *
- * @return array<int, array<string, mixed>> Player rows, empty array on failure.
+ * @return array{season: array<string, mixed>, players: array<int, array<string, mixed>>}
  */
 function bbj_v2_get_spoiler_bar(): array
 {
-    $cache_key = 'spoiler_bar_players';
+    $cache_key = 'spoiler_bar_v2';
     $cached    = wp_cache_get($cache_key, 'bbj_v2');
     if (is_array($cached)) {
         return $cached;
     }
 
+    $empty = ['season' => [], 'players' => []];
     if (!function_exists('rest_do_request')) {
-        return [];
+        return $empty;
     }
 
     $request  = new WP_REST_Request('GET', '/bbjd/v1/spoiler-bar');
     $response = rest_do_request($request);
     if ($response->is_error()) {
-        return [];
+        return $empty;
     }
 
     $data = $response->get_data();
-    $players = is_array($data) && isset($data['players']) && is_array($data['players'])
-        ? $data['players']
-        : (is_array($data) ? $data : []);
+    $payload = [
+        'season'  => (is_array($data) && isset($data['season']) && is_array($data['season']))  ? $data['season']  : [],
+        'players' => (is_array($data) && isset($data['players']) && is_array($data['players'])) ? $data['players'] : [],
+    ];
 
-    wp_cache_set($cache_key, $players, 'bbj_v2', 300);
-    return $players;
+    wp_cache_set($cache_key, $payload, 'bbj_v2', 300);
+    return $payload;
 }
 
 /**
@@ -75,7 +77,8 @@ add_action('save_post_bigbrother-players', 'bbj_v2_bust_spoiler_cache');
 add_action('save_post_bigbrother-seasons', 'bbj_v2_bust_spoiler_cache');
 function bbj_v2_bust_spoiler_cache(): void
 {
-    wp_cache_delete('spoiler_bar_players', 'bbj_v2');
+    wp_cache_delete('spoiler_bar_v2', 'bbj_v2');
+    wp_cache_delete('spoiler_bar_players', 'bbj_v2'); // old key from earlier cache shape
 }
 
 /**
@@ -92,6 +95,7 @@ function bbj_v2_status_class(string $status): string
         'evicted'   => 'spoilerbar-evicted',
         'jury'      => 'spoilerbar-jury',
         'winner'    => 'spoilerbar-winner',
+        'runner_up' => 'spoilerbar-runnerup',
         'runner-up' => 'spoilerbar-runnerup',
         'runnerup'  => 'spoilerbar-runnerup',
         '2nd'       => 'spoilerbar-runnerup',

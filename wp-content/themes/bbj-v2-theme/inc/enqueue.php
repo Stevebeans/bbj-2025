@@ -38,6 +38,24 @@ function bbj_v2_enqueue_assets(): void
         ['strategy' => 'defer', 'in_footer' => true]
     );
 
+    // Mobile nav hamburger controller
+    wp_enqueue_script(
+        'bbj-v2-mobile-nav',
+        BBJ_V2_THEME_URL . '/src/js/mobile-nav.js',
+        [],
+        filemtime(BBJ_V2_THEME_PATH . '/src/js/mobile-nav.js'),
+        ['strategy' => 'defer', 'in_footer' => true]
+    );
+
+    // Spoiler bar — collapse toggle + click-drag horizontal scroll
+    wp_enqueue_script(
+        'bbj-v2-spoiler-bar',
+        BBJ_V2_THEME_URL . '/src/js/spoiler-bar.js',
+        [],
+        filemtime(BBJ_V2_THEME_PATH . '/src/js/spoiler-bar.js'),
+        ['strategy' => 'defer', 'in_footer' => true]
+    );
+
     // Auth assets — anonymous users only.
     if (!is_user_logged_in()) {
         wp_enqueue_script(

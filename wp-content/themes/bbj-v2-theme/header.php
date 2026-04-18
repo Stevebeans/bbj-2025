@@ -25,14 +25,7 @@ if (!defined('ABSPATH')) {
     <?php get_template_part('template-parts/header/utility-strip'); ?>
     <?php get_template_part('template-parts/header/logo-bar'); ?>
     <?php get_template_part('template-parts/header/nav'); ?>
-    <?php
-    // Spoiler bar lives in the header on all templates EXCEPT the homepage,
-    // where front-page.php renders it in-content below the leaderboard ad
-    // (per the Claude Design editorial layout).
-    if ( ! is_front_page() ) {
-        get_template_part('template-parts/header/spoiler-bar');
-    }
-    ?>
+    <?php get_template_part('template-parts/header/spoiler-bar'); ?>
 </header>
 
 <?php
