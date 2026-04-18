@@ -9,7 +9,8 @@ if (!defined('ABSPATH')) { exit; }
 
     <form data-bbj-auth-form="forgot" class="space-y-4" novalidate>
         <div data-bbj-form-error class="hidden bbj-form-error" role="alert"></div>
-        <div data-bbj-form-success class="hidden p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm">
+        <div data-bbj-form-success class="hidden p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm"
+             role="status" aria-live="polite">
             <?php esc_html_e('Check your email for a reset link. The link expires in 24 hours.', 'bbj-v2-theme'); ?>
         </div>
 
