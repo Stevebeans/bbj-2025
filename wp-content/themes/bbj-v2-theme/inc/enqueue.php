@@ -10,49 +10,43 @@ if (!defined('ABSPATH')) {
 add_action('wp_enqueue_scripts', 'bbj_v2_enqueue_assets');
 function bbj_v2_enqueue_assets(): void
 {
-    $version = BBJ_V2_THEME_VERSION;
-
-    // Compiled Tailwind
+    // filemtime-based versions — rsync bumps mtime per deploy so caches bust automatically.
     wp_enqueue_style(
         'bbj-v2-style',
         BBJ_V2_THEME_URL . '/build/style.css',
         [],
-        $version
+        bbj_v2_asset_ver('/build/style.css')
     );
 
-    // Main JS — small, deferred
     wp_enqueue_script(
         'bbj-v2-main',
         BBJ_V2_THEME_URL . '/src/js/main.js',
         [],
-        $version,
+        bbj_v2_asset_ver('/src/js/main.js'),
         ['strategy' => 'defer', 'in_footer' => true]
     );
 
-    // Dark mode toggle handler
     wp_enqueue_script(
         'bbj-v2-dark-mode',
         BBJ_V2_THEME_URL . '/src/js/dark-mode.js',
         [],
-        $version,
+        bbj_v2_asset_ver('/src/js/dark-mode.js'),
         ['strategy' => 'defer', 'in_footer' => true]
     );
 
-    // Mobile nav hamburger controller
     wp_enqueue_script(
         'bbj-v2-mobile-nav',
         BBJ_V2_THEME_URL . '/src/js/mobile-nav.js',
         [],
-        filemtime(BBJ_V2_THEME_PATH . '/src/js/mobile-nav.js'),
+        bbj_v2_asset_ver('/src/js/mobile-nav.js'),
         ['strategy' => 'defer', 'in_footer' => true]
     );
 
-    // Spoiler bar — collapse toggle + click-drag horizontal scroll
     wp_enqueue_script(
         'bbj-v2-spoiler-bar',
         BBJ_V2_THEME_URL . '/src/js/spoiler-bar.js',
         [],
-        filemtime(BBJ_V2_THEME_PATH . '/src/js/spoiler-bar.js'),
+        bbj_v2_asset_ver('/src/js/spoiler-bar.js'),
         ['strategy' => 'defer', 'in_footer' => true]
     );
 
@@ -62,7 +56,7 @@ function bbj_v2_enqueue_assets(): void
             'bbj-v2-auth-modal',
             BBJ_V2_THEME_URL . '/src/js/auth-modal.js',
             [],
-            filemtime(BBJ_V2_THEME_PATH . '/src/js/auth-modal.js'),
+            bbj_v2_asset_ver('/src/js/auth-modal.js'),
             true
         );
         wp_localize_script('bbj-v2-auth-modal', 'BBJAuth', [
@@ -76,14 +70,14 @@ function bbj_v2_enqueue_assets(): void
             'bbj-v2-auth-forms',
             BBJ_V2_THEME_URL . '/src/js/auth-forms.js',
             ['bbj-v2-auth-modal'],
-            filemtime(BBJ_V2_THEME_PATH . '/src/js/auth-forms.js'),
+            bbj_v2_asset_ver('/src/js/auth-forms.js'),
             true
         );
         wp_enqueue_script(
             'bbj-v2-auth-google',
             BBJ_V2_THEME_URL . '/src/js/auth-google.js',
             ['bbj-v2-auth-modal'],
-            filemtime(BBJ_V2_THEME_PATH . '/src/js/auth-google.js'),
+            bbj_v2_asset_ver('/src/js/auth-google.js'),
             true
         );
     }
@@ -121,4 +115,19 @@ function bbj_v2_drop_jquery(): void
     if (!is_admin()) {
         wp_deregister_script('jquery');
     }
+}
+
+/**
+ * filemtime-based asset version, cached per-request in a static so repeat
+ * lookups for the same file don't re-stat. Falls back to the theme version
+ * if the file is missing.
+ */
+function bbj_v2_asset_ver(string $relative_path): string
+{
+    static $cache = [];
+    if (isset($cache[$relative_path])) {
+        return $cache[$relative_path];
+    }
+    $mtime = @filemtime(BBJ_V2_THEME_PATH . $relative_path);
+    return $cache[$relative_path] = $mtime ? (string) $mtime : BBJ_V2_THEME_VERSION;
 }
