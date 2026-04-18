@@ -48,10 +48,11 @@ function bbj_v2_enqueue_assets(): void
             true
         );
         wp_localize_script('bbj-v2-auth-modal', 'BBJAuth', [
-            'api'     => esc_url_raw(rest_url('bbjd/v1/')),
-            'nonce'   => wp_create_nonce('bbj_auth'),
-            'debug'   => defined('WP_DEBUG') && WP_DEBUG,
-            'homeUrl' => esc_url_raw(home_url('/')),
+            'api'       => esc_url_raw(rest_url('bbjd/v1/')),
+            'nonce'     => wp_create_nonce('bbj_auth'),
+            'debug'     => defined('WP_DEBUG') && WP_DEBUG,
+            'homeUrl'   => esc_url_raw(home_url('/')),
+            'recaptcha' => (string) get_option('bbj_recaptcha_site_key', ''),
         ]);
         wp_enqueue_script(
             'bbj-v2-auth-forms',

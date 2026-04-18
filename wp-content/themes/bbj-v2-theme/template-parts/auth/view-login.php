@@ -10,7 +10,7 @@ if (!defined('ABSPATH')) { exit; }
         ); ?>
     </div>
 
-    <div data-bbj-google-login-container></div>
+    <div data-bbj-google-login-container class="flex justify-center"></div>
 
     <div class="bbj-divider"><span><?php esc_html_e('or', 'bbj-v2-theme'); ?></span></div>
 

@@ -111,6 +111,41 @@
         };
     }
 
+    // Lazy-load reCAPTCHA v3 once and return a promise that resolves to an
+    // execute(action) function. Resolves to null if no site key is configured.
+    let recaptchaPromise = null;
+    function loadRecaptcha() {
+        if (recaptchaPromise) return recaptchaPromise;
+        const siteKey = BBJAuth.recaptcha || '';
+        if (!siteKey) return Promise.resolve(null);
+        recaptchaPromise = new Promise(function (resolve) {
+            const existing = document.querySelector('script[src*="recaptcha/api.js"]');
+            const onReady = () => {
+                if (!window.grecaptcha) return resolve(null);
+                window.grecaptcha.ready(() => {
+                    resolve(function execute(action) {
+                        return window.grecaptcha.execute(siteKey, { action });
+                    });
+                });
+            };
+            if (existing) { existing.addEventListener('load', onReady); onReady(); return; }
+            const s = document.createElement('script');
+            s.src = 'https://www.google.com/recaptcha/api.js?render=' + encodeURIComponent(siteKey);
+            s.async = true;
+            s.defer = true;
+            s.onload = onReady;
+            s.onerror = () => resolve(null);
+            document.body.appendChild(s);
+        });
+        return recaptchaPromise;
+    }
+
+    // Pre-warm the reCAPTCHA script when the register view becomes active so
+    // the first submit doesn't incur the script-load round-trip.
+    modal.addEventListener('bbj-auth:view', function (e) {
+        if (e.detail && e.detail.view === 'register') loadRecaptcha();
+    });
+
     async function handleLogin(form) {
         const view = form.closest('.bbj-modal-view');
         setFormError(view, '');
@@ -168,12 +203,23 @@
         if (failed) return;
 
         const restore = busy(form.querySelector('[data-bbj-submit]'), 'Creating account…');
+
+        // Fetch a fresh reCAPTCHA token for this submit. Plugin rejects
+        // the request with "Security verification is required" if a secret
+        // key is configured and the token is missing.
+        let recaptchaToken = '';
+        try {
+            const execute = await loadRecaptcha();
+            if (execute) recaptchaToken = await execute('register');
+        } catch (_) { /* ignore — server decides if this is fatal */ }
+
         const { ok, data } = await postJSON('auth/register', {
             username,
             email,
             password,
             display_name: displayName,
             subscribe_newsletter: subscribe,
+            recaptcha_token: recaptchaToken,
         });
         if (ok && data && data.success) {
             reloadOnSuccess();
