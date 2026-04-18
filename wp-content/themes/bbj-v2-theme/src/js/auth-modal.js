@@ -29,49 +29,47 @@
     };
 
     let lastFocus = null;
+    let focusables = [];  // Cached per view switch, not re-queried per keydown.
+    let mouseDownTarget = null;
+
+    function cacheFocusables() {
+        focusables = Array.from(modal.querySelectorAll(focusableSel))
+            .filter(el => !el.hasAttribute('aria-hidden'));
+    }
 
     function showView(name) {
-        let found = false;
+        if (!titles[name]) name = 'login';  // Fall back visibly on unknown view.
         views.forEach(v => {
-            const match = v.getAttribute('data-bbj-auth-view') === name;
-            v.classList.toggle('is-active', match);
-            if (match) found = true;
+            v.classList.toggle('is-active', v.getAttribute('data-bbj-auth-view') === name);
         });
-        if (!found) {
-            showView('login');
-            return;
-        }
-        if (titleEl && titles[name]) {
-            titleEl.textContent = titles[name];
-        }
+        if (titleEl) titleEl.textContent = titles[name];
+        cacheFocusables();
         const firstInput = modal.querySelector('.bbj-modal-view.is-active input:not([type="hidden"]), .bbj-modal-view.is-active button');
         if (firstInput) firstInput.focus();
         modal.dispatchEvent(new CustomEvent('bbj-auth:view', { detail: { view: name } }));
     }
+
+    function trackMouseDown(e) { mouseDownTarget = e.target; }
 
     function open(view) {
         lastFocus = document.activeElement;
         modal.classList.add('is-open');
         modal.setAttribute('aria-hidden', 'false');
         document.body.style.overflow = 'hidden';
+        // mousedown listener only runs while modal is open — classic "tracking
+        // mouse origin to distinguish backdrop click from drag-out" trick.
+        document.addEventListener('mousedown', trackMouseDown);
         showView(view || 'login');
-        modal.dispatchEvent(new CustomEvent('bbj-auth:opened', { detail: { view: view || 'login' } }));
     }
 
     function close() {
         modal.classList.remove('is-open');
         modal.setAttribute('aria-hidden', 'true');
         document.body.style.overflow = '';
+        document.removeEventListener('mousedown', trackMouseDown);
+        mouseDownTarget = null;
         if (lastFocus && lastFocus.focus) lastFocus.focus();
     }
-
-    // Track where mousedown started so we only close on a true backdrop click.
-    // Without this, dragging text out of a field (release outside the dialog)
-    // lands mouseup on the backdrop and closes the modal mid-selection.
-    let mouseDownTarget = null;
-    document.addEventListener('mousedown', function (e) {
-        mouseDownTarget = e.target;
-    });
 
     // Delegated click handlers.
     document.addEventListener('click', function (e) {
@@ -99,16 +97,15 @@
         }
     });
 
-    // Esc closes; Tab traps focus within dialog.
+    // Esc closes; Tab traps focus within dialog using the cached list.
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape' && modal.classList.contains('is-open')) {
+        if (!modal.classList.contains('is-open')) return;
+        if (e.key === 'Escape') {
             e.preventDefault();
             close();
             return;
         }
-        if (e.key === 'Tab' && modal.classList.contains('is-open')) {
-            const focusables = Array.from(modal.querySelectorAll(focusableSel)).filter(el => !el.hasAttribute('aria-hidden'));
-            if (focusables.length === 0) return;
+        if (e.key === 'Tab' && focusables.length) {
             const first = focusables[0];
             const last = focusables[focusables.length - 1];
             if (e.shiftKey && document.activeElement === first) {
@@ -132,6 +129,5 @@
         } catch (_) { /* ignore bad payload */ }
     }
 
-    // Expose a minimal API for other modules.
     window.BBJAuthModal = { open, close, showView };
 })();

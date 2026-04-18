@@ -25,7 +25,9 @@
         if (!BBJAuth.debug) return false;
         const p = new URLSearchParams(location.search);
         if (p.has('bbj_force_webview')) {
-            document.cookie = 'bbj_force_webview=1; path=/; SameSite=Lax';
+            // Session-scoped cookie so the override doesn't persist forever;
+            // dev can flip back by closing the tab or clearing the cookie.
+            document.cookie = 'bbj_force_webview=1; path=/; SameSite=Lax; max-age=3600';
         }
         return document.cookie.includes('bbj_force_webview=1');
     }
@@ -58,53 +60,40 @@
     async function handleCredential(response) {
         if (!response || !response.credential) return;
         const activeView = modal.querySelector('.bbj-modal-view.is-active');
-        const errorEl = activeView && activeView.querySelector('[data-bbj-form-error]');
-        if (errorEl) { errorEl.classList.add('hidden'); errorEl.textContent = ''; }
+        const forms = window.BBJAuthForms;
+        if (!forms) return; // auth-forms.js not loaded — fail silent.
 
-        try {
-            const res = await fetch(BBJAuth.api + 'auth/google', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-BBJ-Nonce': BBJAuth.nonce,
-                },
-                body: JSON.stringify({
-                    credential: response.credential,
-                    remember_me: true,
-                    wp_session: 1,
-                }),
-            });
-            const data = await res.json();
-            if (data && data.needs_linking) {
-                modal.dataset.googleCredential = response.credential;
-                modal.dataset.googleUser = JSON.stringify(data.google_user || {});
-                window.BBJAuthModal.showView('link');
-                return;
-            }
-            if (res.ok && data && data.success) {
-                window.location.reload();
-                return;
-            }
-            if (errorEl) {
-                errorEl.textContent = (data && (data.error || data.message)) || 'Google sign-in failed.';
-                errorEl.classList.remove('hidden');
-            }
-        } catch (err) {
-            if (errorEl) {
-                errorEl.textContent = 'Network error during Google sign-in.';
-                errorEl.classList.remove('hidden');
-            }
+        forms.setFormError(activeView, '');
+        const { ok, data } = await forms.postJSON('auth/google', {
+            credential: response.credential,
+            remember_me: true,
+        });
+        if (data && data.needs_linking) {
+            modal.dataset.googleCredential = response.credential;
+            modal.dataset.googleUser = JSON.stringify(data.google_user || {});
+            window.BBJAuthModal.showView('link');
+            return;
         }
+        if (ok && data && data.success) {
+            window.location.reload();
+            return;
+        }
+        forms.setFormError(activeView, (data && (data.error || data.message)) || 'Google sign-in failed.');
     }
 
+    // GIS only needs initialize() once per page; subsequent view switches
+    // just render the button into the new container.
+    let gisInitialized = false;
     function renderButtonInto(containerEl, textMode) {
         if (!containerEl || !window.google || !window.google.accounts || !window.google.accounts.id) return;
-        window.google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleCredential,
-            auto_select: false,
-        });
+        if (!gisInitialized) {
+            window.google.accounts.id.initialize({
+                client_id: clientId,
+                callback: handleCredential,
+                auto_select: false,
+            });
+            gisInitialized = true;
+        }
         containerEl.innerHTML = '';
         window.google.accounts.id.renderButton(containerEl, {
             theme: 'outline',
@@ -140,14 +129,9 @@
         renderButtonInto(container, viewName === 'register' ? 'signup_with' : 'continue_with');
     }
 
-    // Render on view switch.
+    // bbj-auth:view fires on every open (showView is always called by open)
+    // so a single listener covers both initial open and view switches.
     modal.addEventListener('bbj-auth:view', function (e) {
-        const name = e.detail && e.detail.view;
-        if (name === 'login' || name === 'register') setupForView(name);
-    });
-
-    // Render on first open if the view didn't switch events yet.
-    modal.addEventListener('bbj-auth:opened', function (e) {
         const name = e.detail && e.detail.view;
         if (name === 'login' || name === 'register') setupForView(name);
     });

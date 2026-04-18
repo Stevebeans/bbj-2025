@@ -278,13 +278,17 @@
         if (nameEl) nameEl.textContent = gu.name || '';
         if (emailEl) emailEl.textContent = gu.email || '';
         if (avatarEl && gu.picture) {
-            const img = document.createElement('img');
-            img.src = gu.picture;
-            img.alt = '';
-            img.referrerPolicy = 'no-referrer';
-            img.className = 'w-16 h-16 rounded-full mx-auto mb-2';
-            img.setAttribute('data-bbj-link-avatar', '');
-            avatarEl.replaceWith(img);
+            if (avatarEl.tagName === 'IMG') {
+                avatarEl.src = gu.picture;
+            } else {
+                const img = document.createElement('img');
+                img.src = gu.picture;
+                img.alt = '';
+                img.referrerPolicy = 'no-referrer';
+                img.className = 'w-16 h-16 rounded-full mx-auto mb-2';
+                img.setAttribute('data-bbj-link-avatar', '');
+                avatarEl.replaceWith(img);
+            }
         }
     }
 
@@ -416,4 +420,7 @@
         if (kind === 'forgot')   return handleForgot(form);
         if (kind === 'reset')    return handleReset(form);
     });
+
+    // Shared helpers for sibling modules (auth-google.js).
+    window.BBJAuthForms = { postJSON, setFormError };
 })();
