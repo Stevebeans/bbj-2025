@@ -27,7 +27,10 @@
                 credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json',
-                    'X-WP-Nonce': BBJAuth.nonce,
+                    // Custom header — WP's rest_cookie_check_errors hijacks X-WP-Nonce
+                    // and validates it against the 'wp_rest' action, which breaks our
+                    // bbj_auth nonce when WP cookies are present on the client.
+                    'X-BBJ-Nonce': BBJAuth.nonce,
                 },
                 body: JSON.stringify(payload),
             });
