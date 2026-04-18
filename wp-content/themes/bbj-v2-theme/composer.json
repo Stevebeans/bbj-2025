@@ -1,0 +1,14 @@
+{
+    "name": "bbj/v2-theme",
+    "description": "BBJ v2 WordPress theme",
+    "type": "wordpress-theme",
+    "license": "GPL-2.0-or-later",
+    "autoload": {
+        "psr-4": {
+            "BBJ\\V2\\Theme\\": "src/php/"
+        }
+    },
+    "require": {
+        "php": ">=8.0"
+    }
+}
