@@ -35,4 +35,14 @@ if (!defined('ABSPATH')) {
     ?>
 </header>
 
+<?php
+// Leaderboard ad slot — placeholder until wired to bbjd_ad().
+// Tracked in docs/ad-slots.md.
+get_template_part('template-parts/components/ad-placeholder', null, [
+    'slot' => 'leaderboard_top',
+    'size' => '970x90',
+    'note' => __('Below nav · above content · eager-load', 'bbj-v2-theme'),
+]);
+?>
+
 <main id="site-content" class="min-h-[50vh]" role="main">
