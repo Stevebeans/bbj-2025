@@ -50,6 +50,83 @@
 
   .spoilerbar-evicted-img { @apply grayscale opacity-75; }
   .spoilerbar-jury-img    { @apply grayscale-[40%] opacity-85; }
+
+  /* Auth modal — shared chrome for login/register/link/forgot/reset views. */
+  .bbj-modal {
+    @apply fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 p-4;
+  }
+  .bbj-modal.is-open {
+    @apply flex;
+  }
+  .bbj-modal-dialog {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto;
+  }
+  .bbj-modal-header {
+    @apply flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700;
+  }
+  .bbj-modal-title {
+    @apply text-xl font-display text-primary-500 dark:text-primary-400;
+  }
+  .bbj-modal-close {
+    @apply p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded;
+  }
+  .bbj-modal-body {
+    @apply p-4;
+  }
+  .bbj-modal-view {
+    @apply space-y-4 hidden;
+  }
+  .bbj-modal-view.is-active {
+    @apply block;
+  }
+
+  .bbj-field-error {
+    @apply mt-1 text-sm text-red-500;
+  }
+  .bbj-form-error {
+    @apply p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm;
+  }
+  .bbj-divider {
+    @apply relative text-center;
+  }
+  .bbj-divider::before {
+    content: "";
+    @apply absolute left-0 right-0 top-1/2 border-t border-gray-200 dark:border-gray-700;
+  }
+  .bbj-divider > span {
+    @apply relative inline-block px-2 bg-white dark:bg-gray-800 text-sm text-gray-500;
+  }
+
+  /* Primary nav link — matches the Polished mockup: uppercase, block padding,
+     darker blue on hover/active, yellow bottom bar on active. */
+  .bbj-nav-link {
+    @apply relative inline-flex items-center px-4 py-3 font-osw uppercase tracking-wider
+      text-sm text-white hover:text-white hover:bg-primary-600 transition-colors;
+  }
+  .bbj-nav .current-menu-item > .bbj-nav-link,
+  .bbj-nav .current_page_item > .bbj-nav-link,
+  .bbj-nav .current-menu-ancestor > .bbj-nav-link,
+  .bbj-nav-link.is-active {
+    @apply bg-primary-600 text-white;
+  }
+  .bbj-nav .current-menu-item > .bbj-nav-link::after,
+  .bbj-nav .current_page_item > .bbj-nav-link::after,
+  .bbj-nav .current-menu-ancestor > .bbj-nav-link::after,
+  .bbj-nav-link.is-active::after {
+    content: "";
+    @apply absolute left-4 right-4 bottom-0 h-[3px] bg-secondary-500;
+  }
+
+  /* Watch Live Feeds pill (far-right red CTA with pulsing dot). */
+  .bbj-nav-watch {
+    @apply ml-auto inline-flex items-center gap-2 px-4 py-3 font-osw uppercase tracking-wider
+      text-sm text-white bg-accent-red hover:bg-accent-red/90 hover:text-white transition-colors
+      whitespace-nowrap;
+  }
+  .bbj-nav-watch::before {
+    content: "";
+    @apply w-2 h-2 rounded-full bg-white animate-pulse;
+  }
 }
 
 @layer base {
