@@ -12,9 +12,12 @@ if (!defined('ABSPATH')) {
     <div class="mx-auto max-w-screen-xl px-4 py-3 grid grid-cols-3 items-center gap-4">
 
         <a href="<?php echo esc_url(home_url('/')); ?>"
-           class="font-display text-3xl md:text-4xl font-bold text-primary-500 dark:text-primary-400 hover:text-secondary-500 transition justify-self-start"
+           class="justify-self-start block"
            aria-label="<?php echo esc_attr(get_bloginfo('name')); ?>">
-            <span class="text-primary-500 dark:text-primary-400">Big </span><span class="text-secondary-500">Brother</span><span class="text-primary-500 dark:text-primary-400">Junkies</span>
+            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/images/bbjlogo2020.png'); ?>"
+                 alt="<?php echo esc_attr(get_bloginfo('name')); ?>"
+                 class="h-12 md:h-14 w-auto"
+                 width="300" height="60" decoding="async">
         </a>
 
         <form role="search" method="get" action="<?php echo esc_url(home_url('/')); ?>"
@@ -39,11 +42,12 @@ if (!defined('ABSPATH')) {
                     <span class="text-sm font-osw uppercase tracking-wider"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
                 </a>
             <?php else : ?>
-                <a href="<?php echo esc_url(wp_login_url(home_url(add_query_arg([], $_SERVER['REQUEST_URI'] ?? '/')))); ?>"
-                   class="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition">
+                <button type="button"
+                        data-bbj-auth-open="login"
+                        class="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition">
                     <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     <span class="text-sm font-osw uppercase tracking-wider"><?php esc_html_e('Log In', 'bbj-v2-theme'); ?></span>
-                </a>
+                </button>
             <?php endif; ?>
         </div>
     </div>
