@@ -23,7 +23,10 @@ if (empty($stories)) {
 $first_half  = array_slice($stories, 0, 4);
 $second_half = array_slice($stories, 4, 4);
 
-$render_card = static function (WP_Post $p): void { ?>
+$render_card = static function (WP_Post $p): void {
+    $author   = get_the_author_meta('display_name', $p->post_author);
+    $comments = (int) get_comments_number($p->ID);
+    ?>
     <article class="v2-primary-container-inner">
         <a href="<?php echo esc_url(get_permalink($p->ID)); ?>" class="block group">
             <?php if (has_post_thumbnail($p->ID)) : ?>
@@ -39,8 +42,17 @@ $render_card = static function (WP_Post $p): void { ?>
                 <h3 class="font-display text-lg leading-snug text-gray-900 dark:text-gray-100 group-hover:text-primary-500 dark:group-hover:text-secondary-500 transition-colors">
                     <?php echo esc_html($p->post_title); ?>
                 </h3>
-                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 font-osw uppercase tracking-wider" data-nosnippet>
-                    <time datetime="<?php echo esc_attr(get_the_date('c', $p)); ?>"><?php echo esc_html(get_the_date('M j', $p)); ?></time>
+                <div class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500 dark:text-gray-400 font-osw uppercase tracking-wider">
+                    <time datetime="<?php echo esc_attr(get_the_date('c', $p)); ?>" data-nosnippet><?php echo esc_html(get_the_date('M j', $p)); ?></time>
+                    <?php if ($author !== '') : ?>
+                        <span aria-hidden="true">·</span>
+                        <span><?php echo esc_html($author); ?></span>
+                    <?php endif; ?>
+                    <span aria-hidden="true">·</span>
+                    <span class="inline-flex items-center gap-1" aria-label="<?php echo esc_attr(sprintf(_n('%d comment', '%d comments', $comments, 'bbj-v2-theme'), $comments)); ?>">
+                        <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <?php echo (int) $comments; ?>
+                    </span>
                 </div>
             </div>
         </a>
