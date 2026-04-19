@@ -481,3 +481,51 @@ function bbj_v2_format_next_cbs_show(string $override = ''): string
     }
     return $target_et->format('M j') . ' at ' . $time_part;
 }
+
+/**
+ * Cache invalidation — bust homepage keys when the underlying data moves.
+ */
+add_action('save_post_post',                       'bbj_v2_homepage_bust_posts');
+add_action('save_post_live-feed-updates',          'bbj_v2_homepage_bust_feeds');
+add_action('save_post_bigbrother-seasons',         'bbj_v2_homepage_bust_seasons');
+add_action('update_option_bbj_v2_current_season',  'bbj_v2_homepage_bust_all');
+add_action('update_option_bbj_v2_season_active',   'bbj_v2_homepage_bust_all');
+add_action('comment_post',                         'bbj_v2_homepage_bust_comments', 10, 3);
+add_action('wp_set_comment_status',                'bbj_v2_homepage_bust_comments');
+add_action('created_update_type',                  'bbj_v2_homepage_bust_feeds');
+add_action('edited_update_type',                   'bbj_v2_homepage_bust_feeds');
+add_action('created_update_location',              'bbj_v2_homepage_bust_feeds');
+add_action('edited_update_location',               'bbj_v2_homepage_bust_feeds');
+
+function bbj_v2_homepage_bust_posts(): void
+{
+    wp_cache_delete('homepage_more_spoilers_' . md5(serialize([])), 'bbj_v2');
+    wp_cache_delete('homepage_bb_stories_'    . md5(serialize([])), 'bbj_v2');
+}
+
+function bbj_v2_homepage_bust_feeds(): void
+{
+    wp_cache_delete('homepage_feeds_15', 'bbj_v2');
+    wp_cache_delete('homepage_pulse_8',  'bbj_v2');
+}
+
+function bbj_v2_homepage_bust_seasons(): void
+{
+    wp_cache_delete('homepage_status',                 'bbj_v2');
+    wp_cache_delete('homepage_season_stats',           'bbj_v2');
+    wp_cache_delete('homepage_active_season',          'bbj_v2');
+    wp_cache_delete('homepage_current_season_number',  'bbj_v2');
+    wp_cache_delete('homepage_current_season_slug',    'bbj_v2');
+}
+
+function bbj_v2_homepage_bust_all(): void
+{
+    bbj_v2_homepage_bust_posts();
+    bbj_v2_homepage_bust_feeds();
+    bbj_v2_homepage_bust_seasons();
+}
+
+function bbj_v2_homepage_bust_comments(): void
+{
+    wp_cache_delete('homepage_recent_comments_5', 'bbj_v2');
+}
