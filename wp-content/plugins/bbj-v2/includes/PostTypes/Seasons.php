@@ -155,5 +155,24 @@ function bbj_seasons( $meta_boxes ) {
         ],
     ];
 
+    // Homepage overrides — stored as standard post meta, not in wp_bbj_seasons.
+    $meta_boxes[] = [
+        'title'      => __( 'BB Seasons — Homepage Overrides', 'bbj-tools' ),
+        'id'         => 'bb-seasons-homepage-overrides',
+        'post_types' => [ 'bigbrother-seasons' ],
+        'fields'     => [
+            [
+                'name'       => __( 'Next CBS Show Override', 'bbj-tools' ),
+                'id'         => 'bbj_next_show_override',
+                'type'       => 'datetime',
+                'desc'       => __( 'Optional — override the default Sun/Wed/Thu 8pm ET rule for this week (e.g. finale). Leave blank for default.', 'bbj-tools' ),
+                'js_options' => [
+                    'dateFormat'     => 'yy-mm-dd',
+                    'showTimepicker' => true,
+                ],
+            ],
+        ],
+    ];
+
     return $meta_boxes;
 }
