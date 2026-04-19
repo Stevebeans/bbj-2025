@@ -18,7 +18,7 @@ $alt      = $thumb_id ? (get_post_meta($thumb_id, '_wp_attachment_image_alt', tr
 <article class="bbj-hero-post">
     <a href="<?php echo esc_url(get_permalink($hero->ID)); ?>" class="block group">
         <?php if ($thumb_id) : ?>
-            <div class="aspect-[4/3] overflow-hidden rounded-lg bg-gray-100 dark:bg-gray-800">
+            <div class="aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
                 <?php echo wp_get_attachment_image(
                     $thumb_id,
                     'bbj_v2_index_hero',

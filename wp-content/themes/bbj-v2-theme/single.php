@@ -99,7 +99,7 @@ while (have_posts()) : the_post();
                 <div class="lg:col-span-8">
                     <figure class="bbj-single-figure">
                         <?php echo wp_get_attachment_image($thumb_id, 'bbj_v2_index_hero', false, [
-                            'class'         => 'w-full h-auto rounded-lg',
+                            'class'         => 'w-full h-auto',
                             'fetchpriority' => 'high',
                             'loading'       => 'eager',
                             'decoding'      => 'async',

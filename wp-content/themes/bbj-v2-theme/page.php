@@ -30,7 +30,7 @@ while (have_posts()) : the_post(); ?>
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <div class="lg:col-span-8">
                     <?php the_post_thumbnail('bbj_v2_index_hero', [
-                        'class'         => 'w-full h-auto rounded-lg',
+                        'class'         => 'w-full h-auto',
                         'fetchpriority' => 'high',
                         'loading'       => 'eager',
                         'decoding'      => 'async',

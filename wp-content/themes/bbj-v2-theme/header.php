@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <?php wp_head(); ?>
 </head>
-<body <?php body_class('bg-slate-200 font-sans text-gray-900 dark:bg-slate-700 dark:text-gray-100'); ?>>
+<body <?php body_class('bg-stone-50 font-sans text-gray-900 dark:bg-gray-900 dark:text-gray-100'); ?>>
 <?php wp_body_open(); ?>
 
 <a href="#site-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-secondary-500 focus:text-primary-700 focus:px-3 focus:py-2 focus:rounded">
