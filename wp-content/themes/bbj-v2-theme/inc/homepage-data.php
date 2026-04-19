@@ -247,3 +247,237 @@ function bbj_v2_homepage_latest_feeds(int $limit = 15): array
     wp_cache_set($cache_key, $out, 'bbj_v2', 60);
     return $out;
 }
+
+/**
+ * Hourly feed-update counts for the last `$hours` hours.
+ * Returns 8 entries (oldest first) — missing hours filled with 0.
+ *
+ * @return array<int, array{hour: int, label: string, count: int}>
+ */
+function bbj_v2_homepage_house_pulse(int $hours = 8): array
+{
+    $cache_key = 'homepage_pulse_' . $hours;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    global $wpdb;
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT HOUR(post_date) AS h, COUNT(*) AS c
+         FROM {$wpdb->posts}
+         WHERE post_type = 'live-feed-updates'
+           AND post_status = 'publish'
+           AND post_date >= DATE_SUB(NOW(), INTERVAL %d HOUR)
+         GROUP BY HOUR(post_date)",
+        $hours
+    ), ARRAY_A);
+
+    $counts = [];
+    foreach ($rows as $r) {
+        $counts[(int) $r['h']] = (int) $r['c'];
+    }
+
+    $out = [];
+    for ($i = $hours - 1; $i >= 0; $i--) {
+        $ts   = strtotime("-{$i} hour");
+        $hour = (int) date('H', $ts);
+        $label = date('ga', $ts);
+        $out[] = [
+            'hour'  => $hour,
+            'label' => $label,
+            'count' => $counts[$hour] ?? 0,
+        ];
+    }
+
+    wp_cache_set($cache_key, $out, 'bbj_v2', 300);
+    return $out;
+}
+
+/**
+ * Season stats: top 3 HoH, PoV, Nominee counts for the current season.
+ *
+ * @return array{hoh: array, pov: array, noms: array, total_weeks: int}
+ */
+function bbj_v2_homepage_season_stats(): array
+{
+    $cache_key = 'homepage_season_stats';
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    $season_id = (int) get_option('bbj_v2_current_season', 0);
+    $empty = ['hoh' => [], 'pov' => [], 'noms' => [], 'total_weeks' => 0];
+    if ($season_id <= 0) {
+        wp_cache_set($cache_key, $empty, 'bbj_v2', 300);
+        return $empty;
+    }
+
+    global $wpdb;
+    $link_table   = defined('BBJ_V2_TABLE_LINKS')   ? BBJ_V2_TABLE_LINKS   : ($wpdb->prefix . 'bbj_v2_player_season');
+    $player_table = defined('BBJ_V2_TABLE_PLAYERS') ? BBJ_V2_TABLE_PLAYERS : ($wpdb->prefix . 'bbj_players');
+
+    $fetch = function (string $col) use ($wpdb, $link_table, $player_table, $season_id): array {
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT p.id, p.first_name, p.last_name, p.official_nickname, l.{$col} AS count
+             FROM {$link_table} l
+             INNER JOIN {$player_table} p ON p.id = l.bbj_player
+             WHERE l.bbj_season = %d AND l.{$col} > 0
+             ORDER BY l.{$col} DESC, p.first_name ASC
+             LIMIT 3",
+            $season_id
+        ), ARRAY_A) ?: [];
+    };
+
+    $out = [
+        'hoh'          => $fetch('bbj_total_hoh'),
+        'pov'          => $fetch('bbj_total_pov'),
+        'noms'         => $fetch('bbj_total_nom'),
+        'total_weeks'  => (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(MAX(bbj_total_hoh + bbj_total_pov), 0)
+             FROM {$link_table} WHERE bbj_season = %d",
+            $season_id
+        )),
+    ];
+
+    wp_cache_set($cache_key, $out, 'bbj_v2', 300);
+    return $out;
+}
+
+/**
+ * Last N approved comments, site-wide.
+ *
+ * @return WP_Comment[]
+ */
+function bbj_v2_homepage_recent_comments(int $limit = 5): array
+{
+    $cache_key = 'homepage_recent_comments_' . $limit;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    $comments = get_comments([
+        'number'  => $limit,
+        'status'  => 'approve',
+        'type'    => 'comment',
+        'orderby' => 'comment_date_gmt',
+        'order'   => 'DESC',
+    ]);
+
+    wp_cache_set($cache_key, $comments, 'bbj_v2', 60);
+    return $comments;
+}
+
+/**
+ * Status strip payload: day number, percent elapsed, next CBS show string.
+ *
+ * @return array{
+ *   active: bool,
+ *   season_number: int,
+ *   day_number: ?int,
+ *   percent_elapsed: ?int,
+ *   next_show: ?string,
+ *   premiere_label: ?string,
+ * }
+ */
+function bbj_v2_homepage_status(): array
+{
+    $cache_key = 'homepage_status';
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    $out = [
+        'active'          => bbj_v2_is_active_season(),
+        'season_number'   => bbj_v2_current_season_number(),
+        'day_number'      => null,
+        'percent_elapsed' => null,
+        'next_show'       => null,
+        'premiere_label'  => null,
+    ];
+
+    $season_id = (int) get_option('bbj_v2_current_season', 0);
+    if ($season_id > 0 && function_exists('bbj_v2_get_season_by_id')) {
+        $season = bbj_v2_get_season_by_id($season_id);
+        $start  = !empty($season['start_date']) ? strtotime((string) $season['start_date']) : false;
+        $end    = !empty($season['end_date'])   ? strtotime((string) $season['end_date'])   : false;
+
+        if ($start !== false) {
+            $now = time();
+            $out['day_number'] = max(1, (int) floor(($now - $start) / DAY_IN_SECONDS) + 1);
+            if ($end !== false && $end > $start) {
+                $pct = (int) round((($now - $start) / ($end - $start)) * 100);
+                $out['percent_elapsed'] = max(0, min(100, $pct));
+            }
+        }
+    }
+
+    if ($out['active']) {
+        $override = $season_id > 0
+            ? get_post_meta($season_id, 'bbj_next_show_override', true)
+            : '';
+        $out['next_show'] = bbj_v2_format_next_cbs_show((string) $override);
+    } else {
+        $premiere = get_option('bbj_next_season_premiere', '');
+        $out['premiere_label'] = $premiere ? date('M j', (int) strtotime((string) $premiere)) : null;
+    }
+
+    wp_cache_set($cache_key, $out, 'bbj_v2', 60);
+    return $out;
+}
+
+/**
+ * Format the next CBS airing label ("Tonight at 8pm ET / 5pm PT" etc.).
+ * If $override (a date string) is a future datetime, it wins.
+ */
+function bbj_v2_format_next_cbs_show(string $override = ''): string
+{
+    $et = new DateTimeZone('America/New_York');
+    $pt = new DateTimeZone('America/Los_Angeles');
+    $now_et = new DateTimeImmutable('now', $et);
+
+    $target_et = null;
+    if ($override !== '') {
+        try {
+            $candidate = new DateTimeImmutable($override, $et);
+            if ($candidate > $now_et) {
+                $target_et = $candidate;
+            }
+        } catch (Exception $_) {}
+    }
+
+    if ($target_et === null) {
+        $days = [0, 3, 4]; // Sun, Wed, Thu
+        $best = null;
+        foreach ($days as $d) {
+            $candidate = $now_et->setTime(20, 0);
+            while ((int) $candidate->format('w') !== $d || $candidate <= $now_et) {
+                $candidate = $candidate->modify('+1 day')->setTime(20, 0);
+            }
+            if ($best === null || $candidate < $best) {
+                $best = $candidate;
+            }
+        }
+        $target_et = $best;
+    }
+
+    if ($target_et === null) return '';
+    $target_pt = $target_et->setTimezone($pt);
+
+    $diff_days = (int) $now_et->diff($target_et)->format('%a');
+    $time_part = $target_et->format('ga') . ' ET / ' . $target_pt->format('ga') . ' PT';
+
+    if ($target_et->format('Y-m-d') === $now_et->format('Y-m-d')) {
+        return 'Tonight at ' . $time_part;
+    }
+    if ($target_et->format('Y-m-d') === $now_et->modify('+1 day')->format('Y-m-d')) {
+        return 'Tomorrow at ' . $time_part;
+    }
+    if ($diff_days <= 6) {
+        return $target_et->format('D') . ' at ' . $time_part;
+    }
+    return $target_et->format('M j') . ' at ' . $time_part;
+}
