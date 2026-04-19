@@ -195,7 +195,7 @@
     @apply inline-flex flex-col justify-center w-5 h-5;
   }
   .bbj-mnav-burger > span {
-    @apply block h-0.5 w-full bg-white transition-transform duration-200;
+    @apply block h-0.5 w-full bg-current transition-transform duration-200;
     margin: 2px 0;
   }
   [aria-expanded="true"] .bbj-mnav-burger > span:nth-child(1) {
