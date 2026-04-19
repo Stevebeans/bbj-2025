@@ -1,12 +1,19 @@
-<aside class="w-80 shrink-0 hidden lg:block space-y-6">
-    <?php if (function_exists('bbjd_ad')) : ?>
-        <div class="bg-white rounded-lg shadow p-4 dark:bg-gray-800">
-            <?php bbjd_ad('sidebar-top'); ?>
-        </div>
-    <?php endif; ?>
+<?php
+/**
+ * Homepage sidebar — used by front-page.php.
+ * Widget order: Houseboard → Season Stats → Recent Comments → Sticky Ad → Paramount+ → Socials → Newsletter.
+ */
 
-    <?php dynamic_sidebar('main-sidebar'); ?>
-
-    <!-- Newsletter Signup Placeholder -->
+if (!defined('ABSPATH')) {
+    exit;
+}
+?>
+<aside class="space-y-6">
+    <?php get_template_part('template-parts/home/houseboard'); ?>
+    <?php get_template_part('template-parts/sidebar/season-stats'); ?>
+    <?php get_template_part('template-parts/sidebar/recent-comments'); ?>
+    <?php get_template_part('template-parts/sidebar/sticky-ad'); ?>
+    <?php get_template_part('template-parts/sidebar/paramount-plus'); ?>
+    <?php get_template_part('template-parts/sidebar/socials'); ?>
     <?php get_template_part('template-parts/sidebar/newsletter'); ?>
 </aside>
