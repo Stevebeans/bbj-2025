@@ -111,17 +111,7 @@ if (!function_exists('bbj_v2_dashboard_badge')) {
 ?>
 
 <aside class="w-56 shrink-0 self-start sticky top-4 bg-primary-500 text-slate-100 min-h-[85vh]">
-    <div class="px-4 py-4 border-b border-white/10">
-        <a href="<?php echo esc_url(home_url('/')); ?>" class="block" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?>">
-            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/images/bbjlogo2020.png'); ?>"
-                 alt="<?php echo esc_attr(get_bloginfo('name')); ?>"
-                 class="w-full h-auto max-w-[180px]"
-                 width="395" height="37"
-                 decoding="async">
-        </a>
-    </div>
-
-    <nav class="py-3 px-3 space-y-1" aria-label="<?php esc_attr_e('User dashboard navigation', 'bbj-v2-theme'); ?>">
+    <nav class="pt-4 pb-3 px-3 space-y-1" aria-label="<?php esc_attr_e('User dashboard navigation', 'bbj-v2-theme'); ?>">
         <?php foreach ($sections as $section_index => $section): ?>
             <div class="px-2 <?php echo $section_index === 0 ? 'pt-1' : 'pt-4'; ?> pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                 <?php echo esc_html($section['label']); ?>
