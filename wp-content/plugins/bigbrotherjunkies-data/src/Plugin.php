@@ -60,6 +60,7 @@ use BigBrotherJunkies\Data\Api\AdSettingsRoutes;
 use BigBrotherJunkies\Data\Api\NewsAggregatorRoutes;
 use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
+use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Utils\Revalidation;
 
 /**
@@ -138,6 +139,9 @@ class Plugin
                 Revalidation::revalidateTag('feed-updates');
             }
         }, 10, 3);
+
+        // Register custom taxonomies (update_type, etc.)
+        $this->initTaxonomies();
 
         // Initialize REST API routes
         $this->initApiRoutes();
@@ -230,6 +234,14 @@ class Plugin
                 ],
             ]);
         });
+    }
+
+    /**
+     * Register custom taxonomies
+     */
+    private function initTaxonomies(): void
+    {
+        (new UpdateTypeTaxonomy())->init();
     }
 
     /**
