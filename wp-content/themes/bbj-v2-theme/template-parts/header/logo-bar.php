@@ -37,13 +37,7 @@ if (!defined('ABSPATH')) {
         <div class="justify-self-end flex items-center gap-3">
             <?php get_template_part('template-parts/header/user-icons'); ?>
 
-            <?php if (is_user_logged_in()) : ?>
-                <a href="<?php echo esc_url(admin_url('profile.php')); ?>"
-                   class="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition">
-                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    <span class="text-sm font-osw uppercase tracking-wider"><?php echo esc_html(wp_get_current_user()->display_name); ?></span>
-                </a>
-            <?php else : ?>
+            <?php if (!is_user_logged_in()) : ?>
                 <button type="button"
                         data-bbj-auth-open="login"
                         class="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition">
