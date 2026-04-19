@@ -18,6 +18,8 @@ if (!defined('ABSPATH')) {
  */
 function bbj_v2_require_admin(): void
 {
+    add_filter('wp_robots', 'wp_robots_no_robots');
+
     if (!is_user_logged_in()) {
         $current = home_url(add_query_arg([]));
         wp_safe_redirect(wp_login_url($current));
@@ -39,6 +41,8 @@ function bbj_v2_require_admin(): void
  */
 function bbj_v2_require_logged_in(): void
 {
+    add_filter('wp_robots', 'wp_robots_no_robots');
+
     if (!is_user_logged_in()) {
         $current = home_url(add_query_arg([]));
         wp_safe_redirect(wp_login_url($current));
