@@ -1,4 +1,19 @@
-<?php 
+<?php
+
+// Ported from the legacy BBJ theme (themes/BBJ/includes/core.php) so the
+// block is self-contained and works with the new bbj-v2-theme.
+if (!function_exists('my_post_time_ago_function')) {
+    function my_post_time_ago_function() {
+        $time_diff = human_time_diff(get_the_modified_time('U'), current_time('timestamp'));
+        $class = (current_time('timestamp') - get_the_modified_time('U') < 4 * HOUR_IN_SECONDS)
+            ? 'text-red-500'
+            : 'text-gray-500';
+        return [
+            'time_diff' => sprintf(esc_html__('%s ago', 'bbj-tools'), $time_diff),
+            'class'     => $class,
+        ];
+    }
+}
 
 function render_new_feed_updates_block() {
   // Query for the latest 10 posts of the 'live-feed-updates' custom post type
@@ -82,7 +97,7 @@ function render_new_feed_updates_block() {
 
 
         <?php
-        if ($count % 5 == 0) {
+        if ($count % 5 == 0 && function_exists('show_impact_radius')) {
           show_impact_radius();
         }
       endwhile;
