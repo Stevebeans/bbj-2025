@@ -39,6 +39,7 @@
   .bbj-status-strip {
     @apply bg-gray-900 dark:bg-black border-b border-gray-700 text-white;
   }
+  .bbj-hero-post { @apply block; }
 
   .spoilerbar-hoh     { @apply border-emerald-600 bg-emerald-600 text-white; }
   .spoilerbar-pov     { @apply border-yellow-500 bg-yellow-500 text-yellow-950; }
