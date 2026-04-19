@@ -1,7 +1,7 @@
 <?php
 /**
- * More BB<N> Stories — 3×3 grid of current-season posts, excluding the hero
- * and any post already surfaced in the "More BB<N> Spoilers" list.
+ * More BB<N> Stories — 8 current-season posts in a 3×3 grid with an ad
+ * occupying the dead-center cell (position 5 of 9).
  */
 
 if (!defined('ABSPATH')) {
@@ -14,11 +14,38 @@ $exclude        = array_merge(
     $hero ? [$hero->ID] : [],
     array_map(static fn($p) => (int) $p->ID, $spoiler_posts)
 );
-$stories        = bbj_v2_homepage_bb_stories($exclude);
+$stories        = array_slice(bbj_v2_homepage_bb_stories($exclude), 0, 8);
 $season_num     = bbj_v2_current_season_number();
 if (empty($stories)) {
     return;
 }
+
+$first_half  = array_slice($stories, 0, 4);
+$second_half = array_slice($stories, 4, 4);
+
+$render_card = static function (WP_Post $p): void { ?>
+    <article class="v2-primary-container-inner">
+        <a href="<?php echo esc_url(get_permalink($p->ID)); ?>" class="block group">
+            <?php if (has_post_thumbnail($p->ID)) : ?>
+                <div class="aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
+                    <?php echo get_the_post_thumbnail($p->ID, 'featured-thumbnail', [
+                        'class'    => 'w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300',
+                        'loading'  => 'lazy',
+                        'decoding' => 'async',
+                    ]); ?>
+                </div>
+            <?php endif; ?>
+            <div class="p-4">
+                <h3 class="font-display text-lg leading-snug text-gray-900 dark:text-gray-100 group-hover:text-primary-500 dark:group-hover:text-secondary-500 transition-colors">
+                    <?php echo esc_html($p->post_title); ?>
+                </h3>
+                <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 font-osw uppercase tracking-wider" data-nosnippet>
+                    <time datetime="<?php echo esc_attr(get_the_date('c', $p)); ?>"><?php echo esc_html(get_the_date('M j', $p)); ?></time>
+                </div>
+            </div>
+        </a>
+    </article>
+<?php };
 ?>
 <section id="more-bb-stories" class="bbj-more-bb-stories">
     <h2 class="section-header mb-4">
@@ -28,28 +55,17 @@ if (empty($stories)) {
     </h2>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <?php foreach ($stories as $p) : ?>
-            <article class="v2-primary-container-inner">
-                <a href="<?php echo esc_url(get_permalink($p->ID)); ?>" class="block group">
-                    <?php if (has_post_thumbnail($p->ID)) : ?>
-                        <div class="aspect-[4/3] overflow-hidden bg-gray-100 dark:bg-gray-800">
-                            <?php echo get_the_post_thumbnail($p->ID, 'featured-thumbnail', [
-                                'class'    => 'w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-300',
-                                'loading'  => 'lazy',
-                                'decoding' => 'async',
-                            ]); ?>
-                        </div>
-                    <?php endif; ?>
-                    <div class="p-4">
-                        <h3 class="font-display text-lg leading-snug text-gray-900 dark:text-gray-100 group-hover:text-primary-500 dark:group-hover:text-secondary-500 transition-colors">
-                            <?php echo esc_html($p->post_title); ?>
-                        </h3>
-                        <div class="mt-2 text-xs text-gray-500 dark:text-gray-400 font-osw uppercase tracking-wider" data-nosnippet>
-                            <time datetime="<?php echo esc_attr(get_the_date('c', $p)); ?>"><?php echo esc_html(get_the_date('M j', $p)); ?></time>
-                        </div>
-                    </div>
-                </a>
-            </article>
-        <?php endforeach; ?>
+        <?php foreach ($first_half as $p) $render_card($p); ?>
+
+        <div class="v2-primary-container-inner flex items-center justify-center p-4">
+            <?php get_template_part('template-parts/components/ad-placeholder', null, [
+                'slot'        => 'homepage_stories_inline',
+                'size'        => '300x250',
+                'mobile_size' => '300x250',
+                'note'        => __('Homepage · center of stories grid', 'bbj-v2-theme'),
+            ]); ?>
+        </div>
+
+        <?php foreach ($second_half as $p) $render_card($p); ?>
     </div>
 </section>

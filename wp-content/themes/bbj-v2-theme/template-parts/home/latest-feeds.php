@@ -1,18 +1,18 @@
 <?php
 /**
- * Latest from the Feeds — 5 rich cards + 10 compact rows.
+ * Latest from the Feeds — 5 rich cards, an inline ad, then 5 more-updates rows.
  */
 
 if (!defined('ABSPATH')) {
     exit;
 }
 
-$items = bbj_v2_homepage_latest_feeds(15);
+$items = bbj_v2_homepage_latest_feeds(10);
 if (empty($items)) {
     return;
 }
 $rich_items    = array_slice($items, 0, 5);
-$compact_items = array_slice($items, 5, 10);
+$compact_items = array_slice($items, 5, 5);
 ?>
 <section id="latest-feeds" class="bbj-latest-feeds">
     <div class="flex items-baseline justify-between mb-2">
@@ -34,10 +34,19 @@ $compact_items = array_slice($items, 5, 10);
         endforeach; ?>
     </div>
 
+    <div class="my-6">
+        <?php get_template_part('template-parts/components/ad-placeholder', null, [
+            'slot'        => 'homepage_feeds_inline',
+            'size'        => '300x250',
+            'mobile_size' => '300x250',
+            'note'        => __('Homepage · between rich feeds and more updates', 'bbj-v2-theme'),
+        ]); ?>
+    </div>
+
     <?php if (!empty($compact_items)) : ?>
         <div class="mt-6">
             <h3 class="font-osw uppercase tracking-wider text-sm text-gray-700 dark:text-gray-300 mb-2">
-                <?php esc_html_e('Quick hits', 'bbj-v2-theme'); ?>
+                <?php esc_html_e('More Updates', 'bbj-v2-theme'); ?>
             </h3>
             <ul class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
                 <?php foreach ($compact_items as $item) :
