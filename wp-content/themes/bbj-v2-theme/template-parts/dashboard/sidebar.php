@@ -2,6 +2,10 @@
 /**
  * User dashboard shell sidebar. Rendered by page-dashboard.php.
  * Receives $args['active'] — the current tab slug (defaults to 'overview').
+ *
+ * Visual direction: branded dark-navy sidebar with yellow active state.
+ * Per-item badges (counts / alert / state) are placeholder values for v1;
+ * wire to real data when Activity / Saved / Notifications / Premium land.
  */
 
 if (!defined('ABSPATH')) {
@@ -10,21 +14,28 @@ if (!defined('ABSPATH')) {
 
 $active = isset($args['active']) ? (string) $args['active'] : 'overview';
 
+/*
+ * Each item's `badge` key (optional):
+ *   - ['type' => 'count', 'text' => '64']  → muted navy pill, white digits
+ *   - ['type' => 'alert', 'text' => '5']   → red circle (thirdColor), white digits
+ *   - ['type' => 'state', 'text' => 'ACT'] → yellow pill (second500), dark text
+ * Badges are hardcoded placeholders for v1.
+ */
 $sections = [
     [
         'label' => 'My BBJ',
         'items' => [
             ['slug' => 'overview',      'label' => 'Overview',      'icon' => 'home'],
-            ['slug' => 'activity',      'label' => 'Activity',      'icon' => 'lightning'],
-            ['slug' => 'saved',         'label' => 'Saved',         'icon' => 'bookmark'],
-            ['slug' => 'notifications', 'label' => 'Notifications', 'icon' => 'bell'],
+            ['slug' => 'activity',      'label' => 'Activity',      'icon' => 'lightning',   'badge' => ['type' => 'count', 'text' => '64']],
+            ['slug' => 'saved',         'label' => 'Saved',         'icon' => 'bookmark',    'badge' => ['type' => 'count', 'text' => '12']],
+            ['slug' => 'notifications', 'label' => 'Notifications', 'icon' => 'bell',        'badge' => ['type' => 'alert', 'text' => '5']],
         ],
     ],
     [
         'label' => 'Account',
         'items' => [
             ['slug' => 'profile',  'label' => 'Profile',  'icon' => 'user-circle'],
-            ['slug' => 'premium',  'label' => 'Premium',  'icon' => 'star'],
+            ['slug' => 'premium',  'label' => 'Premium',  'icon' => 'star', 'badge' => ['type' => 'state', 'text' => 'ACT']],
             ['slug' => 'settings', 'label' => 'Settings', 'icon' => 'cog'],
         ],
     ],
@@ -65,43 +76,79 @@ if (!function_exists('bbj_v2_dashboard_icon')) {
         echo '<svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">' . $svg . '</svg>';
     }
 }
+
+/**
+ * Helper: render the right-side badge for a sidebar item.
+ */
+if (!function_exists('bbj_v2_dashboard_badge')) {
+    function bbj_v2_dashboard_badge(array $badge, bool $is_active): void
+    {
+        $type = $badge['type'] ?? 'count';
+        $text = $badge['text'] ?? '';
+        if ($text === '') {
+            return;
+        }
+
+        // Active items invert to dark background — lighten the count pill against that.
+        if ($type === 'alert') {
+            $classes = 'bg-accent-red text-white';
+        } elseif ($type === 'state') {
+            $classes = 'bg-secondary-500 text-primary-500';
+        } else {
+            // count
+            $classes = $is_active
+                ? 'bg-primary-500/20 text-primary-500'
+                : 'bg-white/10 text-slate-200';
+        }
+
+        printf(
+            '<span class="ml-auto inline-flex items-center justify-center min-w-[1.5rem] h-5 px-1.5 text-[11px] font-semibold rounded-full %s">%s</span>',
+            esc_attr($classes),
+            esc_html($text)
+        );
+    }
+}
 ?>
 
-<aside class="w-52 shrink-0 self-start sticky top-4 bg-white dark:bg-gray-900 border border-stone-200 dark:border-slate-800">
-    <div class="px-4 py-3 border-b border-stone-200 dark:border-slate-700">
-        <div class="text-xs uppercase tracking-wider text-stone-500">My BBJ</div>
-        <div class="text-sm text-stone-800 dark:text-slate-200 mt-0.5 truncate">
-            <?php echo esc_html($current_user->display_name ?: $current_user->user_login); ?>
-        </div>
+<aside class="w-56 shrink-0 self-start sticky top-4 bg-primary-500 text-slate-100 min-h-[85vh]">
+    <div class="px-4 py-4 border-b border-white/10">
+        <a href="<?php echo esc_url(home_url('/')); ?>" class="block" aria-label="<?php echo esc_attr(get_bloginfo('name')); ?>">
+            <img src="<?php echo esc_url(get_template_directory_uri() . '/assets/images/bbjlogo2020.png'); ?>"
+                 alt="<?php echo esc_attr(get_bloginfo('name')); ?>"
+                 class="w-full h-auto max-w-[180px]"
+                 width="395" height="37"
+                 decoding="async">
+        </a>
     </div>
 
-    <nav class="py-2 px-2" aria-label="<?php esc_attr_e('User dashboard navigation', 'bbj-v2-theme'); ?>">
-        <?php foreach ($sections as $section): ?>
-            <div class="px-3 pt-3 pb-1 text-xs uppercase tracking-wider text-stone-500">
+    <nav class="py-3 px-3 space-y-1" aria-label="<?php esc_attr_e('User dashboard navigation', 'bbj-v2-theme'); ?>">
+        <?php foreach ($sections as $section_index => $section): ?>
+            <div class="px-2 <?php echo $section_index === 0 ? 'pt-1' : 'pt-4'; ?> pb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">
                 <?php echo esc_html($section['label']); ?>
             </div>
             <?php foreach ($section['items'] as $item):
                 $is_active = ($item['slug'] === $active);
                 $url = $item['slug'] === 'overview'
-                    ? esc_url(home_url('/dashboard/'))
-                    : esc_url(add_query_arg('tab', $item['slug'], home_url('/dashboard/')));
+                    ? home_url('/dashboard/')
+                    : add_query_arg('tab', $item['slug'], home_url('/dashboard/'));
                 $classes = $is_active
-                    ? 'bg-primary-500 text-white'
-                    : 'text-stone-700 hover:bg-stone-100 dark:text-slate-300 dark:hover:bg-slate-800';
+                    ? 'bg-secondary-500 text-primary-500 font-bold shadow-sm'
+                    : 'text-slate-200 hover:bg-white/10 font-medium';
             ?>
-                <a href="<?php echo $url; ?>"
-                   class="flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors <?php echo $classes; ?>"
+                <a href="<?php echo esc_url($url); ?>"
+                   class="flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors <?php echo esc_attr($classes); ?>"
                    <?php echo $is_active ? 'aria-current="page"' : ''; ?>>
                     <?php bbj_v2_dashboard_icon($item['icon']); ?>
-                    <span><?php echo esc_html($item['label']); ?></span>
+                    <span class="truncate"><?php echo esc_html($item['label']); ?></span>
+                    <?php if (!empty($item['badge'])): bbj_v2_dashboard_badge($item['badge'], $is_active); endif; ?>
                 </a>
             <?php endforeach; ?>
         <?php endforeach; ?>
     </nav>
 
-    <div class="px-2 py-2 border-t border-stone-200 dark:border-slate-700">
+    <div class="px-3 pt-4 pb-3 mt-4 border-t border-white/10">
         <a href="<?php echo esc_url(wp_logout_url(home_url('/'))); ?>"
-           class="flex items-center gap-2 px-3 py-2 text-sm text-stone-600 hover:bg-stone-100 dark:text-slate-400 dark:hover:bg-slate-800 transition-colors">
+           class="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white hover:bg-white/10 rounded-md transition-colors">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
             </svg>
