@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 ?>
-<div class="bg-white dark:bg-gray-900">
+<div class="hidden md:block bg-white dark:bg-gray-900">
     <div class="mx-auto max-w-screen-xl px-4 py-3 grid grid-cols-3 items-center gap-4">
 
         <a href="<?php echo esc_url(home_url('/')); ?>"

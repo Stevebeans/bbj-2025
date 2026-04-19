@@ -52,7 +52,7 @@ $initials = static function (string $name): string {
                     <?php endif; ?>
                     <?php esc_html_e('Houseguests', 'bbj-v2-theme'); ?>
                 </strong>
-                <span class="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
+                <span class="hidden md:inline text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
                     <?php echo esc_html(sprintf('%d Cast', $total)); ?>
                     <span aria-hidden="true" class="mx-1">·</span>
                     <?php echo esc_html(sprintf('%d Remaining', $remaining)); ?>

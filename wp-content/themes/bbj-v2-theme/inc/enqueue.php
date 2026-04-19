@@ -50,6 +50,14 @@ function bbj_v2_enqueue_assets(): void
         ['strategy' => 'defer', 'in_footer' => true]
     );
 
+    wp_enqueue_script(
+        'bbj-v2-search-modal',
+        BBJ_V2_THEME_URL . '/src/js/search-modal.js',
+        [],
+        bbj_v2_asset_ver('/src/js/search-modal.js'),
+        ['strategy' => 'defer', 'in_footer' => true]
+    );
+
     // Auth assets — anonymous users only.
     if (!is_user_logged_in()) {
         wp_enqueue_script(

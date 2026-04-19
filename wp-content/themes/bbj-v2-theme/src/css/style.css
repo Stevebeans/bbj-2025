@@ -216,6 +216,46 @@
   .bbj-mnav-panel.is-open {
     @apply max-h-[80vh] opacity-100 overflow-y-auto;
   }
+  .bbj-mnav-panel--inline {
+    @apply static max-h-0 opacity-0;
+  }
+  .bbj-mnav-panel--inline.is-open {
+    @apply max-h-[70vh] opacity-100 overflow-y-auto;
+  }
+
+  .bbj-action-bar {
+    @apply flex items-center justify-between bg-primary-500 text-white text-xs px-3 py-2;
+  }
+  .bbj-action-link {
+    @apply inline-flex items-center gap-2 font-osw uppercase tracking-wider
+      text-secondary-500 hover:text-secondary-400 transition;
+  }
+  .bbj-live-pill {
+    @apply inline-flex items-center gap-1 bg-accent-red text-white
+      rounded px-1.5 py-0.5 text-[10px] font-bold no-underline;
+  }
+  .bbj-live-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse;
+  }
+
+  .bbj-search-modal {
+    @apply fixed inset-0 z-[110] bg-white dark:bg-gray-900
+      opacity-0 transition-opacity duration-150 ease-out;
+  }
+  .bbj-search-modal.is-open {
+    @apply opacity-100;
+  }
+  .bbj-search-modal-bar {
+    @apply flex items-center gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-700;
+  }
+  .bbj-search-modal-back {
+    @apply p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800
+      text-gray-700 dark:text-gray-200 transition;
+  }
+  .bbj-search-modal-form {
+    @apply flex-1;
+  }
+
   .bbj-mnav {
     @apply list-none m-0 p-0;
   }

@@ -22,11 +22,13 @@ if (!defined('ABSPATH')) {
 </a>
 
 <header id="site-header" class="relative z-30">
+    <?php get_template_part('template-parts/header/mobile-header'); ?>
     <?php get_template_part('template-parts/header/utility-strip'); ?>
     <?php get_template_part('template-parts/header/logo-bar'); ?>
     <?php get_template_part('template-parts/header/nav'); ?>
     <?php get_template_part('template-parts/header/spoiler-bar'); ?>
 </header>
+<?php get_template_part('template-parts/components/search-modal'); ?>
 
 <?php
 // Leaderboard ad slot — placeholder until wired to bbjd_ad().
