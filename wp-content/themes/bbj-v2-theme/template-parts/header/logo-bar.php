@@ -34,7 +34,9 @@ if (!defined('ABSPATH')) {
             </div>
         </form>
 
-        <div class="justify-self-end">
+        <div class="justify-self-end flex items-center gap-3">
+            <?php get_template_part('template-parts/header/user-icons'); ?>
+
             <?php if (is_user_logged_in()) : ?>
                 <a href="<?php echo esc_url(admin_url('profile.php')); ?>"
                    class="flex items-center gap-1 text-gray-700 dark:text-gray-200 hover:text-primary-500 transition">
