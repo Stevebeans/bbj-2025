@@ -346,6 +346,44 @@ function bbj_v2_homepage_season_stats(): array
 }
 
 /**
+ * Most-commented posts in the last N days. Used by the site-wide sidebar
+ * as "Hot Posts". Cached 5 min in the bbj_v2 group; busted on post save +
+ * comment insert via the same hooks that cover recent_comments.
+ *
+ * @return WP_Post[]
+ */
+function bbj_v2_hot_posts(int $limit = 5, int $days = 30): array
+{
+    $cache_key = "sidebar_hot_posts_{$limit}_{$days}";
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    $base_args = [
+        'post_type'      => 'post',
+        'post_status'    => 'publish',
+        'posts_per_page' => $limit,
+        'orderby'        => 'comment_count',
+        'order'          => 'DESC',
+        'no_found_rows'  => true,
+    ];
+
+    $q = new WP_Query(array_merge($base_args, [
+        'date_query' => [['after' => "{$days} days ago", 'inclusive' => true]],
+    ]));
+
+    // Fallback to all-time top-commented posts if no posts in the window
+    // (e.g. off-season lull).
+    if (empty($q->posts)) {
+        $q = new WP_Query($base_args);
+    }
+
+    wp_cache_set($cache_key, $q->posts, 'bbj_v2', 300);
+    return $q->posts;
+}
+
+/**
  * Last N approved comments, site-wide.
  *
  * @return WP_Comment[]
@@ -501,6 +539,7 @@ function bbj_v2_homepage_bust_posts(): void
 {
     wp_cache_delete('homepage_more_spoilers_' . md5(serialize([])), 'bbj_v2');
     wp_cache_delete('homepage_bb_stories_'    . md5(serialize([])), 'bbj_v2');
+    wp_cache_delete('sidebar_hot_posts_5_30', 'bbj_v2');
 }
 
 function bbj_v2_homepage_bust_feeds(): void
@@ -528,4 +567,5 @@ function bbj_v2_homepage_bust_all(): void
 function bbj_v2_homepage_bust_comments(): void
 {
     wp_cache_delete('homepage_recent_comments_5', 'bbj_v2');
+    wp_cache_delete('sidebar_hot_posts_5_30', 'bbj_v2');
 }

@@ -55,6 +55,59 @@
            ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 overflow-hidden;
   }
 
+  /* ----- Single post / page typography ----- */
+  .bbj-post-body {
+    @apply text-[17px] leading-[1.7] text-gray-800 dark:text-gray-200;
+  }
+  .bbj-post-body > p {
+    @apply mb-6;
+  }
+  .bbj-post-body > p:first-of-type::first-letter {
+    @apply float-left font-display font-bold mr-3 mt-2 leading-none text-primary-500 dark:text-secondary-500;
+    font-size: 5rem;
+  }
+  .bbj-post-body h2 {
+    @apply font-osw uppercase tracking-wide font-bold text-2xl md:text-3xl text-gray-900 dark:text-gray-100
+           mt-12 mb-4 pt-6 border-t border-gray-300 dark:border-gray-700;
+  }
+  .bbj-post-body h3 {
+    @apply font-osw uppercase tracking-wide font-bold text-lg md:text-xl text-gray-900 dark:text-gray-100 mt-8 mb-3;
+  }
+  .bbj-post-body blockquote {
+    @apply border-l-4 border-secondary-500 pl-5 pr-4 py-3 my-8
+           bg-gray-50 dark:bg-gray-800/50 italic text-lg md:text-xl leading-snug text-gray-800 dark:text-gray-200;
+  }
+  .bbj-post-body a {
+    @apply text-primary-500 dark:text-secondary-500 underline hover:no-underline;
+  }
+  .bbj-post-body ul {
+    @apply list-disc pl-6 mb-6 space-y-2 marker:text-primary-500 dark:marker:text-secondary-500;
+  }
+  .bbj-post-body ol {
+    @apply list-decimal pl-6 mb-6 space-y-2 marker:text-primary-500 dark:marker:text-secondary-500 marker:font-osw;
+  }
+  .bbj-post-body img {
+    @apply rounded-lg my-8;
+  }
+  .bbj-post-body strong {
+    @apply font-bold text-gray-900 dark:text-gray-100;
+  }
+  .bbj-post-body figure {
+    @apply my-8;
+  }
+  .bbj-post-body figcaption {
+    @apply mt-2 text-xs text-gray-500 dark:text-gray-400 text-center italic;
+  }
+
+  .bbj-share-btn {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-300 dark:border-gray-600
+           text-gray-700 dark:text-gray-300 hover:text-primary-500 hover:border-primary-500
+           dark:hover:text-secondary-500 dark:hover:border-secondary-500 transition-colors cursor-pointer;
+  }
+  .bbj-share-btn.is-copied {
+    @apply text-emerald-600 border-emerald-600 dark:text-emerald-400 dark:border-emerald-400;
+  }
+
   .spoilerbar-hoh     { @apply border-emerald-600 bg-emerald-600 text-white; }
   .spoilerbar-pov     { @apply border-yellow-500 bg-yellow-500 text-yellow-950; }
   .spoilerbar-active  { @apply border-slate-300 bg-slate-200 text-slate-700; }
