@@ -61,6 +61,7 @@ use BigBrotherJunkies\Data\Api\NewsAggregatorRoutes;
 use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
+use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
 use BigBrotherJunkies\Data\Utils\Revalidation;
 
 /**
@@ -242,6 +243,7 @@ class Plugin
     private function initTaxonomies(): void
     {
         (new UpdateTypeTaxonomy())->init();
+        (new UpdateLocationTaxonomy())->init();
     }
 
     /**
