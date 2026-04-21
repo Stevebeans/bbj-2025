@@ -90,10 +90,11 @@ if (!empty($_GET['updated'])) {
         </select>
     </div>
 
-    <!-- Tab nav + bodies (built in Task 5) -->
-    <div id="bbj-seasons-edit-tabs">
-        <p class="text-stone-600 dark:text-slate-400">Tabs render next task.</p>
-    </div>
+    <!-- Tab nav + bodies -->
+    <?php get_template_part('template-parts/admin/partials/seasons-edit-tabs', null, [
+        'season'    => $season,
+        'season_id' => $season_id,
+    ]); ?>
 
     <!-- Tiny JS: auto-dismiss success notices -->
     <script>
