@@ -40,6 +40,15 @@ function BBJ_load_update_season_info_handler() {
     bbj_v2_edit_season_info();
 }
 
+// Create a new season (draft)
+add_action( 'admin_post_bbj_v2_create_season', 'BBJ_load_create_season_handler' );
+
+function BBJ_load_create_season_handler() {
+    // only now load the heavy logic
+    require_once BBJ_FORM_SUBMITS . 'create-season.php';
+    bbj_v2_create_season();
+}
+
 // Add or Edit Player Information
 add_action( 'admin_post_bbj_v2_add_edit_player', 'BBJ_load_add_edit_player_handler' );
 
