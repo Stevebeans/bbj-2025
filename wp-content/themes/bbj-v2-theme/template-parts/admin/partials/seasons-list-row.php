@@ -60,7 +60,7 @@ if ($is_current) {
 
 <tr class="<?php echo esc_attr($row_classes); ?>">
     <td class="px-4 py-3">
-        <a href="<?php echo $edit_url; ?>" class="font-semibold text-primary-500 hover:text-primary-hard dark:text-secondary-500">
+        <a href="<?php echo $edit_url; ?>" class="font-semibold text-primary-500 hover:text-primary-600 dark:text-secondary-500">
             <?php echo esc_html($full_name !== '' ? $full_name : '(Untitled draft)'); ?>
         </a>
         <?php if ($abbrev !== ''): ?>

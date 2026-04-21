@@ -29,7 +29,7 @@ if (!empty($_GET['error']) && $_GET['error'] === 'not_found') {
         <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>">
             <?php wp_nonce_field('bbj_v2_create_season_action', 'bbj_v2_create_season_nonce'); ?>
             <input type="hidden" name="action" value="bbj_v2_create_season">
-            <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-hard text-white font-semibold text-sm transition-colors">
+            <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold text-sm transition-colors">
                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
                 </svg>
@@ -46,7 +46,7 @@ if (!empty($_GET['error']) && $_GET['error'] === 'not_found') {
             <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="inline">
                 <?php wp_nonce_field('bbj_v2_create_season_action', 'bbj_v2_create_season_nonce'); ?>
                 <input type="hidden" name="action" value="bbj_v2_create_season">
-                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-hard text-white font-semibold text-sm transition-colors">
+                <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 bg-primary-500 hover:bg-primary-600 text-white font-semibold text-sm transition-colors">
                     Add Season
                 </button>
             </form>
