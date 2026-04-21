@@ -29,6 +29,17 @@ get_header();
         <section class="flex-1 min-w-0">
             <?php if ($active_tab === 'overview'): ?>
                 <?php get_template_part('template-parts/admin/pane-overview'); ?>
+            <?php elseif ($active_tab === 'seasons'): ?>
+                <?php
+                $edit_id = isset($_GET['edit']) ? absint($_GET['edit']) : 0;
+                if ($edit_id > 0) {
+                    get_template_part('template-parts/admin/pane-seasons-edit', null, [
+                        'season_id' => $edit_id,
+                    ]);
+                } else {
+                    get_template_part('template-parts/admin/pane-seasons');
+                }
+                ?>
             <?php else: ?>
                 <?php get_template_part('template-parts/admin/pane-stub', null, [
                     'tab' => $active_tab,
