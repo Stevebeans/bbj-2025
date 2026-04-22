@@ -1,7 +1,7 @@
 # BBJ v2 Theme — Roadmap
 
 > Living document. Edit freely — I'll update it as sprints ship.
-> Last updated: 2026-04-19
+> Last updated: 2026-04-21
 
 ---
 
@@ -28,6 +28,7 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 - **User dashboard shell** (`/dashboard/`) — dark-navy sidebar, 3 sections + logout, Overview pane, stubs for everything else 🟡
 - Header icon row — shield (admins) / pencil (editors) / bell / avatar
 - Safeguard helpers — `bbj_v2_require_admin()`, `bbj_v2_require_logged_in()` + noindex on admin/dashboard
+- **Seasons admin pane** (`/admin?tab=seasons`) — flat list with status badges + current-season accent, Add Season draft flow, edit page shell with 3-tab layout (Spoiler Bar / Info / Photos); Season Info tab live for BasicInfo + Dates; Images / Winners / Roster stubbed for Sprint A 🟡
 
 ---
 
