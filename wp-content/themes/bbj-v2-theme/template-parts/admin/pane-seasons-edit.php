@@ -20,7 +20,8 @@ if (!$season) {
 }
 
 $season = (object) $season;
-$all_seasons = bbj_v2_get_seasons('season_number', 'DESC');
+// bbj_v2_get_seasons() returns ARRAY_A rows — cast each to object for consistent property access.
+$all_seasons = array_map(function($r) { return (object) $r; }, bbj_v2_get_seasons('season_number', 'DESC'));
 $full_name   = (string) ($season->full_name ?? '');
 $display_name = $full_name !== '' ? $full_name : 'New Season';
 $post_id     = (int) ($season->post_id ?? 0);

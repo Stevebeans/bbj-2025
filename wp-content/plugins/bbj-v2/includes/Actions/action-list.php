@@ -35,7 +35,6 @@ add_action( 'admin_post_bbj_v2_edit_season_info', 'BBJ_load_update_season_info_h
 
 function BBJ_load_update_season_info_handler() {
     // only now load the heavy logic
-    bbj_log3(print_r('hey', true));
     require_once BBJ_FORM_SUBMITS . 'update-season.php';
     bbj_v2_edit_season_info();
 }

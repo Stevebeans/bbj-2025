@@ -9,7 +9,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$season            = $args['season'];
+$season            = (object) $args['season']; // bbj_v2_get_seasons() returns ARRAY_A
 $current_season_id = (int) ($args['current_season_id'] ?? 0);
 
 $season_id   = (int) $season->id;
