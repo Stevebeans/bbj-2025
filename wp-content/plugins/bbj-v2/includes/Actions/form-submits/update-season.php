@@ -53,7 +53,7 @@ function bbj_v2_edit_season_info() {
     //    was passing the custom-table PK as the post ID, which silently
     //    no-op'd.
     $season_row = bbj_v2_get_season_by_id( $season_id );
-    $post_id    = $season_row ? (int) $season_row->post_id : 0;
+    $post_id    = $season_row ? (int) $season_row['post_id'] : 0;
 
     if ( $post_id > 0 ) {
         $post_update = [
