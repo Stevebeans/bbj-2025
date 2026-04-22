@@ -57,6 +57,15 @@ function BBJ_load_purge_season_cache_handler() {
     bbj_v2_purge_season_cache();
 }
 
+// Set the current season (global option bbj_v2_current_season)
+add_action( 'admin_post_bbj_v2_set_current_season', 'BBJ_load_set_current_season_handler' );
+
+function BBJ_load_set_current_season_handler() {
+    // only now load the heavy logic
+    require_once BBJ_FORM_SUBMITS . 'set-current-season.php';
+    bbj_v2_set_current_season();
+}
+
 // Add or Edit Player Information
 add_action( 'admin_post_bbj_v2_add_edit_player', 'BBJ_load_add_edit_player_handler' );
 
