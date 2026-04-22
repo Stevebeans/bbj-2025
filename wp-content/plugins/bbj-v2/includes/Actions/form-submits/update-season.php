@@ -169,7 +169,7 @@ function bbj_v2_update_season() {
             'current_pov'         => isset( $current_pov[ $player_id ] )     ? 1 : 0,
             'current_nom'         => isset( $current_nom[ $player_id ] )     ? 1 : 0,
             'current_havenot'     => isset( $current_havenot[ $player_id ] ) ? 1 : 0,
-            'current_evicted'     => isset( $current_evicted[ $player_id ] ) ? 1 : 0,
+            'current_evicted'     => (int) ( $current_evicted[ $player_id ] ?? 0 ),
             'current_misc'        => isset( $current_misc[ $player_id ] )    ? 1 : 0,
             'current_jury'        => isset( $current_jury[ $player_id ] )    ? 1 : 0,
             'current_safe'        => isset( $current_safe[ $player_id ] )    ? 1 : 0,

@@ -63,7 +63,20 @@ elseif ($current_havenot)                                  $primary = 'slate';
 elseif ($current_jury)                                     $primary = 'indigo';
 elseif ($current_evicted)                                  $primary = 'gray';
 
-$border_class = 'border-l-' . $primary . '-500';
+// Explicit class names so Tailwind JIT picks them up from source.
+$border_class = match ($primary) {
+    'yellow'  => 'border-l-yellow-500',
+    'sky'     => 'border-l-sky-500',
+    'pink'    => 'border-l-pink-500',
+    'emerald' => 'border-l-emerald-500',
+    'purple'  => 'border-l-purple-500',
+    'red'     => 'border-l-red-500',
+    'green'   => 'border-l-green-500',
+    'slate'   => 'border-l-slate-500',
+    'indigo'  => 'border-l-indigo-500',
+    'gray'    => 'border-l-gray-500',
+    default   => 'border-l-stone-500',
+};
 
 // Toggle-chip helper classes
 $chip_base = 'cursor-pointer select-none inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold border text-stone-500 border-stone-300 bg-white dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 transition-colors';
