@@ -83,4 +83,9 @@ if ($is_current) {
             <?php echo esc_html($status['label']); ?>
         </span>
     </td>
+    <td class="px-4 py-3 text-right">
+        <a href="<?php echo $edit_url; ?>" class="inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold text-primary-500 hover:text-white hover:bg-primary-500 border border-primary-500 transition-colors">
+            Edit
+        </a>
+    </td>
 </tr>

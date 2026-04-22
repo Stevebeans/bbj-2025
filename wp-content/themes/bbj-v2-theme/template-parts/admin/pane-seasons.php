@@ -62,6 +62,7 @@ if (!empty($_GET['error']) && $_GET['error'] === 'not_found') {
                         <th class="px-4 py-2 text-left">Dates</th>
                         <th class="px-4 py-2 text-left">Winner</th>
                         <th class="px-4 py-2 text-left">Status</th>
+                        <th class="px-4 py-2 text-right"><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
                 <tbody>
