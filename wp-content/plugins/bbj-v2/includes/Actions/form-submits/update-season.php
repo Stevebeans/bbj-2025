@@ -48,14 +48,31 @@ function bbj_v2_edit_season_info() {
         bbj_log3( "Updated season {$season_id}" );
     }
 
-    // 4) Also update the WP post title so it stays in sync
-    wp_update_post([
-        'ID'         => $season_id,
-        'post_title' => $season_name,
-    ]);
+    // 4) Sync the companion CPT post (title + publish if still draft).
+    //    Look up the real post_id from the custom-table row — prior code
+    //    was passing the custom-table PK as the post ID, which silently
+    //    no-op'd.
+    $season_row = bbj_v2_get_season_by_id( $season_id );
+    $post_id    = $season_row ? (int) $season_row->post_id : 0;
 
-    // bust cache 
-    bbj_spoiler_bar_bust_cache( $season_id );
+    if ( $post_id > 0 ) {
+        $post_update = [
+            'ID'         => $post_id,
+            'post_title' => $season_name,
+        ];
+        // Publish the draft on first meaningful save (user set a real name).
+        $existing_status = get_post_status( $post_id );
+        if ( $existing_status === 'draft' && $season_name !== '' ) {
+            $post_update['post_status'] = 'publish';
+        }
+        wp_update_post( $post_update );
+    }
+
+    // Bust spoiler-bar cache only when we edited the currently-active season.
+    $current_season_id = (int) get_option( 'bbj_v2_current_season', 0 );
+    if ( $current_season_id === (int) $season_id ) {
+        bbj_spoiler_bar_bust_cache( $season_id );
+    }
 
     // 5) Redirect back with a success flag
     $redirect = wp_get_referer() ?: home_url();
