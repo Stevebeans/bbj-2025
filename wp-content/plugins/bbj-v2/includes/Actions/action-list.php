@@ -48,6 +48,15 @@ function BBJ_load_create_season_handler() {
     bbj_v2_create_season();
 }
 
+// Purge spoiler-bar cache for a single season (no DB writes)
+add_action( 'admin_post_bbj_v2_purge_season_cache', 'BBJ_load_purge_season_cache_handler' );
+
+function BBJ_load_purge_season_cache_handler() {
+    // only now load the heavy logic
+    require_once BBJ_FORM_SUBMITS . 'purge-season-cache.php';
+    bbj_v2_purge_season_cache();
+}
+
 // Add or Edit Player Information
 add_action( 'admin_post_bbj_v2_add_edit_player', 'BBJ_load_add_edit_player_handler' );
 
