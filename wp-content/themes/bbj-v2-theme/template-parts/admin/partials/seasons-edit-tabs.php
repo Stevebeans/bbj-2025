@@ -37,8 +37,9 @@ $tabs = [
 
 <!-- Tab panels -->
 <div data-bbj-tab-panel="spoiler" class="bbj-tab-panel">
-    <?php get_template_part('template-parts/admin/partials/seasons-edit-stub', null, [
-        'label' => 'Spoiler Bar',
+    <?php get_template_part('template-parts/admin/partials/seasons-edit-spoiler', null, [
+        'season'    => $season,
+        'season_id' => $season_id,
     ]); ?>
 </div>
 
@@ -58,7 +59,7 @@ $tabs = [
 <script>
 (function () {
     var VALID = ['spoiler', 'info', 'photos'];
-    var DEFAULT_TAB = 'info'; // Pre-sprint default — Spoiler Bar is stubbed.
+    var DEFAULT_TAB = 'spoiler'; // Spoiler Bar is the primary reason to open this page.
 
     function showTab(tabId) {
         if (VALID.indexOf(tabId) === -1) tabId = DEFAULT_TAB;
