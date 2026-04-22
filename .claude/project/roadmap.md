@@ -30,6 +30,7 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 - Safeguard helpers — `bbj_v2_require_admin()`, `bbj_v2_require_logged_in()` + noindex on admin/dashboard
 - **Seasons admin pane** (`/admin?tab=seasons`) — flat list with status badges + current-season accent, Add Season draft flow, edit page shell with 3-tab layout (Spoiler Bar / Info / Photos); Season Info tab live for BasicInfo + Dates; Images / Winners / Roster stubbed for Sprint A 🟡
 - **Spoiler Bar editor** (`/admin?tab=seasons&edit=<id>#spoiler`) — card-per-player UI on the default edit tab; adds `bbj_finish_place` column for correct double-eviction sort; uncached preview strip; Purge Cache button; reuses existing `bbj_v2_update_season()` handler
+- **Settings pane** (`/admin?tab=settings`) — current-season dropdown + info card with quick-jump to the active season's spoiler bar; cache-bust on switch. Ports the old `/wp-admin/admin.php?page=bbj-v2-settings` page into the new admin shell.
 
 ---
 
@@ -52,16 +53,16 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 
 ## Sprint roadmap
 
-### Sprint A — Site Settings + Spoiler Bar Manager 🟡
+### Sprint A — Site Settings + Spoiler Bar Manager ✅
 
 **Why first:** unblocks the homepage rich houseboard to show real BB27 data instead of placeholder Rachel/Amy/Rylie/Zach/etc. Highest user-visible payoff for smallest scope.
 
-**Scope:**
-- ~~`/admin?tab=spoiler-bar` pane~~ — **shipped as the `#spoiler` tab on `/admin?tab=seasons&edit=<id>`** (card-per-player UI, bbj_finish_place sort, uncached preview, Purge Cache button). See `docs/superpowers/specs/2026-04-22-spoiler-bar-editor-design.md`.
-- `/admin?tab=settings` pane ⬜ — `bbj_v2_current_season` dropdown, `bbj_v2_season_active` toggle, future knobs (still to ship)
-- Wire `bbj_v2_get_spoiler_bar()` to return live data so `front-page.php` houseboard flips from placeholder to real (still to ship — depends on Settings pane being wired + editor being used for BB27)
+**Scope shipped:**
+- ~~`/admin?tab=spoiler-bar` pane~~ — shipped as the `#spoiler` tab on `/admin?tab=seasons&edit=<id>` (card-per-player UI, `bbj_finish_place` sort, uncached preview, Purge Cache button). See `docs/superpowers/specs/2026-04-22-spoiler-bar-editor-design.md`.
+- `/admin?tab=settings` pane ✅ — current-season dropdown, info card with quick-jump to spoiler bar. `bbj_v2_season_active` toggle dropped (no consumers). See `docs/superpowers/specs/2026-04-22-admin-settings-pane-design.md`.
 
-**Done when:** admin can set current season + mark player statuses → homepage houseboard reflects the changes after cache bust.
+**Follow-up work (not blocking Sprint A's done state):**
+- Wire `bbj_v2_get_spoiler_bar()` to return live data so `front-page.php` houseboard flips from placeholder to real — depends on BB27 cast actually being entered into the Spoiler Bar editor (content work, not code).
 
 ---
 
