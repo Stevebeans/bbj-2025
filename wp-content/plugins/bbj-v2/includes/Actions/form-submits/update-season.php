@@ -147,6 +147,7 @@ function bbj_v2_update_season() {
     $current_jury      = $_POST['current_jury']      ?? [];
     $current_safe      = $_POST['current_safe']      ?? [];
     $misc_notes        = $_POST['misc_notes']        ?? [];
+    $finish_place      = $_POST['finish_place']      ?? [];
 
     // loop through each player and update their counts
     foreach ( $evicted_date as $player_id => $date ) {
@@ -173,6 +174,10 @@ function bbj_v2_update_season() {
             'current_jury'        => isset( $current_jury[ $player_id ] )    ? 1 : 0,
             'current_safe'        => isset( $current_safe[ $player_id ] )    ? 1 : 0,
             'misc_notes'          => sanitize_text_field( $misc_notes[ $player_id ] ?? '' ),
+            // NULL when blank or 0 so the sort doesn't treat "unset" as 1st place
+            'bbj_finish_place'    => ( isset( $finish_place[ $player_id ] ) && (int) $finish_place[ $player_id ] > 0 )
+                                       ? (int) $finish_place[ $player_id ]
+                                       : null,
         ];
 
         $where = [
@@ -189,7 +194,8 @@ function bbj_v2_update_season() {
                 '%s', // bbj_evicted_date
                 '%d','%d','%d','%d','%d','%d','%d','%d', // original counts
                 '%d','%d','%d','%d','%d','%d','%d','%d', // checkbox flags
-                '%s'  // misc_notes
+                '%s', // misc_notes
+                '%d'  // bbj_finish_place (NULL passes through as NULL via $wpdb)
             ],
             [ '%d', '%d' ]
         );
