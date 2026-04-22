@@ -4,15 +4,17 @@ defined( 'ABSPATH' ) || exit;
 
 add_shortcode( 'bbj_spoiler_bar', 'bbj_render_spoiler_bar' );
 
-function bbj_render_spoiler_bar() {
+function bbj_render_spoiler_bar( $override_season_id = null, $skip_cache = false ) {
     global $bbj_is_admin;
-    // get current season from options 
-    $current_season_id = get_option( 'bbj_v2_current_season', '' );
+    // get current season from options (unless caller passes a specific season)
+    $current_season_id = ( $override_season_id !== null && (int) $override_season_id > 0 )
+        ? (int) $override_season_id
+        : get_option( 'bbj_v2_current_season', '' );
     $current_season = bbj_v2_get_season_by_id( $current_season_id );
 
-    // Caching 
+    // Caching — caller may request a fresh render (e.g. admin preview after save)
     $cache_key = bbj_spoiler_bar_cache_key( (int)$current_season_id, (bool)$bbj_is_admin );
-    if ( false !== ($cached = wp_cache_get($cache_key, BBJ_CACHE_GROUP)) ) {
+    if ( ! $skip_cache && false !== ($cached = wp_cache_get($cache_key, BBJ_CACHE_GROUP)) ) {
         return $cached;
     }
 
@@ -37,12 +39,24 @@ function bbj_render_spoiler_bar() {
             return $wa - $wb;
         }
 
-        // Same bucket: Jury (5) or Evicted (6) → sort by bbj_evicted_date
+        // Same bucket: Jury (5) or Evicted (6) → sort by finish_place (authoritative)
+        // then bbj_evicted_date (fallback for historical seasons with no finish_place)
         if ($wa === 5 || $wa === 6) {
+            // Primary: finish_place ASC — explicit values win, NULLs fall through to date sort
+            $fa = isset($a['bbj_finish_place']) && $a['bbj_finish_place'] !== null && $a['bbj_finish_place'] !== ''
+                ? (int) $a['bbj_finish_place'] : null;
+            $fb = isset($b['bbj_finish_place']) && $b['bbj_finish_place'] !== null && $b['bbj_finish_place'] !== ''
+                ? (int) $b['bbj_finish_place'] : null;
+            if ($fa !== null && $fb !== null && $fa !== $fb) {
+                return $fa <=> $fb; // 1st place before 2nd, etc.
+            }
+            if ($fa !== null && $fb === null) return -1;
+            if ($fa === null && $fb !== null) return 1;
+
+            // Secondary: evicted_date DESC (newest first) — preserves prior behavior
             $da = bbj_eviction_ts($a['bbj_evicted_date'] ?? null);
             $db = bbj_eviction_ts($b['bbj_evicted_date'] ?? null);
 
-            // nulls (no real date) go last
             if ($da === $db) {
                 // tie-break by name/id to avoid unstable shuffles
                 $an = trim(($a['first_name'] ?? '') . ' ' . ($a['last_name'] ?? ''));
@@ -53,7 +67,6 @@ function bbj_render_spoiler_bar() {
             if ($da === null) return 1;
             if ($db === null) return -1;
 
-            // NEWEST → OLDEST (flip to $da <=> $db for oldest → newest)
             return $db <=> $da;
         }
 
@@ -152,7 +165,9 @@ function bbj_render_spoiler_bar() {
     </div>
     <?php
     $html = ob_get_clean();
-    wp_cache_set($cache_key, $html, BBJ_CACHE_GROUP, BBJ_CACHE_TTL);
+    if ( ! $skip_cache ) {
+        wp_cache_set($cache_key, $html, BBJ_CACHE_GROUP, BBJ_CACHE_TTL);
+    }
     return $html;
 }
 
