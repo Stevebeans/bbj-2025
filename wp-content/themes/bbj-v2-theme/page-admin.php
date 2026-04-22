@@ -40,6 +40,8 @@ get_header();
                     get_template_part('template-parts/admin/pane-seasons');
                 }
                 ?>
+            <?php elseif ($active_tab === 'settings'): ?>
+                <?php get_template_part('template-parts/admin/pane-settings'); ?>
             <?php else: ?>
                 <?php get_template_part('template-parts/admin/pane-stub', null, [
                     'tab' => $active_tab,
