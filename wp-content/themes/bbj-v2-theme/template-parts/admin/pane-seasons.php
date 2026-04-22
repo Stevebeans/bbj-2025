@@ -7,7 +7,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-$seasons           = bbj_v2_get_seasons('season_number', 'DESC');
+// Sort by start_date DESC — season_number is VARCHAR so it sorts lexicographically (27 lands before 3). Drafts with no start_date fall to the bottom.
+$seasons           = bbj_v2_get_seasons('start_date', 'DESC');
 $current_season_id = (int) get_option('bbj_v2_current_season', 0);
 
 // Notices from query args
