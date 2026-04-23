@@ -109,28 +109,44 @@ class FeedUpdateRoutes
      */
     public function createFeedUpdate(\WP_REST_Request $request): \WP_REST_Response
     {
-        $content = wp_kses_post($request->get_param('content'));
+        // New admin-pane params (all optional for backward compat with Next.js)
+        $adminTitle   = $request->get_param('title');
+        $adminDetails = $request->get_param('details');
+        $adminType    = $request->get_param('update_type'); // term_id (int) or slug (string)
+
+        // Legacy param (Next.js sends this as post_content source)
+        $legacyContent = $request->get_param('content');
+
         $mode = in_array($request->get_param('mode'), ['feed', 'show'])
             ? $request->get_param('mode')
             : 'feed';
         $postToBluesky = (bool) $request->get_param('post_to_bluesky');
         $postToFacebook = (bool) $request->get_param('post_to_facebook');
 
-        // Validate required fields
-        if (empty($content)) {
+        // At minimum we need a title OR some content/details; otherwise nothing to save
+        $hasTitle   = !empty($adminTitle);
+        $hasContent = !empty($adminDetails) || !empty($legacyContent);
+        if (!$hasTitle && !$hasContent) {
             return new \WP_REST_Response([
                 'success' => false,
-                'message' => 'Content is required',
+                'message' => 'Either a headline or content is required',
             ], 400);
         }
 
-        // Generate SEO-friendly title: "BB27 Feed Update - Jan 30, 3:45 PM PT"
-        $title = $this->generateTitle($mode);
+        // Resolve title: admin-written headline wins, else auto-generate from mode
+        $postTitle = $hasTitle
+            ? sanitize_text_field($adminTitle)
+            : $this->generateTitle($mode);
+
+        // Resolve content: admin's details field wins, else legacy `content` param
+        $postContent = !empty($adminDetails)
+            ? wp_kses_post($adminDetails)
+            : wp_kses_post($legacyContent);
 
         // Create the post
         $postId = wp_insert_post([
-            'post_title' => $title,
-            'post_content' => $content,
+            'post_title' => $postTitle,
+            'post_content' => $postContent,
             'post_status' => 'publish',
             'post_type' => 'live-feed-updates',
             'meta_input' => [
@@ -155,6 +171,15 @@ class FeedUpdateRoutes
             }
         }
 
+        // Apply update_type taxonomy term if provided
+        if (!empty($adminType)) {
+            if (is_numeric($adminType)) {
+                wp_set_object_terms($postId, (int) $adminType, 'update_type', false);
+            } else {
+                wp_set_object_terms($postId, sanitize_title($adminType), 'update_type', false);
+            }
+        }
+
         // Get hashtag for social posts
         $hashtag = $this->getSeasonHashtag();
         $imageUrl = $imageId ? wp_get_attachment_url($imageId) : null;
@@ -169,7 +194,7 @@ class FeedUpdateRoutes
         if ($postToBluesky) {
             try {
                 $bluesky = new BlueskyClient();
-                $socialContent = $this->formatForSocial($title, $content, $hashtag, 'bluesky');
+                $socialContent = $this->formatForSocial($postTitle, $postContent, $hashtag, 'bluesky');
                 $result = $bluesky->post($socialContent, $imageUrl);
                 $socialResults['bluesky'] = $result;
             } catch (\Exception $e) {
@@ -182,7 +207,7 @@ class FeedUpdateRoutes
         if ($postToFacebook) {
             try {
                 $facebook = new FacebookClient();
-                $socialContent = $this->formatForSocial($title, $content, $hashtag, 'facebook');
+                $socialContent = $this->formatForSocial($postTitle, $postContent, $hashtag, 'facebook');
                 $result = $facebook->post($socialContent, $imageUrl);
                 $socialResults['facebook'] = $result;
             } catch (\Exception $e) {
