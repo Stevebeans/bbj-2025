@@ -31,6 +31,7 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 - **Seasons admin pane** (`/admin?tab=seasons`) — flat list with status badges + current-season accent, Add Season draft flow, edit page shell with 3-tab layout (Spoiler Bar / Info / Photos); Season Info tab live for BasicInfo + Dates; Images / Winners / Roster stubbed for Sprint A 🟡
 - **Spoiler Bar editor** (`/admin?tab=seasons&edit=<id>#spoiler`) — card-per-player UI on the default edit tab; adds `bbj_finish_place` column for correct double-eviction sort; uncached preview strip; Purge Cache button; reuses existing `bbj_v2_update_season()` handler
 - **Settings pane** (`/admin?tab=settings`) — current-season dropdown + info card with quick-jump to the active season's spoiler bar; cache-bust on switch. Ports the old `/wp-admin/admin.php?page=bbj-v2-settings` page into the new admin shell.
+- **Feed Updates admin pane** (`/admin?tab=feed-updates`) — quick-post form (headline + details + image + category + mode + social toggles) with 50-row list below, inline edit + force-delete. Permission gated via `PermissionChecker::userCan('feed_updates')` so the native permissions UI drives access. REST: extended `POST /bbjd/v1/feed-updates/create` to accept user-written titles/details/taxonomy; added PUT + DELETE handlers; PUT never re-posts to social. See `docs/superpowers/specs/2026-04-23-feed-updates-admin-pane-design.md`. Sprint I scope pulled forward. 🟡
 
 ---
 
@@ -145,15 +146,26 @@ React-based, lazy-loaded. You have a separate design in flight. When you're read
 
 ---
 
-### Sprint I — Feed Updates admin pane ⬜
+### Sprint I — Feed Updates admin pane ✅ (shipped 2026-04-23)
 
-**Why:** you said the wp-admin feed-updates UX is actively bad, so migrating this first wins the most admin QoL.
+**MVP shipped:**
+- `/admin?tab=feed-updates` — quick-post form (headline + details + image + category + mode + social toggles) + 50-row scannable list + inline edit + force-delete.
+- REST: `POST /bbjd/v1/feed-updates/create` extended (user-written title/details/update_type; Next.js content+mode path still works); new `PUT /bbjd/v1/feed-updates/{id}` and `DELETE /bbjd/v1/feed-updates/{id}`.
+- Permission: `PermissionChecker::userCan('feed_updates')` — admin permissions UI drives access.
+- PUT explicitly skips Bluesky/Facebook cross-posting (no re-posts on typo fixes).
 
-**Scope:**
-- `/admin?tab=feed-updates` — list view of recent updates, inline edit, pin, delete, quick-post form
-- Filters: by date, category (update_type taxonomy), author
-
-**Done when:** you can run a full live-feed shift from `/admin/?tab=feed-updates` without touching wp-admin.
+**Deferred to follow-ups:**
+- Image editing on existing rows (MVP: delete + re-post)
+- Search within admin list
+- Filter-by-category in admin list
+- Pin / star updates
+- Bulk actions
+- Infinite scroll beyond 50
+- Drafts / scheduled posting
+- Category manager card in Settings (separate spec — lets you edit `update_type` terms without wp-admin)
+- Outer guard on `page-admin.php` is still `bbj_v2_require_admin()`; to open this pane to `updater` / `second_in_command` roles later, flip the outer guard to a per-tab `bbj_v2_require_permission()` model
+- N+1 query tune-up on the 50-row render (~150 queries today — batch via `wp_get_object_terms(array_of_ids, ...)` + single SUM/GROUP BY on `wp_bbj_feed_ratings`)
+- Category pill on newly-created client-prepended rows (shows after refresh today)
 
 ---
 
