@@ -22,7 +22,7 @@ class PermissionChecker
         'feed_updates' => [
             'label' => 'Feed Updater',
             'description' => 'Post and edit live feed updates',
-            'roles' => ['administrator', 'updater'],
+            'roles' => ['administrator', 'editor', 'updater', 'second_in_command'],
         ],
         'player_management' => [
             'label' => 'Manage Players',

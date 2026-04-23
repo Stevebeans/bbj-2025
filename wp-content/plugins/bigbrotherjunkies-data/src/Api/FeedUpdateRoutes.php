@@ -89,18 +89,19 @@ class FeedUpdateRoutes
             'permission_callback' => [$this, 'checkUpdaterPermission'],
         ]);
 
-        // Update a feed update (admin pane inline edit — no social re-post)
+        // Update + delete a feed update. PUT is the admin-pane inline edit
+        // (no social re-post); DELETE is a force delete (no trash).
         register_rest_route($namespace, '/feed-updates/(?P<id>\d+)', [
-            'methods' => 'PUT',
-            'callback' => [$this, 'updateFeedUpdate'],
-            'permission_callback' => [$this, 'checkUpdaterPermission'],
-        ]);
-
-        // Delete a feed update (force delete, no trash)
-        register_rest_route($namespace, '/feed-updates/(?P<id>\d+)', [
-            'methods' => 'DELETE',
-            'callback' => [$this, 'deleteFeedUpdate'],
-            'permission_callback' => [$this, 'checkUpdaterPermission'],
+            [
+                'methods'             => 'PUT',
+                'callback'            => [$this, 'updateFeedUpdate'],
+                'permission_callback' => [$this, 'checkUpdaterPermission'],
+            ],
+            [
+                'methods'             => 'DELETE',
+                'callback'            => [$this, 'deleteFeedUpdate'],
+                'permission_callback' => [$this, 'checkUpdaterPermission'],
+            ],
         ]);
     }
 
