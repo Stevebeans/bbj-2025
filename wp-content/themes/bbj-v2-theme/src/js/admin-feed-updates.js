@@ -189,8 +189,188 @@
         return escHtml(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
-    // ---- Edit + delete flows (wired in subsequent tasks) --------------------
-    // window.BBJ_FEED_DEBUG gives a console handle for manual probing.
+    // ---- Edit flow ----------------------------------------------------------
+
+    list.addEventListener('click', function (e) {
+        var btn = e.target.closest('button[data-action]');
+        if (!btn) return;
+        var li = btn.closest('li[data-id]');
+        if (!li) return;
+
+        var action = btn.getAttribute('data-action');
+        if (action === 'edit')                openEdit(li);
+        else if (action === 'save')           saveEdit(li, btn);
+        else if (action === 'cancel')         closeEdit(li);
+        else if (action === 'delete')         openConfirmDelete(li);
+        else if (action === 'confirm-delete') confirmDelete(li, btn);
+        else if (action === 'cancel-delete')  closeConfirmDelete(li);
+    });
+
+    function openEdit(li) {
+        // If the row didn't come with hydrated edit markup (e.g. a row prepended
+        // by prependRow after create), build it from data-* attrs on the fly.
+        var editEl = li.querySelector('[data-row-edit]');
+        if (editEl && !editEl.querySelector('[data-edit-title]')) {
+            buildEditSubtree(li, editEl);
+        }
+        li.querySelector('[data-row-display]').classList.add('hidden');
+        editEl.classList.remove('hidden');
+        li.setAttribute('data-mode', 'edit');
+        var titleInput = editEl.querySelector('[data-edit-title]');
+        if (titleInput) titleInput.focus();
+    }
+
+    function closeEdit(li) {
+        li.querySelector('[data-row-edit]').classList.add('hidden');
+        li.querySelector('[data-row-display]').classList.remove('hidden');
+        li.setAttribute('data-mode', 'display');
+    }
+
+    function saveEdit(li, btn) {
+        var editEl = li.querySelector('[data-row-edit]');
+        var title   = editEl.querySelector('[data-edit-title]').value.trim();
+        var details = editEl.querySelector('[data-edit-details]').value;
+        var termId  = editEl.querySelector('[data-edit-category]').value;
+        var id      = li.getAttribute('data-id');
+
+        if (!title) {
+            toast('Headline required', 'warn');
+            return;
+        }
+
+        btn.disabled = true;
+        var originalLabel = btn.textContent;
+        btn.textContent = 'Saving…';
+
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 15000);
+
+        restFetch('/' + encodeURIComponent(id), {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: title,
+                details: details,
+                update_type: termId
+            }),
+            signal: controller.signal
+        })
+            .then(function (res) {
+                if (res.status === 404) throw new Error('Update disappeared — refresh');
+                return res.json().then(function (json) { return { ok: res.ok, json: json }; });
+            })
+            .then(function (result) {
+                if (!result.ok || !result.json.success) {
+                    throw new Error(result.json.message || 'Save failed');
+                }
+                applyRowUpdate(li, result.json.update, termId, editEl);
+                closeEdit(li);
+                toast('Updated ✓');
+            })
+            .catch(function (err) {
+                var msg = err && err.name === 'AbortError' ? 'Request timed out' : err.message;
+                toast(msg, 'error');
+            })
+            .finally(function () {
+                clearTimeout(timeoutId);
+                btn.disabled = false;
+                btn.textContent = originalLabel;
+            });
+    }
+
+    function buildEditSubtree(li, editEl) {
+        // For rows prepended client-side (after a create), the edit subtree
+        // is empty. Populate it from data-* attrs so the edit form works.
+        var title   = li.getAttribute('data-title') || '';
+        var content = li.getAttribute('data-content') || '';
+        var termId  = li.getAttribute('data-term-id') || '0';
+
+        // Build category options — clone from the main form's select so the
+        // taxonomy list stays in sync with the page.
+        var mainSelect = document.getElementById('bbj-feed-category');
+        var optsHtml = '<option value="">(none)</option>';
+        if (mainSelect) {
+            Array.prototype.forEach.call(mainSelect.querySelectorAll('option'), function (opt) {
+                if (opt.value === '') return;
+                var selected = (opt.value === termId) ? ' selected' : '';
+                optsHtml += '<option value="' + escAttr(opt.value) + '"' + selected + '>' + escHtml(opt.textContent) + '</option>';
+            });
+        }
+
+        editEl.innerHTML =
+            '<div class="flex gap-2">' +
+                '<input type="text" data-edit-title class="flex-1 px-2 py-1 border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm">' +
+                '<select data-edit-category class="px-2 py-1 border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm">' + optsHtml + '</select>' +
+                '<button type="button" data-action="save" class="px-3 py-1 bg-primary-500 hover:bg-primary-600 text-white text-xs font-semibold">Save</button>' +
+                '<button type="button" data-action="cancel" class="px-2 py-1 text-xs text-stone-500 hover:underline">Cancel</button>' +
+            '</div>' +
+            '<textarea data-edit-details rows="3" class="w-full px-2 py-1 border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"></textarea>';
+
+        // Set .value (not innerHTML / not attribute) for inputs so raw HTML in
+        // details doesn't get parsed, and smart quotes in titles round-trip.
+        editEl.querySelector('[data-edit-title]').value = title;
+        editEl.querySelector('[data-edit-details]').value = content;
+    }
+
+    function applyRowUpdate(li, update, submittedTermId, editEl) {
+        // Update data-* attrs so subsequent edits start from fresh values.
+        li.setAttribute('data-title', update.title || '');
+        li.setAttribute('data-content', update.raw_content != null ? update.raw_content : editEl.querySelector('[data-edit-details]').value);
+        li.setAttribute('data-term-id', submittedTermId || '0');
+
+        // Refresh display subtree text. Keep markup structure stable;
+        // only touch the nodes that changed.
+        var display = li.querySelector('[data-row-display]');
+        if (display) {
+            var titleSpan = display.querySelector('.flex-1.truncate');
+            if (titleSpan) {
+                titleSpan.textContent = update.title;
+                titleSpan.setAttribute('title', update.title);
+            }
+            // Category pill: find the one fixed-width font-mono span, or
+            // insert one if the update didn't previously have a category.
+            var pill = display.querySelector('.font-mono');
+            var termName = '';
+            if (submittedTermId) {
+                var mainOpt = document.querySelector('#bbj-feed-category option[value="' + CSS.escape(submittedTermId) + '"]');
+                if (mainOpt) termName = mainOpt.textContent;
+            }
+            if (termName) {
+                if (pill) {
+                    pill.textContent = termName;
+                } else {
+                    var newPill = document.createElement('span');
+                    newPill.className = 'px-1.5 py-0.5 text-xs font-mono bg-stone-100 text-stone-600 border border-stone-200 dark:bg-slate-800 dark:text-slate-400';
+                    newPill.textContent = termName;
+                    // Insert after title span (second child after thumb)
+                    titleSpan.parentNode.insertBefore(newPill, titleSpan.nextSibling);
+                }
+                li.setAttribute('data-term-name', termName);
+            } else if (pill) {
+                pill.remove();
+                li.setAttribute('data-term-name', '');
+            }
+        }
+    }
+
+    // ---- Delete flow (next task) --------------------------------------------
+
+    function openConfirmDelete(li) {
+        var confirmEl = li.querySelector('[data-row-confirm]');
+        if (!confirmEl.innerHTML.trim()) {
+            confirmEl.innerHTML =
+                '<span class="text-stone-700 dark:text-slate-300 mr-2">Delete this update?</span>' +
+                '<button type="button" data-action="confirm-delete" class="px-2 py-0.5 bg-accent-red hover:opacity-90 text-white text-xs font-semibold">Confirm</button>' +
+                '<button type="button" data-action="cancel-delete" class="px-2 py-0.5 text-xs text-stone-500 hover:underline">Cancel</button>';
+        }
+        confirmEl.classList.remove('hidden');
+    }
+    function closeConfirmDelete(li) {
+        li.querySelector('[data-row-confirm]').classList.add('hidden');
+    }
+    function confirmDelete(/*li, btn*/) { /* implemented in Task 8 */ }
+
+    // Debug handle
     window.BBJ_FEED_DEBUG = { toast: toast, prependRow: prependRow };
 
 })();
