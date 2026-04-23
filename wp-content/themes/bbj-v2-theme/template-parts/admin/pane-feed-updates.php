@@ -66,7 +66,7 @@ if (!function_exists('bbj_v2_feed_pane_row_data')) {
         $thumb = get_the_post_thumbnail_url($post->ID, 'thumbnail') ?: '';
 
         return [
-            'title'       => get_the_title($post),
+            'title'       => html_entity_decode(get_the_title($post), ENT_QUOTES, 'UTF-8'),
             'content'     => $post->post_content,
             'term_id'     => $first_term_id,
             'term_name'   => $term_name,
