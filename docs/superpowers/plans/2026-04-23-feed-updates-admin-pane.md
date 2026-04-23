@@ -2,9 +2,22 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build `/admin?tab=feed-updates` — a single-screen admin pane with a quick-post form at the top and a scannable list of the 50 most recent updates below, supporting inline edit + delete via new `/bbjd/v1/feed-updates/{id}` REST routes, gated by a new `bbj_v2_edit_feed_updates` capability that a future site-native permissions grid will manage.
+## ⚠ Plan amendment (2026-04-23, mid-execution)
 
-**Architecture:** New pane template + vanilla JS file in the theme, new capability class + REST handlers (PUT/DELETE) in the plugin. The existing `POST /bbjd/v1/feed-updates/create` endpoint is extended to accept user-written `title` / `details` / `update_type` while keeping existing `content`/`mode`-only callers (Next.js) working unchanged. The pane is server-rendered for the initial 50 rows; all mutations after that are JS fetch calls.
+Discovered during Task 2 review: the BBJ plugin already has a **production-wide permissions system** — `BigBrotherJunkies\Data\Permissions\PermissionChecker` — with a `feed_updates` feature already defined in `DEFAULT_PERMISSIONS`. The native permissions UI in the admin already writes to `bbj_admin_permissions` option, which `PermissionChecker::getPermissionConfig()` merges over the defaults. This is the platform pattern used by AdRoutes, AdSettingsRoutes, AIRoutes, AnalyticsRoutes, ContentEngineRoutes, EditorRoutes, FacebookRoutes, NewsAggregatorRoutes, and AdminRoutes.
+
+**Changes to this plan:**
+
+1. **Task 1 (capability class) is SUPERSEDED** — the `FeedUpdatesCapability` class and the `bbj_v2_edit_feed_updates` WP core capability are not needed. Plug into `PermissionChecker` instead. Task 1's commits (`d1d5106`, `2a88379`) are reverted by the plan-amendment commit.
+2. **Task 3 now uses `PermissionChecker::userCan('feed_updates')`** as the permission callback in `FeedUpdateRoutes`. No new capability.
+3. **Task 4's helper is renamed** from `bbj_v2_require_capability(string $cap)` to `bbj_v2_require_permission(string $feature)` — delegates to `PermissionChecker::userCan()`.
+4. Spec file `docs/superpowers/specs/2026-04-23-feed-updates-admin-pane-design.md` still refers to the cap; it is outdated on this single detail and will be updated after the build lands. The up-to-date gating approach is this amendment.
+
+---
+
+**Goal:** Build `/admin?tab=feed-updates` — a single-screen admin pane with a quick-post form at the top and a scannable list of the 50 most recent updates below, supporting inline edit + delete via new `/bbjd/v1/feed-updates/{id}` REST routes, gated by the existing `PermissionChecker::userCan('feed_updates')` feature permission.
+
+**Architecture:** New pane template + vanilla JS file in the theme, new REST handlers (PUT/DELETE) in the plugin, and a refactor of `FeedUpdateRoutes::checkUpdaterPermission` to delegate to `PermissionChecker`. The existing `POST /bbjd/v1/feed-updates/create` endpoint is extended to accept user-written `title` / `details` / `update_type` while keeping existing `content`/`mode`-only callers (Next.js) working unchanged. The pane is server-rendered for the initial 50 rows; all mutations after that are JS fetch calls.
 
 **Tech Stack:** WordPress 6.x, PHP 8, Tailwind CSS 3.4, vanilla JS (no build step, no jQuery).
 
@@ -21,26 +34,34 @@
 ## File structure
 
 **Create:**
-- `wp-content/plugins/bigbrotherjunkies-data/src/Capabilities/FeedUpdatesCapability.php` — registers and seeds the `bbj_v2_edit_feed_updates` cap
 - `wp-content/themes/bbj-v2-theme/template-parts/admin/pane-feed-updates.php` — the pane (form + list, server-rendered)
 - `wp-content/themes/bbj-v2-theme/src/js/admin-feed-updates.js` — vanilla JS client (fetch, DOM updates, toasts)
 
 **Modify:**
-- `wp-content/plugins/bigbrotherjunkies-data/src/Plugin.php` — wire `FeedUpdatesCapability` into `init()`
-- `wp-content/plugins/bigbrotherjunkies-data/src/Api/FeedUpdateRoutes.php` — extend `create`, add PUT + DELETE, refactor permission check to capability-based
-- `wp-content/themes/bbj-v2-theme/inc/admin-shell.php` — add `bbj_v2_require_capability(string $cap)` helper
+- `wp-content/plugins/bigbrotherjunkies-data/src/Api/FeedUpdateRoutes.php` — extend `create`, add PUT + DELETE, refactor permission check to `PermissionChecker::userCan('feed_updates')`
+- `wp-content/themes/bbj-v2-theme/inc/admin-shell.php` — add `bbj_v2_require_permission(string $feature)` helper
 - `wp-content/themes/bbj-v2-theme/page-admin.php` — dispatcher picks up `tab=feed-updates`
 - `wp-content/themes/bbj-v2-theme/inc/enqueue.php` — conditional enqueue for `admin-feed-updates.js`
+
+**Removed / no longer needed (per amendment):**
+- ~~`wp-content/plugins/bigbrotherjunkies-data/src/Capabilities/FeedUpdatesCapability.php`~~ — reverted
+- ~~`wp-content/plugins/bigbrotherjunkies-data/src/Plugin.php`~~ wire-in of `FeedUpdatesCapability` — reverted
 
 **Convention note:** The spec says `assets/js/`; the theme actually uses `/src/js/` for all vanilla JS (see `enqueue.php`). The plan follows existing convention — `/src/js/admin-feed-updates.js`.
 
 ---
 
-### Task 1: Capability class + bootstrap
+### Task 1: ~~Capability class + bootstrap~~ — SUPERSEDED (see amendment)
+
+**Status:** This task has been reverted. The BBJ platform already has a permissions system (`PermissionChecker`) with a `feed_updates` feature defined; a new WP core capability is redundant. The Task 3 permission refactor uses `PermissionChecker::userCan('feed_updates')` instead.
+
+The original task body is retained below for historical record only — **do not re-implement.**
+
+---
 
 **Files:**
-- Create: `wp-content/plugins/bigbrotherjunkies-data/src/Capabilities/FeedUpdatesCapability.php`
-- Modify: `wp-content/plugins/bigbrotherjunkies-data/src/Plugin.php`
+- ~~Create: `wp-content/plugins/bigbrotherjunkies-data/src/Capabilities/FeedUpdatesCapability.php`~~
+- ~~Modify: `wp-content/plugins/bigbrotherjunkies-data/src/Plugin.php`~~
 
 **Context:** A single custom WP cap (`bbj_v2_edit_feed_updates`) governs both the admin pane guard and the mutating REST endpoints. Seeded to `administrator` via a versioned one-shot so it runs on normal page loads too — not just `register_activation_hook` (which only fires when the plugin is clicked Activate in wp-admin, never on rsync deploys).
 
@@ -320,11 +341,17 @@ git commit -m "feat(api): /feed-updates/create accepts title + details + update_
 **Files:**
 - Modify: `wp-content/plugins/bigbrotherjunkies-data/src/Api/FeedUpdateRoutes.php`
 
-**Context:** Inline edit/delete in the admin pane needs dedicated endpoints. The PUT handler MUST NOT trigger social cross-posting — typo fixes shouldn't re-post to Bluesky/Facebook. The permission check flips from hardcoded role array to a capability check so the future permissions grid drives access.
+**Context:** Inline edit/delete in the admin pane needs dedicated endpoints. The PUT handler MUST NOT trigger social cross-posting — typo fixes shouldn't re-post to Bluesky/Facebook. The permission check flips from hardcoded role array to the platform-standard `PermissionChecker::userCan('feed_updates')` so the existing permissions UI (at `/admin/settings`, matrix of features × roles) drives access with zero code changes when checkboxes are ticked.
 
-- [ ] **Step 1: Refactor checkUpdaterPermission**
+- [ ] **Step 1: Refactor checkUpdaterPermission to use PermissionChecker**
 
 Open `wp-content/plugins/bigbrotherjunkies-data/src/Api/FeedUpdateRoutes.php`.
+
+At the top of the file, add this `use` statement alongside the other `use` lines (near `use BigBrotherJunkies\Data\Comments\AvatarUploader;`):
+
+```php
+use BigBrotherJunkies\Data\Permissions\PermissionChecker;
+```
 
 Find this method (around line 97):
 
@@ -345,17 +372,19 @@ Replace it entirely with:
 ```php
     public function checkUpdaterPermission(): bool
     {
-        return current_user_can('bbj_v2_edit_feed_updates');
+        return PermissionChecker::userCan('feed_updates');
     }
 ```
 
-You can also remove the now-unused `ALLOWED_ROLES` constant at the top of the class (around line 20):
+Also remove the now-unused `ALLOWED_ROLES` constant at the top of the class (around line 20):
 
 ```php
     private const ALLOWED_ROLES = ['administrator', 'editor', 'updater', 'second_in_command'];
 ```
 
 Delete that entire line.
+
+**Why this is safe:** `PermissionChecker::userCan('feed_updates')` handles the `is_user_logged_in()` check internally (returns `false` if not logged in) and resolves roles from `getPermissionConfig()`, which merges the `bbj_admin_permissions` option over `DEFAULT_PERMISSIONS`. The default for `feed_updates` is `['administrator', 'updater']` — so this is a NARROWING from the old hardcoded `['administrator', 'editor', 'updater', 'second_in_command']`. If editors or second_in_commands need access, that's now configured in the permissions UI, not in code — which is the whole point of moving to this system.
 
 - [ ] **Step 2: Register PUT + DELETE routes**
 
@@ -495,21 +524,21 @@ Expected: `No syntax errors detected`.
 
 ```bash
 git add wp-content/plugins/bigbrotherjunkies-data/src/Api/FeedUpdateRoutes.php
-git commit -m "feat(api): add PUT + DELETE feed-updates routes; switch to capability check"
+git commit -m "feat(api): add PUT + DELETE feed-updates routes; switch to PermissionChecker"
 ```
 
 ---
 
-### Task 4: Admin shell — capability helper + dispatcher branch + conditional JS enqueue
+### Task 4: Admin shell — permission helper + dispatcher branch + conditional JS enqueue
 
 **Files:**
 - Modify: `wp-content/themes/bbj-v2-theme/inc/admin-shell.php`
 - Modify: `wp-content/themes/bbj-v2-theme/page-admin.php`
 - Modify: `wp-content/themes/bbj-v2-theme/inc/enqueue.php`
 
-**Context:** Three small wire-ins. The helper lets the pane line-1 guard use a cap instead of `manage_options`. The dispatcher branch routes `tab=feed-updates` to the new pane. The conditional enqueue loads `admin-feed-updates.js` only on this tab (avoids bloating other admin pages).
+**Context:** Three small wire-ins. The helper lets the pane line-1 guard delegate to `PermissionChecker`. The dispatcher branch routes `tab=feed-updates` to the new pane. The conditional enqueue loads `admin-feed-updates.js` only on this tab (avoids bloating other admin pages).
 
-- [ ] **Step 1: Add the capability helper**
+- [ ] **Step 1: Add the permission helper**
 
 Open `wp-content/themes/bbj-v2-theme/inc/admin-shell.php`.
 
@@ -533,12 +562,12 @@ Insert this function immediately AFTER it:
 ```php
 
 /**
- * Require a specific capability. Redirects to login if logged-out,
- * 403 if logged-in but lacks the cap. Sibling to require_admin,
- * but drives access from a capability string — forward-compatible
- * with the planned site-native permissions grid.
+ * Require a PermissionChecker feature permission. Redirects to login
+ * if logged-out, 403 if logged-in but lacks the permission.
+ * Delegates to BigBrotherJunkies\Data\Permissions\PermissionChecker
+ * so the platform's permissions UI drives access.
  */
-function bbj_v2_require_capability(string $cap): void
+function bbj_v2_require_permission(string $feature): void
 {
     add_filter('wp_robots', 'wp_robots_no_robots');
 
@@ -548,7 +577,7 @@ function bbj_v2_require_capability(string $cap): void
         exit;
     }
 
-    if (!current_user_can($cap)) {
+    if (!\BigBrotherJunkies\Data\Permissions\PermissionChecker::userCan($feature)) {
         status_header(403);
         wp_die(
             esc_html__('You do not have permission to access this page.', 'bbj-v2-theme'),
@@ -558,6 +587,8 @@ function bbj_v2_require_capability(string $cap): void
     }
 }
 ```
+
+The fully-qualified `\BigBrotherJunkies\Data\Permissions\PermissionChecker::userCan()` call avoids needing a `use` statement in a procedural file. The class is autoloaded by the plugin's Composer autoloader, which is loaded before the theme.
 
 - [ ] **Step 2: Wire dispatcher branch**
 
@@ -575,7 +606,7 @@ Insert this branch IMMEDIATELY BEFORE it:
 ```php
             <?php elseif ($active_tab === 'feed-updates'): ?>
                 <?php
-                bbj_v2_require_capability('bbj_v2_edit_feed_updates');
+                bbj_v2_require_permission('feed_updates');
                 get_template_part('template-parts/admin/pane-feed-updates');
                 ?>
 ```
@@ -622,7 +653,7 @@ Visit `http://bbj.localhost/admin/?tab=feed-updates` in a browser. Expected: cur
 
 ```bash
 git add wp-content/themes/bbj-v2-theme/inc/admin-shell.php wp-content/themes/bbj-v2-theme/page-admin.php wp-content/themes/bbj-v2-theme/inc/enqueue.php
-git commit -m "feat(theme): admin shell wires feed-updates tab + capability helper"
+git commit -m "feat(theme): admin shell wires feed-updates tab + permission helper"
 ```
 
 ---
@@ -1498,7 +1529,7 @@ Fresh incognito browser at `http://bbj.localhost/admin/?tab=feed-updates`. Log i
 | 5 | Delete | Row gone from DOM; post force-deleted (not in Trash) |
 | 6 | Logout, visit `/admin?tab=feed-updates` | Redirects to login with `?redirect_to=` return URL |
 | 7 | Log in as non-admin user | 403 (create a subscriber test user if needed) |
-| 8 | Revoke cap: `get_role('administrator')->remove_cap('bbj_v2_edit_feed_updates')` via wp shell or a throwaway PHP snippet, then reload the pane | 403. Re-add the cap to restore access. |
+| 8 | Flip administrator off `feed_updates` in `bbj_admin_permissions` option (e.g. `update_option('bbj_admin_permissions', ['feed_updates' => ['roles' => []]])`), reload the pane | 403. Clear the override to restore access: `delete_option('bbj_admin_permissions')`. |
 | 9 | Backward-compat: `curl` to `/create` with `content` + `mode` only (simulating Next.js) | Endpoint still responds 201 with auto-generated title. (If you skipped this in Task 2 Step 4, do it now.) |
 
 If any scenario fails, diagnose + fix + re-run the full checklist before moving on.
@@ -1534,19 +1565,19 @@ git commit -m "docs(roadmap): Feed Updates admin pane shipped"
 
 ## Deploy checklist (after all tasks green, before pushing to staging)
 
-- [ ] All 8 prior tasks committed
-- [ ] `git log --oneline -15` shows the expected chain of commits (capability → API extend → PUT/DELETE → shell wire-in → pane template → JS bootstrap → JS edit → JS delete → roadmap)
+- [ ] All 8 prior tasks committed (Task 1 reverted per plan amendment)
+- [ ] `git log --oneline -15` shows the expected chain of commits (API extend → PUT/DELETE + PermissionChecker → shell wire-in → pane template → JS bootstrap → JS edit → JS delete → roadmap)
 - [ ] `php -l` clean on every PHP file touched
 - [ ] No `console.log` / `var_dump` / `error_log` debug residue
 - [ ] End-to-end smoke test from Task 9 passed
 - [ ] Ready to push staging via your usual flow (`/push-staging` or equivalent)
 
-Staging verification once deployed (from spec § "Staging / prod deploy verification"):
+Staging verification once deployed:
 
 ```
 wp shell
-> get_role('administrator')->has_cap('bbj_v2_edit_feed_updates');
-=> true
+> \BigBrotherJunkies\Data\Permissions\PermissionChecker::userCan('feed_updates');
+=> true (when run as an administrator)
 ```
 
 `/admin?tab=feed-updates` loads, 50 rows visible, posting works on first real test.
