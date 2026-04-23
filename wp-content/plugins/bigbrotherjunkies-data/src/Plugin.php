@@ -62,6 +62,7 @@ use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
+use BigBrotherJunkies\Data\Capabilities\FeedUpdatesCapability;
 use BigBrotherJunkies\Data\Utils\Revalidation;
 
 /**
@@ -140,6 +141,9 @@ class Plugin
                 Revalidation::revalidateTag('feed-updates');
             }
         }, 10, 3);
+
+        // Register + seed custom capabilities (bbj_v2_edit_feed_updates, etc.)
+        (new FeedUpdatesCapability())->init();
 
         // Register custom taxonomies (update_type, etc.)
         $this->initTaxonomies();
