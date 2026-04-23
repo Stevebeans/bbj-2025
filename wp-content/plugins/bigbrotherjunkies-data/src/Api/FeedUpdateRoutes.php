@@ -5,6 +5,7 @@ namespace BigBrotherJunkies\Data\Api;
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
 use BigBrotherJunkies\Data\FeedUpdates\BlueskyClient;
 use BigBrotherJunkies\Data\FeedUpdates\FacebookClient;
+use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 /**
  * Feed Update API Routes
@@ -17,8 +18,6 @@ use BigBrotherJunkies\Data\FeedUpdates\FacebookClient;
  */
 class FeedUpdateRoutes
 {
-    private const ALLOWED_ROLES = ['administrator', 'editor', 'updater', 'second_in_command'];
-
     public function register(): void
     {
         add_action('rest_api_init', [$this, 'registerRoutes']);
@@ -89,6 +88,20 @@ class FeedUpdateRoutes
             'callback' => [$this, 'getSocialConfig'],
             'permission_callback' => [$this, 'checkUpdaterPermission'],
         ]);
+
+        // Update a feed update (admin pane inline edit — no social re-post)
+        register_rest_route($namespace, '/feed-updates/(?P<id>\d+)', [
+            'methods' => 'PUT',
+            'callback' => [$this, 'updateFeedUpdate'],
+            'permission_callback' => [$this, 'checkUpdaterPermission'],
+        ]);
+
+        // Delete a feed update (force delete, no trash)
+        register_rest_route($namespace, '/feed-updates/(?P<id>\d+)', [
+            'methods' => 'DELETE',
+            'callback' => [$this, 'deleteFeedUpdate'],
+            'permission_callback' => [$this, 'checkUpdaterPermission'],
+        ]);
     }
 
     /**
@@ -96,12 +109,7 @@ class FeedUpdateRoutes
      */
     public function checkUpdaterPermission(): bool
     {
-        if (!is_user_logged_in()) {
-            return false;
-        }
-
-        $user = wp_get_current_user();
-        return !empty(array_intersect(self::ALLOWED_ROLES, $user->roles));
+        return PermissionChecker::userCan('feed_updates');
     }
 
     /**
@@ -260,6 +268,90 @@ class FeedUpdateRoutes
             'success' => true,
             'update' => $this->formatFeedUpdate($posts[0], true),
         ]);
+    }
+
+    /**
+     * Update an existing feed update (admin pane inline edit).
+     * Does NOT trigger social cross-posting — typo fixes shouldn't re-post.
+     */
+    public function updateFeedUpdate(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $id = (int) $request->get_param('id');
+        $post = get_post($id);
+        if (!$post || $post->post_type !== 'live-feed-updates') {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'Feed update not found',
+            ], 404);
+        }
+
+        $title   = $request->get_param('title');
+        $details = $request->get_param('details');
+        $type    = $request->get_param('update_type');
+
+        $update = ['ID' => $id];
+        if ($title !== null) {
+            $update['post_title'] = sanitize_text_field((string) $title);
+        }
+        if ($details !== null) {
+            $update['post_content'] = wp_kses_post((string) $details);
+        }
+
+        if (count($update) > 1) {
+            $result = wp_update_post($update, true);
+            if (is_wp_error($result)) {
+                return new \WP_REST_Response([
+                    'success' => false,
+                    'message' => $result->get_error_message(),
+                ], 500);
+            }
+        }
+
+        if ($type !== null) {
+            if (is_numeric($type)) {
+                wp_set_object_terms($id, (int) $type, 'update_type', false);
+            } elseif ($type === '') {
+                wp_set_object_terms($id, [], 'update_type', false);
+            } else {
+                wp_set_object_terms($id, sanitize_title($type), 'update_type', false);
+            }
+        }
+
+        // Clear caches so the archive + single-post pages reflect the edit
+        do_action('breeze_clear_all_cache');
+
+        $updated = get_post($id);
+        return new \WP_REST_Response([
+            'success' => true,
+            'update' => $this->formatFeedUpdate($updated),
+        ]);
+    }
+
+    /**
+     * Force-delete a feed update (no trash).
+     */
+    public function deleteFeedUpdate(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $id = (int) $request->get_param('id');
+        $post = get_post($id);
+        if (!$post || $post->post_type !== 'live-feed-updates') {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'Feed update not found',
+            ], 404);
+        }
+
+        $result = wp_delete_post($id, true);
+        if (!$result) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'Delete failed',
+            ], 500);
+        }
+
+        do_action('breeze_clear_all_cache');
+
+        return new \WP_REST_Response(null, 204);
     }
 
     /**
