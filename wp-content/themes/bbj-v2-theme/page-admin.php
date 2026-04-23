@@ -40,6 +40,11 @@ get_header();
                     get_template_part('template-parts/admin/pane-seasons');
                 }
                 ?>
+            <?php elseif ($active_tab === 'feed-updates'): ?>
+                <?php
+                bbj_v2_require_permission('feed_updates');
+                get_template_part('template-parts/admin/pane-feed-updates');
+                ?>
             <?php elseif ($active_tab === 'settings'): ?>
                 <?php get_template_part('template-parts/admin/pane-settings'); ?>
             <?php else: ?>

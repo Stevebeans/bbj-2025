@@ -90,6 +90,17 @@ function bbj_v2_enqueue_assets(): void
         );
     }
 
+    // Admin Feed Updates pane — load JS only on that tab.
+    if (is_page('admin') && get_query_var('tab') === 'feed-updates') {
+        wp_enqueue_script(
+            'bbj-v2-admin-feed-updates',
+            BBJ_V2_THEME_URL . '/src/js/admin-feed-updates.js',
+            [],
+            bbj_v2_asset_ver('/src/js/admin-feed-updates.js'),
+            ['strategy' => 'defer', 'in_footer' => true]
+        );
+    }
+
     // WP core block styles are frontend-unused for our theme — dequeue
     wp_dequeue_style('wp-block-library');
     wp_dequeue_style('wp-block-library-theme');
