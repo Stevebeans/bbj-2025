@@ -689,6 +689,7 @@ class FeedUpdateRoutes
             'slug' => $post->post_name,
             'title' => html_entity_decode(get_the_title($post), ENT_QUOTES, 'UTF-8'),
             'excerpt' => html_entity_decode(wp_trim_words(wp_strip_all_tags($post->post_content), 30), ENT_QUOTES, 'UTF-8'),
+            'raw_content' => $post->post_content,
             'permalink' => get_permalink($post),
             'date' => get_the_date('c', $post),
             'date_formatted' => get_the_date('M j, Y', $post),

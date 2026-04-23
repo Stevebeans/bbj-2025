@@ -101,7 +101,10 @@
         // Social checkboxes only serialize when checked, matching the endpoint's
         // post_to_* bool params.
 
-        restFetch('/create', { method: 'POST', body: fd })
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 15000);
+
+        restFetch('/create', { method: 'POST', body: fd, signal: controller.signal })
             .then(function (res) {
                 return res.json().then(function (json) { return { ok: res.ok, json: json }; });
             })
@@ -121,9 +124,11 @@
                 toast(msg);
             })
             .catch(function (err) {
-                toast(err.message || 'Request failed — check connection', 'error');
+                var msg = err && err.name === 'AbortError' ? 'Request timed out' : (err.message || 'Request failed — check connection');
+                toast(msg, 'error');
             })
             .finally(function () {
+                clearTimeout(timeoutId);
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Post Update';
             });
@@ -136,7 +141,7 @@
         li.className = 'p-3';
         li.setAttribute('data-id', String(update.id));
         li.setAttribute('data-title', update.title || '');
-        li.setAttribute('data-content', ''); // server didn't return raw content; fetch-on-edit below handles this
+        li.setAttribute('data-content', update.raw_content || '');
         li.setAttribute('data-term-id', '0');
         li.setAttribute('data-term-name', '');
         li.setAttribute('data-mode', 'display');
@@ -181,7 +186,7 @@
             .replace(/>/g, '&gt;');
     }
     function escAttr(s) {
-        return escHtml(s).replace(/"/g, '&quot;');
+        return escHtml(s).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
 
     // ---- Edit + delete flows (wired in subsequent tasks) --------------------
