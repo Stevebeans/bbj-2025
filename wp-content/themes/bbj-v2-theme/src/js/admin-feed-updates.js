@@ -368,7 +368,41 @@
     function closeConfirmDelete(li) {
         li.querySelector('[data-row-confirm]').classList.add('hidden');
     }
-    function confirmDelete(/*li, btn*/) { /* implemented in Task 8 */ }
+    function confirmDelete(li, btn) {
+        var id = li.getAttribute('data-id');
+        btn.disabled = true;
+        var originalLabel = btn.textContent;
+        btn.textContent = 'Deleting…';
+
+        var controller = new AbortController();
+        var timeoutId = setTimeout(function () { controller.abort(); }, 15000);
+
+        restFetch('/' + encodeURIComponent(id), { method: 'DELETE', signal: controller.signal })
+            .then(function (res) {
+                if (res.status === 404) {
+                    // Treat as already-deleted — remove the row anyway
+                    toast('Already deleted', 'warn');
+                    li.remove();
+                    return;
+                }
+                if (!res.ok) {
+                    return res.json().then(function (json) {
+                        throw new Error(json.message || 'Delete failed');
+                    });
+                }
+                li.remove();
+                toast('Deleted');
+            })
+            .catch(function (err) {
+                var msg = err && err.name === 'AbortError' ? 'Request timed out' : err.message;
+                toast(msg, 'error');
+                btn.disabled = false;
+                btn.textContent = originalLabel;
+            })
+            .finally(function () {
+                clearTimeout(timeoutId);
+            });
+    }
 
     // Debug handle
     window.BBJ_FEED_DEBUG = { toast: toast, prependRow: prependRow };
