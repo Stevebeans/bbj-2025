@@ -9,14 +9,14 @@ namespace BigBrotherJunkies\Data\Capabilities;
  * $role->add_cap() / $role->remove_cap(); this class does not need
  * to change when that lands.
  *
- * Uses a versioned one-shot (bbj_v2_caps_version option) so the
+ * Uses a versioned one-shot (bbj_v2_caps_version_feed_updates option) so the
  * seeder runs on normal page loads after a deploy, not just on
  * plugin-activation click.
  */
 class FeedUpdatesCapability
 {
     public const CAP = 'bbj_v2_edit_feed_updates';
-    public const VERSION_OPTION = 'bbj_v2_caps_version';
+    public const VERSION_OPTION = 'bbj_v2_caps_version_feed_updates';
     public const CURRENT_VERSION = 1;
 
     /**
@@ -39,10 +39,11 @@ class FeedUpdatesCapability
         }
 
         $admin = get_role('administrator');
-        if ($admin && !$admin->has_cap(self::CAP)) {
-            $admin->add_cap(self::CAP);
+        if ($admin) {
+            if (!$admin->has_cap(self::CAP)) {
+                $admin->add_cap(self::CAP);
+            }
+            update_option(self::VERSION_OPTION, self::CURRENT_VERSION, false);
         }
-
-        update_option(self::VERSION_OPTION, self::CURRENT_VERSION);
     }
 }
