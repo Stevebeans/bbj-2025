@@ -213,3 +213,145 @@ function bbj_v2_player_profile_castmates(int $player_post_id, int $season_post_i
 
     return $rows ?: [];
 }
+
+/**
+ * Compute derived values for display: age now, age in house, days in house,
+ * placement label, eviction day + week, status kicker, tag chips.
+ *
+ * $player   — return value from bbj_v2_player_profile_player_data()
+ * $seasons  — return value from bbj_v2_player_profile_seasons() (may be empty)
+ */
+function bbj_v2_player_profile_derive(array $player, array $seasons): array
+{
+    $latest = $seasons[0] ?? null;
+
+    // Age now (from DOB).
+    $age_now = null;
+    if (!empty($player['date_of_birth'])) {
+        try {
+            $dob = new DateTime($player['date_of_birth']);
+            $age_now = $dob->diff(new DateTime('now'))->y;
+        } catch (Exception $e) {
+            // Malformed date — leave null.
+        }
+    }
+
+    // Age in house (at evicted_date or season start if no evict).
+    $age_in_house = null;
+    if ($latest && !empty($player['date_of_birth'])) {
+        $ref = $latest['bbj_evicted_date'] ?: $latest['season_start'];
+        if ($ref) {
+            try {
+                $dob = new DateTime($player['date_of_birth']);
+                $age_in_house = $dob->diff(new DateTime($ref))->y;
+            } catch (Exception $e) {}
+        }
+    }
+
+    // Days in house (latest season).
+    $days_in_house = null;
+    $eviction_week = null;
+    $eviction_day  = null;
+    if ($latest && !empty($latest['season_start'])) {
+        $end = $latest['bbj_evicted_date'] ?: ($latest['season_end'] ?: date('Y-m-d'));
+        try {
+            $start = new DateTime($latest['season_start']);
+            $evict = new DateTime($end);
+            $diff  = $start->diff($evict);
+            $days_in_house = max(0, (int) $diff->days);
+            if (!empty($latest['bbj_evicted_date'])) {
+                $eviction_day  = $days_in_house;
+                $eviction_week = (int) floor($days_in_house / 7) + 1;
+            }
+        } catch (Exception $e) {}
+    }
+
+    // Status kicker: Winner / Runner-up / AFP / Jury / Pre-jury / Active.
+    $status_kicker = 'Houseguest';
+    if ($latest) {
+        $abbr = $latest['season_abbr'] ?: 'BB';
+        $status_kicker = 'Houseguest · ' . $abbr;
+        if ((int) $latest['season_winner'] === (int) $player['post_id']) {
+            $status_kicker .= ' · Winner';
+        } elseif ((int) $latest['runner_up'] === (int) $player['post_id']) {
+            $status_kicker .= ' · Runner-up';
+        } elseif ((int) $latest['afp'] === (int) $player['post_id']) {
+            $status_kicker .= " · America's Favorite";
+        } elseif (!empty($latest['current_jury'])) {
+            $status_kicker .= ' · Jury';
+        } elseif (!empty($latest['bbj_evicted_date'])) {
+            $status_kicker .= ' · Pre-jury';
+        } else {
+            $status_kicker .= ' · Active';
+        }
+    }
+
+    // Placement label for bio strip (e.g. "5th · AFP winner" or "Currently playing").
+    $placement_label = '';
+    if ($latest) {
+        $place = (int) ($latest['bbj_finish_place'] ?? 0);
+        if ($place > 0) {
+            $placement_label = bbj_v2_player_profile_ordinal($place);
+            if ((int) $latest['afp'] === (int) $player['post_id']) {
+                $placement_label .= ' · AFP winner';
+            } elseif ($place === 1) {
+                $placement_label .= ' · Winner';
+            } elseif ($place === 2) {
+                $placement_label .= ' · Runner-up';
+            }
+        } else {
+            $placement_label = 'Currently playing';
+        }
+    }
+
+    // Tag chips: only where count > 0.
+    $totals = bbj_v2_player_profile_career_totals($seasons);
+    $chips = [];
+    if ($latest && (int) $latest['afp'] === (int) $player['post_id']) {
+        $chips[] = ['text' => "♥ America's Favorite", 'class' => 'afp'];
+    }
+    if ($latest && !empty($latest['current_jury'])) {
+        $chips[] = ['text' => 'Jury member', 'class' => ''];
+    }
+    if ($totals['hoh'] > 0)   { $chips[] = ['text' => "{$totals['hoh']}× HoH", 'class' => '']; }
+    if ($totals['pov'] > 0)   { $chips[] = ['text' => "{$totals['pov']}× PoV", 'class' => '']; }
+    if ($totals['nom'] > 0)   { $chips[] = ['text' => "{$totals['nom']}× Nominated", 'class' => '']; }
+
+    // Has-AFP-ever: used for the hero portrait badge.
+    $is_afp_anywhere = false;
+    foreach ($seasons as $s) {
+        if ((int) $s['afp'] === (int) $player['post_id']) {
+            $is_afp_anywhere = true;
+            break;
+        }
+    }
+
+    return [
+        'age_now'          => $age_now,
+        'age_in_house'     => $age_in_house,
+        'days_in_house'    => $days_in_house,
+        'eviction_day'     => $eviction_day,
+        'eviction_week'    => $eviction_week,
+        'status_kicker'    => $status_kicker,
+        'placement_label'  => $placement_label,
+        'chips'            => $chips,
+        'is_afp_anywhere'  => $is_afp_anywhere,
+        'latest_season'    => $latest,
+    ];
+}
+
+/**
+ * Ordinal formatter: 1 → "1st", 2 → "2nd", 3 → "3rd", etc.
+ */
+function bbj_v2_player_profile_ordinal(int $n): string
+{
+    if ($n <= 0) return (string) $n;
+    $mod100 = $n % 100;
+    if ($mod100 >= 11 && $mod100 <= 13) return $n . 'th';
+    switch ($n % 10) {
+        case 1:  return $n . 'st';
+        case 2:  return $n . 'nd';
+        case 3:  return $n . 'rd';
+        default: return $n . 'th';
+    }
+}
