@@ -257,6 +257,59 @@ get_header();
         </div>
       </section>
       <?php endif; ?>
+
+      <!-- CASTMATES -->
+      <?php
+      $castmates = ($latest && !empty($latest['bbj_season']))
+          ? bbj_v2_player_profile_castmates($post_id, (int) $latest['bbj_season'])
+          : [];
+      if (!empty($castmates)) :
+        $season_abbr = $latest['season_abbr'] ?: 'Big Brother';
+      ?>
+      <section>
+        <div class="sech">
+          <h2>Castmates · <?php echo esc_html($season_abbr); ?></h2>
+          <span class="sub">Who they played with</span>
+          <?php if (!empty($latest['season_slug'])) : ?>
+            <span class="spacer"></span>
+            <a class="link" href="<?php echo esc_url(home_url('/bigbrother-seasons/' . $latest['season_slug'] . '/')); ?>">Full cast →</a>
+          <?php endif; ?>
+        </div>
+        <div class="cast-grid">
+          <?php foreach ($castmates as $cm) :
+            $cm_full = trim(($cm['first_name'] ?? '') . ' ' . ($cm['last_name'] ?? ''));
+            $cm_display = $cm['official_nickname'] ?: ($cm['first_name'] ?: $cm_full);
+            $cm_url = !empty($cm['player_slug']) ? home_url('/bigbrother-players/' . $cm['player_slug'] . '/') : '#';
+            $cm_finish = (int) ($cm['bbj_finish_place'] ?? 0);
+
+            $tag_class = 'pre';
+            $tag_text = 'Out';
+            if ((int) $cm['season_winner'] === (int) $cm['player_post_id']) {
+                $tag_class = 'win'; $tag_text = 'Winner';
+            } elseif ((int) $cm['runner_up'] === (int) $cm['player_post_id']) {
+                $tag_class = 'win'; $tag_text = '2nd';
+            } elseif ((int) $cm['afp'] === (int) $cm['player_post_id']) {
+                $tag_class = 'jury'; $tag_text = 'AFP';
+            } elseif (!empty($cm['current_jury'])) {
+                $tag_class = 'jury'; $tag_text = 'Jury';
+            }
+          ?>
+            <a class="cm" href="<?php echo esc_url($cm_url); ?>" title="<?php echo esc_attr($cm_full); ?>">
+              <div class="face" data-i="<?php echo esc_attr(strtoupper(substr($cm_display, 0, 2))); ?>">
+                <?php if (!empty($cm['profile_picture'])) : ?>
+                  <?php echo wp_get_attachment_image((int) $cm['profile_picture'], 'thumbnail', false, [
+                      'alt'   => sprintf('%s, %s', $cm_full, $season_abbr),
+                      'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
+                  ]); ?>
+                <?php endif; ?>
+                <span class="tag <?php echo esc_attr($tag_class); ?>"><?php echo esc_html($tag_text); ?></span>
+              </div>
+              <div class="n"><?php echo esc_html($cm_display); ?></div>
+            </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
+      <?php endif; ?>
     </div>
 
     <!-- SIDEBAR -->
