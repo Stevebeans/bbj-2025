@@ -93,7 +93,7 @@ get_header();
           . substr($player['last_name'] ?? '', 0, 1)
       ) ?: '??';
       ?>
-      <div class="portrait" data-i="<?php echo esc_attr($initials); ?>">
+      <div class="portrait"<?php echo $player['profile_picture'] ? '' : ' data-i="' . esc_attr($initials) . '"'; ?>>
         <?php if ($player['profile_picture']) : ?>
           <?php echo wp_get_attachment_image($player['profile_picture'], 'bbj_v2_profile_image', false, [
               'alt'   => sprintf('%s, %s houseguest', $player['full_name'], $latest['season_abbr'] ?? 'Big Brother'),
@@ -345,7 +345,7 @@ get_header();
             }
           ?>
             <a class="cm" href="<?php echo esc_url($cm_url); ?>" title="<?php echo esc_attr($cm_full); ?>">
-              <div class="face" data-i="<?php echo esc_attr(strtoupper(substr($cm_display, 0, 2))); ?>">
+              <div class="face"<?php echo !empty($cm['profile_picture']) ? '' : ' data-i="' . esc_attr(strtoupper(substr($cm_display, 0, 2))) . '"'; ?>>
                 <?php if (!empty($cm['profile_picture'])) : ?>
                   <?php echo wp_get_attachment_image((int) $cm['profile_picture'], 'thumbnail', false, [
                       'alt'   => sprintf('%s, %s', $cm_full, $season_abbr),
