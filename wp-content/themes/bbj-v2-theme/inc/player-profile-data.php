@@ -105,7 +105,9 @@ function bbj_v2_player_profile_seasons(int $post_id): array
                 s.season_winner,
                 s.runner_up,
                 s.afp,
-                p.post_name       AS season_slug
+                p.post_name       AS season_slug,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}bbj_v2_player_season j2
+                    WHERE j2.bbj_season = j.bbj_season) AS season_size
              FROM {$wpdb->prefix}bbj_v2_player_season j
              INNER JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
              INNER JOIN {$wpdb->posts} p ON p.ID = j.bbj_season

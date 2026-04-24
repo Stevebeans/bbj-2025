@@ -259,12 +259,7 @@ get_header();
                         $days_this_season = max(0, (new DateTime($row['season_start']))->diff(new DateTime($end))->days);
                     } catch (Exception $e) {}
                 }
-                // Progress bar: better placement = fuller bar. Compute against season contestant count.
-                global $wpdb;
-                $season_size = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(*) FROM {$wpdb->prefix}bbj_v2_player_season WHERE bbj_season = %d",
-                    (int) $row['bbj_season']
-                ));
+                $season_size = (int) ($row['season_size'] ?? 0);
                 $finish = (int) ($row['bbj_finish_place'] ?? 0);
                 $progress = ($season_size > 0 && $finish > 0) ? round((($season_size - $finish + 1) / $season_size) * 100) : 0;
 
