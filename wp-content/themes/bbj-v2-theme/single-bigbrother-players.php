@@ -18,15 +18,8 @@ $post_id  = get_the_ID();
 $player   = bbj_v2_player_profile_player_data($post_id);
 $seasons  = bbj_v2_player_profile_seasons($post_id);
 $totals   = bbj_v2_player_profile_career_totals($seasons);
-$derived  = bbj_v2_player_profile_derive($player ?: [], $seasons);
+$derived  = bbj_v2_player_profile_derive($player, $seasons);
 $latest   = $derived['latest_season'] ?? null;
-
-if (!$player) {
-    get_header();
-    echo '<main class="wrap"><p>Player data not available.</p></main>';
-    get_footer();
-    return;
-}
 
 // --- JSON-LD: Person + BreadcrumbList ---
 $person_schema = [

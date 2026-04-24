@@ -15,11 +15,14 @@ if (!defined('ABSPATH')) {
 }
 
 /**
- * Fetch the core player record + geo data for a player post_id.
+ * Fetch the core player record for a player post_id.
  *
- * Returns a normalized array or null if the player doesn't exist.
+ * Always returns a shape — if wp_bbj_players has no row (common for new
+ * houseguests entered via the spoiler bar but not fully provisioned yet),
+ * we fall back to a shim derived from the WP post (title, permalink)
+ * so the template can still render.
  */
-function bbj_v2_player_profile_player_data(int $post_id): ?array
+function bbj_v2_player_profile_player_data(int $post_id): array
 {
     global $wpdb;
 
@@ -29,20 +32,14 @@ function bbj_v2_player_profile_player_data(int $post_id): ?array
             $post_id
         ),
         ARRAY_A
-    );
+    ) ?: [];
 
-    if (!$player) {
-        return null;
-    }
-
-    // Geo lives in a side table keyed by post_id (may be missing for older players).
-    $geo = $wpdb->get_row(
-        $wpdb->prepare(
-            "SELECT locality, administrative_area_level_1 FROM {$wpdb->prefix}bbj_geo WHERE post_id = %d LIMIT 1",
-            $post_id
-        ),
-        ARRAY_A
-    );
+    // Hometown lives in wp_bbj_players (hometown_city + hometown_state).
+    $hometown_parts = array_filter([
+        $player['hometown_city']  ?? '',
+        $player['hometown_state'] ?? '',
+    ]);
+    $hometown = $hometown_parts ? implode(', ', $hometown_parts) : '';
 
     $socials = [];
     foreach (['facebook', 'instagram', 'twitter', 'tiktok'] as $platform) {
@@ -51,17 +48,22 @@ function bbj_v2_player_profile_player_data(int $post_id): ?array
         }
     }
 
-    $hometown_parts = array_filter([
-        $geo['locality'] ?? '',
-        $geo['administrative_area_level_1'] ?? '',
-    ]);
-    $hometown = $hometown_parts ? implode(', ', $hometown_parts) : '';
+    // Split WP post title as a last-resort name source for players missing their
+    // wp_bbj_players row. e.g. "Ava Pearl" -> first="Ava", last="Pearl".
+    $post_title = get_the_title($post_id);
+    $title_parts = array_values(array_filter(explode(' ', trim((string) $post_title), 2)));
+    $fallback_first = $title_parts[0] ?? '';
+    $fallback_last  = $title_parts[1] ?? '';
+
+    $first = $player['first_name']        ?? '';
+    $last  = $player['last_name']         ?? '';
+    $full  = trim($first . ' ' . $last);
 
     return [
         'post_id'          => $post_id,
-        'first_name'       => $player['first_name'] ?? '',
-        'last_name'        => $player['last_name'] ?? '',
-        'full_name'        => trim(($player['first_name'] ?? '') . ' ' . ($player['last_name'] ?? '')),
+        'first_name'       => $first !== '' ? $first : $fallback_first,
+        'last_name'        => $last  !== '' ? $last  : $fallback_last,
+        'full_name'        => $full !== '' ? $full : (string) $post_title,
         'nickname'         => $player['official_nickname'] ?? '',
         'gender'           => $player['player_gender'] ?? '',
         'profile_picture'  => (int) ($player['profile_picture'] ?? 0),
@@ -69,8 +71,8 @@ function bbj_v2_player_profile_player_data(int $post_id): ?array
         'date_of_birth'    => $player['date_of_birth'] ?? null,
         'occupation'       => $player['occupation'] ?? '',
         'hometown'         => $hometown,
-        'city'             => $geo['locality'] ?? '',
-        'state'            => $geo['administrative_area_level_1'] ?? '',
+        'city'             => $player['hometown_city']  ?? '',
+        'state'            => $player['hometown_state'] ?? '',
         'socials'          => $socials,
     ];
 }
