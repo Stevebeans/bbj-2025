@@ -14,8 +14,6 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-// Implementations land in Tasks 2–4.
-
 /**
  * Fetch the core player record + geo data for a player post_id.
  *

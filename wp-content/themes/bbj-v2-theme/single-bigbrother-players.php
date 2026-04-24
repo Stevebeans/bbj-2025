@@ -75,8 +75,8 @@ get_header();
 
 <main class="wrap">
 
-  <script type="application/ld+json"><?php echo wp_json_encode($person_schema, JSON_UNESCAPED_SLASHES); ?></script>
-  <script type="application/ld+json"><?php echo wp_json_encode($breadcrumb_schema, JSON_UNESCAPED_SLASHES); ?></script>
+  <script type="application/ld+json"><?php echo wp_json_encode($person_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
+  <script type="application/ld+json"><?php echo wp_json_encode($breadcrumb_schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?></script>
 
   <!-- Breadcrumb -->
   <nav class="crumb" aria-label="Breadcrumb">
@@ -94,7 +94,13 @@ get_header();
   <!-- HERO -->
   <div class="hero">
     <div class="inner">
-      <div class="portrait">
+      <?php
+      $initials = strtoupper(
+          substr($player['first_name'] ?? '', 0, 1)
+          . substr($player['last_name'] ?? '', 0, 1)
+      ) ?: '??';
+      ?>
+      <div class="portrait" data-i="<?php echo esc_attr($initials); ?>">
         <?php if ($player['profile_picture']) : ?>
           <?php echo wp_get_attachment_image($player['profile_picture'], 'bbj_v2_profile_image', false, [
               'alt'   => sprintf('%s, %s houseguest', $player['full_name'], $latest['season_abbr'] ?? 'Big Brother'),

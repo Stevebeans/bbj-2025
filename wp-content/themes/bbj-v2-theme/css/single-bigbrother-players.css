@@ -37,7 +37,7 @@ main{padding-bottom:60px}
 .hero .inner{position:relative;display:grid;grid-template-columns:auto 1fr auto;gap:32px;align-items:end;padding:28px 32px}
 .hero .portrait{width:220px;aspect-ratio:3/4;border-radius:6px;background:linear-gradient(160deg,#B87456 0%,#8E5C41 50%,#3d2515 100%);position:relative;overflow:hidden;box-shadow:0 16px 40px -12px rgba(0,0,0,.45);border:3px solid #fff}
 .hero .portrait::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.18),transparent 55%)}
-.hero .portrait::after{content:"KS";position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:76px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.04em}
+.hero .portrait::after{content:attr(data-i);position:absolute;inset:0;display:grid;place-items:center;font-family:var(--display);font-size:76px;font-weight:600;color:rgba(255,255,255,.35);letter-spacing:.04em}
 .hero .badge-placement{position:absolute;top:12px;left:-8px;background:var(--bb-yellow);color:var(--ink);font-family:var(--display);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:5px 10px;font-weight:700;box-shadow:2px 2px 0 rgba(0,0,0,.35);z-index:2}
 .hero .badge-placement small{display:block;font-family:var(--mono);font-size:8px;letter-spacing:.08em;margin-top:1px;font-weight:500;color:var(--bb-blue-dk)}
 
