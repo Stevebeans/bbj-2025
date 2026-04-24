@@ -26,9 +26,16 @@ function bbj_v2_player_profile_player_data(int $post_id): array
 {
     global $wpdb;
 
+    // Modern players (created via the bbj-app/bigbrotherjunkies-data admin)
+    // store wp_posts.ID in the `id` column and leave `post_id = 0`. Legacy
+    // imports use the `post_id` column. Match either so the same lookup
+    // works for any player regardless of admin lineage.
     $player = $wpdb->get_row(
         $wpdb->prepare(
-            "SELECT * FROM {$wpdb->prefix}bbj_players WHERE post_id = %d LIMIT 1",
+            "SELECT * FROM {$wpdb->prefix}bbj_players
+             WHERE post_id = %d OR (id = %d AND post_id = 0)
+             LIMIT 1",
+            $post_id,
             $post_id
         ),
         ARRAY_A
@@ -254,7 +261,8 @@ function bbj_v2_player_profile_castmates(int $player_post_id, int $season_post_i
                 s.afp
              FROM {$wpdb->prefix}bbj_v2_player_season j
              INNER JOIN {$wpdb->posts} p ON p.ID = j.bbj_player
-             LEFT JOIN {$wpdb->prefix}bbj_players bp ON bp.post_id = j.bbj_player
+             LEFT JOIN {$wpdb->prefix}bbj_players bp
+                    ON (bp.post_id = j.bbj_player OR (bp.id = j.bbj_player AND bp.post_id = 0))
              LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
              WHERE j.bbj_season = %d
                AND j.bbj_player != %d
