@@ -84,33 +84,47 @@ endif;
     </div>
 
     <div class="flex-1 min-w-0 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
-        <div class="flex flex-wrap gap-2 mb-2">
-            <?php if ($type) : ?>
-                <span class="text-[10px] font-osw uppercase tracking-wider px-2 py-0.5 rounded <?php echo esc_attr($type_class); ?>">
-                    <?php echo esc_html($type['name']); ?>
-                </span>
-            <?php endif; ?>
-            <?php if ($location) : ?>
-                <span class="text-[10px] font-osw uppercase tracking-wider px-2 py-0.5 rounded border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
-                    <?php echo esc_html($location['name']); ?>
-                </span>
+        <div class="flex gap-3">
+            <div class="flex-1 min-w-0">
+                <div class="flex flex-wrap gap-2 mb-2">
+                    <?php if ($type) : ?>
+                        <span class="text-[10px] font-osw uppercase tracking-wider px-2 py-0.5 rounded <?php echo esc_attr($type_class); ?>">
+                            <?php echo esc_html($type['name']); ?>
+                        </span>
+                    <?php endif; ?>
+                    <?php if ($location) : ?>
+                        <span class="text-[10px] font-osw uppercase tracking-wider px-2 py-0.5 rounded border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300">
+                            <?php echo esc_html($location['name']); ?>
+                        </span>
+                    <?php endif; ?>
+                </div>
+
+                <h3 class="font-display text-lg md:text-xl leading-snug mb-2 text-gray-900 dark:text-gray-100">
+                    <a href="<?php echo esc_url($permalink); ?>" class="hover:text-primary-500 dark:hover:text-secondary-500">
+                        <?php echo esc_html($post->post_title); ?>
+                    </a>
+                </h3>
+
+                <?php
+                $excerpt = $post->post_excerpt !== ''
+                    ? $post->post_excerpt
+                    : wp_trim_words(strip_shortcodes($post->post_content), 30, '…');
+                ?>
+                <?php if ($excerpt !== '') : ?>
+                    <p class="text-sm text-gray-700 dark:text-gray-300 mb-3"><?php echo esc_html($excerpt); ?></p>
+                <?php endif; ?>
+            </div>
+
+            <?php if (has_post_thumbnail($post)) : ?>
+                <a href="<?php echo esc_url($permalink); ?>" class="shrink-0 block" aria-hidden="true" tabindex="-1">
+                    <?php echo get_the_post_thumbnail($post, 'thumbnail', [
+                        'class'   => 'w-20 h-20 sm:w-24 sm:h-24 object-cover rounded',
+                        'loading' => 'lazy',
+                        'alt'     => '',
+                    ]); ?>
+                </a>
             <?php endif; ?>
         </div>
-
-        <h3 class="font-display text-lg md:text-xl leading-snug mb-2 text-gray-900 dark:text-gray-100">
-            <a href="<?php echo esc_url($permalink); ?>" class="hover:text-primary-500 dark:hover:text-secondary-500">
-                <?php echo esc_html($post->post_title); ?>
-            </a>
-        </h3>
-
-        <?php
-        $excerpt = $post->post_excerpt !== ''
-            ? $post->post_excerpt
-            : wp_trim_words(strip_shortcodes($post->post_content), 30, '…');
-        ?>
-        <?php if ($excerpt !== '') : ?>
-            <p class="text-sm text-gray-700 dark:text-gray-300 mb-3"><?php echo esc_html($excerpt); ?></p>
-        <?php endif; ?>
 
         <div class="flex flex-wrap gap-3 items-center text-xs text-gray-500 dark:text-gray-400">
             <?php if ($author !== '') : ?>
