@@ -163,6 +163,96 @@ get_header();
           </div>
         </div>
       </section>
+
+      <!-- CAREER STATS -->
+      <section>
+        <div class="sech">
+          <h2>Career Statistics</h2>
+          <span class="sub">Across <?php echo (int) $totals['season_count']; ?> season<?php echo $totals['season_count'] === 1 ? '' : 's'; ?></span>
+        </div>
+        <div class="statgrid">
+          <div class="stat"><span class="delta na">—</span><div class="n"><?php echo (int) $totals['season_count']; ?></div><div class="k">Seasons</div></div>
+          <div class="stat hoh"><span class="delta na">—</span><div class="n"><?php echo (int) $totals['hoh']; ?></div><div class="k">HoH wins</div></div>
+          <div class="stat pov"><span class="delta na">—</span><div class="n"><?php echo (int) $totals['pov']; ?></div><div class="k">PoV wins</div></div>
+          <div class="stat nom"><span class="delta na">—</span><div class="n"><?php echo (int) $totals['nom']; ?></div><div class="k">Nominated</div></div>
+          <div class="stat"><span class="delta na">—</span><div class="n"><?php echo (int) $totals['votes']; ?></div><div class="k">Jury votes</div></div>
+          <div class="stat afp"><span class="delta na">—</span><div class="n"><?php echo (int) $totals['days']; ?></div><div class="k">Days</div></div>
+        </div>
+      </section>
+
+      <!-- SEASON HISTORY -->
+      <?php if (!empty($seasons)) : ?>
+      <section>
+        <div class="sech">
+          <h2>Season History</h2>
+          <span class="sub">Finale placements</span>
+        </div>
+        <div class="seasons">
+          <table>
+            <thead>
+              <tr><th>Season</th><th>Age</th><th>HoH</th><th>PoV</th><th>Nom</th><th>Votes</th><th>Days</th><th>Progress</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+              <?php foreach ($seasons as $row) :
+                $season_url = !empty($row['season_slug']) ? home_url('/bigbrother-seasons/' . $row['season_slug'] . '/') : '#';
+                $age_at_season = null;
+                if (!empty($player['date_of_birth']) && !empty($row['season_start'])) {
+                    try {
+                        $age_at_season = (new DateTime($player['date_of_birth']))->diff(new DateTime($row['season_start']))->y;
+                    } catch (Exception $e) {}
+                }
+                $days_this_season = 0;
+                if (!empty($row['season_start'])) {
+                    $end = $row['bbj_evicted_date'] ?: ($row['season_end'] ?: date('Y-m-d'));
+                    try {
+                        $days_this_season = max(0, (new DateTime($row['season_start']))->diff(new DateTime($end))->days);
+                    } catch (Exception $e) {}
+                }
+                // Progress bar: better placement = fuller bar. Compute against season contestant count.
+                global $wpdb;
+                $season_size = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM {$wpdb->prefix}bbj_v2_player_season WHERE bbj_season = %d",
+                    (int) $row['bbj_season']
+                ));
+                $finish = (int) ($row['bbj_finish_place'] ?? 0);
+                $progress = ($season_size > 0 && $finish > 0) ? round((($season_size - $finish + 1) / $season_size) * 100) : 0;
+
+                // Result pill label.
+                $result_label = '';
+                $result_class = '';
+                if ((int) $row['season_winner'] === (int) $post_id) {
+                    $result_label = 'Winner'; $result_class = 'winner';
+                } elseif ((int) $row['runner_up'] === (int) $post_id) {
+                    $result_label = 'Runner-up · 2nd'; $result_class = 'runnerup';
+                } elseif ((int) $row['afp'] === (int) $post_id) {
+                    $result_label = 'AFP' . ($finish ? ' · ' . bbj_v2_player_profile_ordinal($finish) : '');
+                    $result_class = 'afp';
+                } elseif (!empty($row['current_jury'])) {
+                    $result_label = 'Jury' . ($finish ? ' · ' . bbj_v2_player_profile_ordinal($finish) : '');
+                    $result_class = 'jury';
+                } elseif ($finish > 0) {
+                    $result_label = 'Evicted · ' . bbj_v2_player_profile_ordinal($finish);
+                } else {
+                    $result_label = 'Active';
+                }
+              ?>
+                <tr>
+                  <td><a class="season" href="<?php echo esc_url($season_url); ?>"><?php echo esc_html($row['season_name']); ?></a></td>
+                  <td class="stat-n"><?php echo $age_at_season !== null ? (int) $age_at_season : '—'; ?></td>
+                  <td class="stat-n"><?php echo (int) $row['bbj_total_hoh']; ?></td>
+                  <td class="stat-n"><?php echo (int) $row['bbj_total_pov']; ?></td>
+                  <td class="stat-n"><?php echo (int) $row['bbj_total_nom']; ?></td>
+                  <td class="stat-n"><?php echo (int) $row['bbj_votes_received']; ?></td>
+                  <td class="stat-n"><?php echo (int) $days_this_season; ?></td>
+                  <td><div class="progbar"><div class="bar"><b style="width:<?php echo (int) $progress; ?>%"></b></div><span class="p"><?php echo (int) $progress; ?>%</span></div></td>
+                  <td class="result"><span class="pill <?php echo esc_attr($result_class); ?>"><?php echo esc_html($result_label); ?></span></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <?php endif; ?>
     </div>
 
     <!-- SIDEBAR -->
