@@ -55,10 +55,25 @@ function bbj_v2_player_profile_player_data(int $post_id): array
     $hometown_parts = array_filter([$city, $state]);
     $hometown = $hometown_parts ? implode(', ', $hometown_parts) : '';
 
+    // Meta Box field reader: prefer the custom-table row, fall back to
+    // rwmb_meta() (which handles post_meta storage for fields that didn't
+    // land in the custom table). Seen on staging where Ava Pearl's row
+    // existed with some fields blank but wp-admin showed values — those
+    // were living in post_meta instead of wp_bbj_players.
+    $mb = function (string $key) use ($player, $post_id) {
+        if (!empty($player[$key])) return $player[$key];
+        if (function_exists('rwmb_meta')) {
+            $v = rwmb_meta($key, [], $post_id);
+            if (!empty($v)) return $v;
+        }
+        return '';
+    };
+
     $socials = [];
     foreach (['facebook', 'instagram', 'twitter', 'tiktok'] as $platform) {
-        if (!empty($player[$platform])) {
-            $socials[$platform] = $player[$platform];
+        $v = $mb($platform);
+        if (!empty($v)) {
+            $socials[$platform] = $v;
         }
     }
 
@@ -69,8 +84,8 @@ function bbj_v2_player_profile_player_data(int $post_id): array
     $fallback_first = $title_parts[0] ?? '';
     $fallback_last  = $title_parts[1] ?? '';
 
-    $first = $player['first_name']        ?? '';
-    $last  = $player['last_name']         ?? '';
+    $first = $mb('first_name');
+    $last  = $mb('last_name');
     $full  = trim($first . ' ' . $last);
 
     return [
@@ -78,12 +93,12 @@ function bbj_v2_player_profile_player_data(int $post_id): array
         'first_name'       => $first !== '' ? $first : $fallback_first,
         'last_name'        => $last  !== '' ? $last  : $fallback_last,
         'full_name'        => $full !== '' ? $full : (string) $post_title,
-        'nickname'         => $player['official_nickname'] ?? '',
-        'gender'           => $player['player_gender'] ?? '',
-        'profile_picture'  => (int) ($player['profile_picture'] ?? 0),
-        'player_banner'    => (int) ($player['player_banner'] ?? 0),
-        'date_of_birth'    => $player['date_of_birth'] ?? null,
-        'occupation'       => $player['occupation'] ?? '',
+        'nickname'         => $mb('official_nickname'),
+        'gender'           => $mb('player_gender'),
+        'profile_picture'  => (int) $mb('profile_picture'),
+        'player_banner'    => (int) $mb('player_banner'),
+        'date_of_birth'    => $mb('date_of_birth') ?: null,
+        'occupation'       => $mb('occupation'),
         'hometown'         => $hometown,
         'city'             => $city,
         'state'            => $state,
