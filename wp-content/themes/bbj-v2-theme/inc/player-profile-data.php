@@ -34,11 +34,25 @@ function bbj_v2_player_profile_player_data(int $post_id): array
         ARRAY_A
     ) ?: [];
 
-    // Hometown lives in wp_bbj_players (hometown_city + hometown_state).
-    $hometown_parts = array_filter([
-        $player['hometown_city']  ?? '',
-        $player['hometown_state'] ?? '',
-    ]);
+    // Hometown has two possible sources:
+    //   1) wp_bbj_geo — Meta Box "Geolocation" side-panel writes new entries here
+    //      (note: this table keys by `ID`, not `post_id`)
+    //   2) wp_bbj_players.hometown_city / hometown_state — legacy-imported players
+    // Prefer (1) since that's where wp-admin saves today; fall back to (2).
+    $geo = $wpdb->get_row(
+        $wpdb->prepare(
+            "SELECT locality, administrative_area_level_1
+               FROM {$wpdb->prefix}bbj_geo
+              WHERE ID = %d
+              LIMIT 1",
+            $post_id
+        ),
+        ARRAY_A
+    );
+    $city  = $geo['locality']                     ?? ($player['hometown_city']  ?? '');
+    $state = $geo['administrative_area_level_1']  ?? ($player['hometown_state'] ?? '');
+
+    $hometown_parts = array_filter([$city, $state]);
     $hometown = $hometown_parts ? implode(', ', $hometown_parts) : '';
 
     $socials = [];
@@ -71,8 +85,8 @@ function bbj_v2_player_profile_player_data(int $post_id): array
         'date_of_birth'    => $player['date_of_birth'] ?? null,
         'occupation'       => $player['occupation'] ?? '',
         'hometown'         => $hometown,
-        'city'             => $player['hometown_city']  ?? '',
-        'state'            => $player['hometown_state'] ?? '',
+        'city'             => $city,
+        'state'            => $state,
         'socials'          => $socials,
     ];
 }
