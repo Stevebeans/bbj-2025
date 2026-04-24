@@ -108,7 +108,12 @@ function bbj_v2_player_profile_player_data(int $post_id): array
 
 /**
  * Fetch all junction rows for a player, joined with season metadata.
- * Ordered by season start_date DESC (most recent first).
+ * Ordered by season start_date DESC (falls back to post_date when start_date is NULL).
+ *
+ * wp_bbj_seasons is LEFT JOINed because modern seasons (BB22+) created via the
+ * bbj-app/bigbrotherjunkies-data admin don't have a companion row in that table.
+ * Falls back to wp_posts.post_title for the season name and derives the
+ * abbreviation in PHP when the seasons row is missing.
  */
 function bbj_v2_player_profile_seasons(int $post_id): array
 {
@@ -129,7 +134,7 @@ function bbj_v2_player_profile_seasons(int $post_id): array
                 j.bbj_veto_played,
                 j.current_evicted,
                 j.current_jury,
-                s.full_name       AS season_name,
+                COALESCE(s.full_name, p.post_title) AS season_name,
                 s.abbreviation    AS season_abbr,
                 s.start_date      AS season_start,
                 s.end_date        AS season_end,
@@ -137,19 +142,36 @@ function bbj_v2_player_profile_seasons(int $post_id): array
                 s.runner_up,
                 s.afp,
                 p.post_name       AS season_slug,
+                p.post_date       AS season_post_date,
                 (SELECT COUNT(*) FROM {$wpdb->prefix}bbj_v2_player_season j2
                     WHERE j2.bbj_season = j.bbj_season) AS season_size
              FROM {$wpdb->prefix}bbj_v2_player_season j
-             INNER JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
              INNER JOIN {$wpdb->posts} p ON p.ID = j.bbj_season
+             LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
              WHERE j.bbj_player = %d
-             ORDER BY s.start_date DESC",
+               AND p.post_status = 'publish'
+             ORDER BY COALESCE(s.start_date, p.post_date) DESC",
             $post_id
         ),
         ARRAY_A
     );
 
-    return $rows ?: [];
+    if (!$rows) {
+        return [];
+    }
+
+    // Derive the season abbreviation from the season name when the
+    // wp_bbj_seasons row is missing (e.g. "Big Brother 27" -> "BB27").
+    foreach ($rows as &$row) {
+        if (empty($row['season_abbr']) && !empty($row['season_name'])) {
+            if (preg_match('/Big Brother\s+(\d+)/i', $row['season_name'], $m)) {
+                $row['season_abbr'] = 'BB' . $m[1];
+            }
+        }
+    }
+    unset($row);
+
+    return $rows;
 }
 
 /**
@@ -225,16 +247,18 @@ function bbj_v2_player_profile_castmates(int $player_post_id, int $season_post_i
                 bp.last_name,
                 bp.official_nickname,
                 bp.profile_picture,
+                p.post_title        AS post_title,
                 p.post_name         AS player_slug,
                 s.season_winner,
                 s.runner_up,
                 s.afp
              FROM {$wpdb->prefix}bbj_v2_player_season j
-             INNER JOIN {$wpdb->prefix}bbj_players bp ON bp.post_id = j.bbj_player
              INNER JOIN {$wpdb->posts} p ON p.ID = j.bbj_player
-             INNER JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
+             LEFT JOIN {$wpdb->prefix}bbj_players bp ON bp.post_id = j.bbj_player
+             LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
              WHERE j.bbj_season = %d
                AND j.bbj_player != %d
+               AND p.post_status = 'publish'
              ORDER BY (j.finish_place IS NULL), j.finish_place ASC",
             $season_post_id,
             $player_post_id
@@ -242,7 +266,22 @@ function bbj_v2_player_profile_castmates(int $player_post_id, int $season_post_i
         ARRAY_A
     );
 
-    return $rows ?: [];
+    if (!$rows) {
+        return [];
+    }
+
+    // Fall back to splitting the WP post_title for first/last name when
+    // wp_bbj_players has no row (modern players added via bbj-app admin).
+    foreach ($rows as &$row) {
+        if (empty($row['first_name']) && empty($row['last_name'])) {
+            $parts = array_values(array_filter(explode(' ', trim((string) ($row['post_title'] ?? '')), 2)));
+            $row['first_name'] = $parts[0] ?? '';
+            $row['last_name']  = $parts[1] ?? '';
+        }
+    }
+    unset($row);
+
+    return $rows;
 }
 
 /**
@@ -298,15 +337,23 @@ function bbj_v2_player_profile_derive(array $player, array $seasons): array
     }
 
     // Status kicker: Winner / Runner-up / AFP / Jury / Pre-jury / Active.
+    // finish_place is the authoritative signal (lives in the junction table for
+    // every player); the season_winner/runner_up post-pointer fallbacks only
+    // matter for old data where finish_place wasn't populated.
     $status_kicker = 'Houseguest';
     if ($latest) {
-        $abbr = $latest['season_abbr'] ?: 'BB';
+        $abbr   = $latest['season_abbr'] ?: 'BB';
+        $finish = (int) ($latest['finish_place'] ?? 0);
+        $is_winner_ptr   = (int) ($latest['season_winner'] ?? 0) === (int) $player['post_id'];
+        $is_runnerup_ptr = (int) ($latest['runner_up']     ?? 0) === (int) $player['post_id'];
+        $is_afp_ptr      = (int) ($latest['afp']           ?? 0) === (int) $player['post_id'];
+
         $status_kicker = 'Houseguest · ' . $abbr;
-        if ((int) $latest['season_winner'] === (int) $player['post_id']) {
+        if ($finish === 1 || $is_winner_ptr) {
             $status_kicker .= ' · Winner';
-        } elseif ((int) $latest['runner_up'] === (int) $player['post_id']) {
+        } elseif ($finish === 2 || $is_runnerup_ptr) {
             $status_kicker .= ' · Runner-up';
-        } elseif ((int) $latest['afp'] === (int) $player['post_id']) {
+        } elseif ($is_afp_ptr) {
             $status_kicker .= " · America's Favorite";
         } elseif (!empty($latest['current_jury'])) {
             $status_kicker .= ' · Jury';
@@ -320,12 +367,14 @@ function bbj_v2_player_profile_derive(array $player, array $seasons): array
     // Placement label for bio strip (e.g. "5th · AFP winner" or "Currently playing").
     $placement_label = '';
     if ($latest) {
-        $place = (int) ($latest['finish_place'] ?? 0);
+        $place         = (int) ($latest['finish_place'] ?? 0);
+        $is_afp_ptr    = (int) ($latest['afp']          ?? 0) === (int) $player['post_id'];
+        $is_winner_ptr = (int) ($latest['season_winner'] ?? 0) === (int) $player['post_id'];
         if ($place > 0) {
             $placement_label = bbj_v2_player_profile_ordinal($place);
-            if ((int) $latest['afp'] === (int) $player['post_id']) {
+            if ($is_afp_ptr) {
                 $placement_label .= ' · AFP winner';
-            } elseif ($place === 1) {
+            } elseif ($place === 1 || $is_winner_ptr) {
                 $placement_label .= ' · Winner';
             } elseif ($place === 2) {
                 $placement_label .= ' · Runner-up';

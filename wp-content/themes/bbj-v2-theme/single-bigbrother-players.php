@@ -256,14 +256,19 @@ get_header();
                 $finish = (int) ($row['finish_place'] ?? 0);
                 $progress = ($season_size > 0 && $finish > 0) ? round((($season_size - $finish + 1) / $season_size) * 100) : 0;
 
-                // Result pill label.
+                // Result pill label. Prefer finish_place (always present in the
+                // junction table) over the season_winner/runner_up post-pointers
+                // (which require a wp_bbj_seasons row that modern seasons skip).
                 $result_label = '';
                 $result_class = '';
-                if ((int) $row['season_winner'] === (int) $post_id) {
+                $is_winner_ptr   = (int) ($row['season_winner'] ?? 0) === (int) $post_id;
+                $is_runnerup_ptr = (int) ($row['runner_up']     ?? 0) === (int) $post_id;
+                $is_afp_ptr      = (int) ($row['afp']           ?? 0) === (int) $post_id;
+                if ($finish === 1 || $is_winner_ptr) {
                     $result_label = 'Winner'; $result_class = 'winner';
-                } elseif ((int) $row['runner_up'] === (int) $post_id) {
+                } elseif ($finish === 2 || $is_runnerup_ptr) {
                     $result_label = 'Runner-up · 2nd'; $result_class = 'runnerup';
-                } elseif ((int) $row['afp'] === (int) $post_id) {
+                } elseif ($is_afp_ptr) {
                     $result_label = 'AFP' . ($finish ? ' · ' . bbj_v2_player_profile_ordinal($finish) : '');
                     $result_class = 'afp';
                 } elseif (!empty($row['current_jury'])) {
@@ -321,13 +326,19 @@ get_header();
             $cm_url = !empty($cm['player_slug']) ? home_url('/bigbrother-players/' . $cm['player_slug'] . '/') : '#';
             $cm_finish = (int) ($cm['finish_place'] ?? 0);
 
+            // Same fallback rationale as the result-pill above: prefer
+            // finish_place (always set in the junction) over season-pointer
+            // fields that are NULL when wp_bbj_seasons has no row.
             $tag_class = 'pre';
             $tag_text = 'Out';
-            if ((int) $cm['season_winner'] === (int) $cm['player_post_id']) {
+            $is_winner_ptr   = (int) ($cm['season_winner'] ?? 0) === (int) $cm['player_post_id'];
+            $is_runnerup_ptr = (int) ($cm['runner_up']     ?? 0) === (int) $cm['player_post_id'];
+            $is_afp_ptr      = (int) ($cm['afp']           ?? 0) === (int) $cm['player_post_id'];
+            if ($cm_finish === 1 || $is_winner_ptr) {
                 $tag_class = 'win'; $tag_text = 'Winner';
-            } elseif ((int) $cm['runner_up'] === (int) $cm['player_post_id']) {
+            } elseif ($cm_finish === 2 || $is_runnerup_ptr) {
                 $tag_class = 'win'; $tag_text = '2nd';
-            } elseif ((int) $cm['afp'] === (int) $cm['player_post_id']) {
+            } elseif ($is_afp_ptr) {
                 $tag_class = 'jury'; $tag_text = 'AFP';
             } elseif (!empty($cm['current_jury'])) {
                 $tag_class = 'jury'; $tag_text = 'Jury';
