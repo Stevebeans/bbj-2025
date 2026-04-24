@@ -124,7 +124,45 @@ get_header();
 
     <!-- MAIN COLUMN -->
     <div>
-      <!-- Sections land in Tasks 7–9 -->
+      <!-- BIO & BACKGROUND -->
+      <section>
+        <div class="sech">
+          <h2>Bio &amp; Background</h2>
+          <span class="sub">The long version</span>
+        </div>
+        <div class="biocard">
+          <?php
+          $glance = array_filter([
+              !empty($player['hometown'])      ? ['k' => 'Hometown',   'v' => $player['hometown']]                                : null,
+              !empty($player['date_of_birth'])
+                  ? ['k' => 'Birthday',   'v' => date_i18n('M j, Y', strtotime($player['date_of_birth']))]
+                  : null,
+              !empty($player['occupation'])    ? ['k' => 'Occupation', 'v' => $player['occupation']]                              : null,
+          ]);
+          ?>
+          <?php if (!empty($glance)) : ?>
+            <aside class="at-a-glance">
+              <h4>At a glance</h4>
+              <dl>
+                <?php foreach ($glance as $row) : ?>
+                  <dt><?php echo esc_html($row['k']); ?></dt>
+                  <dd><?php echo esc_html($row['v']); ?></dd>
+                <?php endforeach; ?>
+              </dl>
+            </aside>
+          <?php endif; ?>
+          <div class="copy">
+            <?php
+            $content = get_the_content();
+            if (trim($content) === '') {
+                echo '<p class="lead">Bio coming soon.</p>';
+            } else {
+                echo apply_filters('the_content', $content);
+            }
+            ?>
+          </div>
+        </div>
+      </section>
     </div>
 
     <!-- SIDEBAR -->

@@ -82,18 +82,18 @@ section{margin-bottom:28px}
 .sech .link:hover{color:var(--bb-blue-dk)}
 
 /* ==== BIO CARD ==== */
-.biocard{background:#fff;border:1px solid var(--line);border-radius:6px;padding:24px 28px;display:grid;grid-template-columns:1.5fr 1fr;gap:28px}
-.biocard .copy p{font-family:var(--serif);font-size:16px;line-height:1.6;color:var(--ink-2);text-wrap:pretty}
-.biocard .copy p + p{margin-top:10px}
-.biocard .copy .lead{font-size:17px;color:var(--ink)}
-.biocard .copy .lead::first-letter{font-family:var(--display);font-size:44px;float:left;line-height:.85;margin:4px 8px 0 0;color:var(--bb-blue);font-weight:600}
-.biocard .copy .quote{margin-top:14px;padding:14px 18px;background:var(--paper-2);border-left:3px solid var(--bb-yellow);font-family:var(--serif);font-style:italic;font-size:15px;color:var(--ink);border-radius:0 3px 3px 0}
-.biocard .copy .quote b{font-style:normal;display:block;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:6px;font-weight:600}
-.biocard .at-a-glance{display:grid;gap:8px;padding:18px;background:var(--paper-2);border-radius:4px;align-content:start}
-.biocard .at-a-glance h4{font-family:var(--display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px;color:var(--bb-blue)}
+.biocard{background:#fff;border:1px solid var(--line);border-radius:6px;padding:24px 28px;overflow:hidden}
+.biocard .at-a-glance{float:right;width:240px;margin:0 0 16px 24px;padding:18px;background:var(--paper-2);border-radius:4px}
+.biocard .at-a-glance h4{font-family:var(--display);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;color:var(--bb-blue)}
 .biocard .at-a-glance dl{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;font-size:13px}
 .biocard .at-a-glance dt{font-family:var(--mono);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);font-weight:600;align-self:center}
 .biocard .at-a-glance dd{font-family:var(--sans);color:var(--ink);font-weight:500}
+.biocard .copy p{font-family:var(--serif);font-size:16px;line-height:1.6;color:var(--ink-2);text-wrap:pretty}
+.biocard .copy p + p{margin-top:10px}
+.biocard .copy > p:first-child{font-size:17px;color:var(--ink)}
+.biocard .copy > p:first-child::first-letter{font-family:var(--display);font-size:44px;float:left;line-height:.85;margin:4px 8px 0 0;color:var(--bb-blue);font-weight:600}
+.biocard .copy blockquote{margin:14px 0 0;padding:14px 18px;background:var(--paper-2);border-left:3px solid var(--bb-yellow);font-family:var(--serif);font-style:italic;font-size:15px;color:var(--ink);border-radius:0 3px 3px 0}
+.biocard .copy blockquote cite{font-style:normal;display:block;font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-top:6px;font-weight:600}
 
 /* ==== CAREER STATS (big number grid) ==== */
 .statgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
@@ -201,7 +201,7 @@ aside{min-width:0}
   .hero h1{font-size:52px}
   .biostrip{grid-template-columns:repeat(2,1fr)}
   .biostrip .c{border-right:0;border-bottom:1px solid var(--line)}
-  .biocard{grid-template-columns:1fr}
+  .biocard .at-a-glance{float:none;width:auto;margin:0 0 16px 0}
   .statgrid{grid-template-columns:repeat(3,1fr)}
   .cast-grid{grid-template-columns:repeat(4,1fr)}
   .stick{position:static}
