@@ -28,10 +28,55 @@ if (!$player) {
     return;
 }
 
+// --- JSON-LD: Person + BreadcrumbList ---
+$person_schema = [
+    '@context' => 'https://schema.org',
+    '@type'    => 'Person',
+    'name'     => $player['full_name'] ?: get_the_title(),
+    'url'      => get_permalink($post_id),
+];
+if (!empty($player['date_of_birth']))          $person_schema['birthDate']   = $player['date_of_birth'];
+if (!empty($player['occupation']))             $person_schema['jobTitle']    = $player['occupation'];
+if (!empty($player['hometown']))               $person_schema['homeLocation'] = ['@type' => 'Place', 'name' => $player['hometown']];
+if (!empty($player['profile_picture']))        $person_schema['image']       = wp_get_attachment_image_url($player['profile_picture'], 'full') ?: null;
+if (!empty($player['socials']))                $person_schema['sameAs']      = array_values($player['socials']);
+
+$breadcrumb_items = [
+    ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home',        'item' => home_url('/')],
+    ['@type' => 'ListItem', 'position' => 2, 'name' => 'Houseguests', 'item' => home_url('/houseguests/')],
+];
+if ($latest && !empty($latest['season_slug'])) {
+    $breadcrumb_items[] = [
+        '@type' => 'ListItem', 'position' => 3,
+        'name'  => $latest['season_abbr'] ?: $latest['season_name'],
+        'item'  => home_url('/bigbrother-seasons/' . $latest['season_slug'] . '/'),
+    ];
+    $breadcrumb_items[] = [
+        '@type' => 'ListItem', 'position' => 4,
+        'name'  => $player['full_name'] ?: get_the_title(),
+        'item'  => get_permalink($post_id),
+    ];
+} else {
+    $breadcrumb_items[] = [
+        '@type' => 'ListItem', 'position' => 3,
+        'name'  => $player['full_name'] ?: get_the_title(),
+        'item'  => get_permalink($post_id),
+    ];
+}
+
+$breadcrumb_schema = [
+    '@context'         => 'https://schema.org',
+    '@type'            => 'BreadcrumbList',
+    'itemListElement'  => $breadcrumb_items,
+];
+
 get_header();
 ?>
 
 <main class="wrap">
+
+  <script type="application/ld+json"><?php echo wp_json_encode($person_schema, JSON_UNESCAPED_SLASHES); ?></script>
+  <script type="application/ld+json"><?php echo wp_json_encode($breadcrumb_schema, JSON_UNESCAPED_SLASHES); ?></script>
 
   <!-- Breadcrumb -->
   <nav class="crumb" aria-label="Breadcrumb">
