@@ -315,7 +315,59 @@ get_header();
     <!-- SIDEBAR -->
     <aside>
       <div class="stick">
-        <!-- Sidebar cards land in Task 10 -->
+        <!-- AFP Odds placeholder -->
+        <div class="card odds-card">
+          <h4>AFP Odds <small>Coming soon</small></h4>
+          <div class="odds-big">
+            <div class="k">Voting system</div>
+            <div class="n" style="font-size:28px;-webkit-text-stroke:0;text-shadow:none;">—</div>
+            <div class="d">AFP voting runs all season. Custom polling system in the works — not Jokers'.</div>
+          </div>
+        </div>
+
+        <!-- Fan Affinity placeholder -->
+        <div class="card fan">
+          <h4>Fan Affinity <small>Awaiting votes</small></h4>
+          <p style="font-family:var(--serif);font-size:13px;color:var(--ink-2);line-height:1.45;">Needs 10+ fan ratings to display. Ratings open once the voting system ships.</p>
+        </div>
+
+        <!-- Fan Ranking placeholder -->
+        <div class="card ranks">
+          <h4><?php echo esc_html($latest['season_abbr'] ?? 'Season'); ?> Fan Ranking</h4>
+          <p style="font-family:var(--serif);font-size:13px;color:var(--ink-2);line-height:1.45;">Season ranking opens once enough affinity scores accumulate.</p>
+        </div>
+
+        <!-- Follow card -->
+        <?php if (!empty($player['socials'])) :
+          $social_labels = [
+            'twitter'   => ['ic' => '𝕏',   'label' => 'X / Twitter'],
+            'instagram' => ['ic' => '📷', 'label' => 'Instagram'],
+            'facebook'  => ['ic' => 'f',   'label' => 'Facebook'],
+            'tiktok'    => ['ic' => '♪',   'label' => 'TikTok'],
+          ];
+        ?>
+        <div class="card social">
+          <h4>Follow <?php echo esc_html($player['first_name'] ?: $player['full_name']); ?></h4>
+          <div class="socials">
+            <?php foreach ($player['socials'] as $platform => $url) :
+              $meta = $social_labels[$platform] ?? ['ic' => '↗', 'label' => ucfirst($platform)];
+            ?>
+              <a href="<?php echo esc_url($url); ?>" target="_blank" rel="noopener">
+                <span class="ic"><?php echo esc_html($meta['ic']); ?></span>
+                <span><?php echo esc_html($meta['label']); ?></span>
+              </a>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <!-- Sticky ad rail -->
+        <?php get_template_part('template-parts/components/ad-placeholder', null, [
+          'slot'        => 'player_profile_sidebar',
+          'size'        => '300x600',
+          'mobile_size' => '300x250',
+          'note'        => __('Single player profile · right rail', 'bbj-v2-theme'),
+        ]); ?>
       </div>
     </aside>
 
