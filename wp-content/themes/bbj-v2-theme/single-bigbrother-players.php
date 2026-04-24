@@ -232,6 +232,10 @@ get_header();
                     $result_class = 'jury';
                 } elseif ($finish > 0) {
                     $result_label = 'Evicted · ' . bbj_v2_player_profile_ordinal($finish);
+                } elseif (!empty($row['bbj_evicted_date'])) {
+                    $result_label = 'Evicted';
+                } elseif (!empty($row['season_end']) && strtotime($row['season_end']) < time()) {
+                    $result_label = 'Finished';
                 } else {
                     $result_label = 'Active';
                 }
