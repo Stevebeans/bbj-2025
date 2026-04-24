@@ -101,6 +101,16 @@ function bbj_v2_enqueue_assets(): void
         );
     }
 
+    // Single player profile — scoped stylesheet + editorial fonts.
+    if (is_singular('bigbrother-players')) {
+        wp_enqueue_style(
+            'bbj-v2-single-player',
+            BBJ_V2_THEME_URL . '/css/single-bigbrother-players.css',
+            [],
+            bbj_v2_asset_ver('/css/single-bigbrother-players.css')
+        );
+    }
+
     // WP core block styles are frontend-unused for our theme — dequeue
     wp_dequeue_style('wp-block-library');
     wp_dequeue_style('wp-block-library-theme');
@@ -112,17 +122,21 @@ function bbj_v2_enqueue_assets(): void
 add_action('wp_head', 'bbj_v2_preload_fonts', 2);
 function bbj_v2_preload_fonts(): void
 {
+    $base_url = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Oswald:wght@400;500;600;700&family=Yanone+Kaffeesatz:wght@400;500;600;700&family=Caveat:wght@400;500;600;700';
+
+    // Editorial fonts for the player profile (retiring Yanone on that page).
+    if (is_singular('bigbrother-players')) {
+        $base_url .= '&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500';
+    }
+
+    $fonts_url = $base_url . '&display=swap';
     ?>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="style"
-        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Oswald:wght@400;500;600;700&family=Yanone+Kaffeesatz:wght@400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap">
-    <link rel="stylesheet"
-        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Oswald:wght@400;500;600;700&family=Yanone+Kaffeesatz:wght@400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap"
-        media="print" onload="this.media='all'">
+    <link rel="preload" as="style" href="<?php echo esc_url($fonts_url); ?>">
+    <link rel="stylesheet" href="<?php echo esc_url($fonts_url); ?>" media="print" onload="this.media='all'">
     <noscript>
-      <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Oswald:wght@400;500;600;700&family=Yanone+Kaffeesatz:wght@400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap">
+        <link rel="stylesheet" href="<?php echo esc_url($fonts_url); ?>">
     </noscript>
     <?php
 }

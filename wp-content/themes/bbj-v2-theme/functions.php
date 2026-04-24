@@ -22,4 +22,5 @@ require_once BBJ_V2_THEME_PATH . '/inc/template-functions.php';
 require_once BBJ_V2_THEME_PATH . '/inc/dark-mode.php';
 require_once BBJ_V2_THEME_PATH . '/inc/auth.php';
 require_once BBJ_V2_THEME_PATH . '/inc/homepage-data.php';
+require_once BBJ_V2_THEME_PATH . '/inc/player-profile-data.php';
 require_once BBJ_V2_THEME_PATH . '/inc/admin-shell.php';
