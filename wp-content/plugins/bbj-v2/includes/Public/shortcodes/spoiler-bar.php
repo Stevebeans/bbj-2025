@@ -43,10 +43,10 @@ function bbj_render_spoiler_bar( $override_season_id = null, $skip_cache = false
         // then bbj_evicted_date (fallback for historical seasons with no finish_place)
         if ($wa === 5 || $wa === 6) {
             // Primary: finish_place ASC — explicit values win, NULLs fall through to date sort
-            $fa = isset($a['bbj_finish_place']) && $a['bbj_finish_place'] !== null && $a['bbj_finish_place'] !== ''
-                ? (int) $a['bbj_finish_place'] : null;
-            $fb = isset($b['bbj_finish_place']) && $b['bbj_finish_place'] !== null && $b['bbj_finish_place'] !== ''
-                ? (int) $b['bbj_finish_place'] : null;
+            $fa = isset($a['finish_place']) && $a['finish_place'] !== null && $a['finish_place'] !== ''
+                ? (int) $a['finish_place'] : null;
+            $fb = isset($b['finish_place']) && $b['finish_place'] !== null && $b['finish_place'] !== ''
+                ? (int) $b['finish_place'] : null;
             if ($fa !== null && $fb !== null && $fa !== $fb) {
                 return $fa <=> $fb; // 1st place before 2nd, etc.
             }

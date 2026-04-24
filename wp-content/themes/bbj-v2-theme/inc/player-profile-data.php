@@ -119,7 +119,7 @@ function bbj_v2_player_profile_seasons(int $post_id): array
             "SELECT
                 j.bbj_season,
                 j.bbj_evicted_date,
-                j.bbj_finish_place,
+                j.finish_place,
                 j.bbj_total_hoh,
                 j.bbj_total_pov,
                 j.bbj_total_nom,
@@ -217,7 +217,7 @@ function bbj_v2_player_profile_castmates(int $player_post_id, int $season_post_i
         $wpdb->prepare(
             "SELECT
                 j.bbj_player        AS player_post_id,
-                j.bbj_finish_place,
+                j.finish_place,
                 j.bbj_evicted_date,
                 j.current_jury,
                 j.current_evicted,
@@ -235,7 +235,7 @@ function bbj_v2_player_profile_castmates(int $player_post_id, int $season_post_i
              INNER JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
              WHERE j.bbj_season = %d
                AND j.bbj_player != %d
-             ORDER BY (j.bbj_finish_place IS NULL), j.bbj_finish_place ASC",
+             ORDER BY (j.finish_place IS NULL), j.finish_place ASC",
             $season_post_id,
             $player_post_id
         ),
@@ -320,7 +320,7 @@ function bbj_v2_player_profile_derive(array $player, array $seasons): array
     // Placement label for bio strip (e.g. "5th · AFP winner" or "Currently playing").
     $placement_label = '';
     if ($latest) {
-        $place = (int) ($latest['bbj_finish_place'] ?? 0);
+        $place = (int) ($latest['finish_place'] ?? 0);
         if ($place > 0) {
             $placement_label = bbj_v2_player_profile_ordinal($place);
             if ((int) $latest['afp'] === (int) $player['post_id']) {

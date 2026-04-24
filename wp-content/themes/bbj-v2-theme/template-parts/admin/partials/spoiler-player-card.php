@@ -33,7 +33,7 @@ $current_safe    = !empty($player['current_safe']);
 
 $evicted_date   = (string) ($player['bbj_evicted_date'] ?? '');
 $misc_notes     = (string) ($player['misc_notes'] ?? '');
-$finish_place   = $player['bbj_finish_place'] ?? '';
+$finish_place   = $player['finish_place'] ?? '';
 
 // Stat counts
 $hoh_count      = (int) ($player['bbj_total_hoh'] ?? 0);

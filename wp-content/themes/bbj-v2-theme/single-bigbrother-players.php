@@ -253,7 +253,7 @@ get_header();
                     } catch (Exception $e) {}
                 }
                 $season_size = (int) ($row['season_size'] ?? 0);
-                $finish = (int) ($row['bbj_finish_place'] ?? 0);
+                $finish = (int) ($row['finish_place'] ?? 0);
                 $progress = ($season_size > 0 && $finish > 0) ? round((($season_size - $finish + 1) / $season_size) * 100) : 0;
 
                 // Result pill label.
@@ -319,7 +319,7 @@ get_header();
             $cm_full = trim(($cm['first_name'] ?? '') . ' ' . ($cm['last_name'] ?? ''));
             $cm_display = $cm['official_nickname'] ?: ($cm['first_name'] ?: $cm_full);
             $cm_url = !empty($cm['player_slug']) ? home_url('/bigbrother-players/' . $cm['player_slug'] . '/') : '#';
-            $cm_finish = (int) ($cm['bbj_finish_place'] ?? 0);
+            $cm_finish = (int) ($cm['finish_place'] ?? 0);
 
             $tag_class = 'pre';
             $tag_text = 'Out';

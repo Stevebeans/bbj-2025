@@ -175,7 +175,7 @@ function bbj_v2_update_season() {
             'current_safe'        => isset( $current_safe[ $player_id ] )    ? 1 : 0,
             'misc_notes'          => sanitize_text_field( $misc_notes[ $player_id ] ?? '' ),
             // NULL when blank or 0 so the sort doesn't treat "unset" as 1st place
-            'bbj_finish_place'    => ( isset( $finish_place[ $player_id ] ) && (int) $finish_place[ $player_id ] > 0 )
+            'finish_place'        => ( isset( $finish_place[ $player_id ] ) && (int) $finish_place[ $player_id ] > 0 )
                                        ? (int) $finish_place[ $player_id ]
                                        : null,
         ];
@@ -195,7 +195,7 @@ function bbj_v2_update_season() {
                 '%d','%d','%d','%d','%d','%d','%d','%d', // original counts
                 '%d','%d','%d','%d','%d','%d','%d','%d', // checkbox flags
                 '%s', // misc_notes
-                '%d'  // bbj_finish_place (NULL passes through as NULL via $wpdb)
+                '%d'  // finish_place (NULL passes through as NULL via $wpdb)
             ],
             [ '%d', '%d' ]
         );

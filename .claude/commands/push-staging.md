@@ -1,7 +1,8 @@
 # Push Staging + Deploy
 
 Commit any pending work on `staging`, push to origin, then rsync the theme
-and `bigbrotherjunkies-data` plugin to the staging server at Cloudways.
+and the BBJ plugins (`bigbrotherjunkies-data`, `bbj-v2`) to the staging
+server at Cloudways.
 
 I work directly on `staging` (no feature branches, no worktrees — see the
 `feedback_no_worktrees` memory). This command assumes that.
@@ -19,7 +20,8 @@ I work directly on `staging` (no feature branches, no worktrees — see the
      do not stage or commit them.
    - If there are new or modified files that look like this sprint's work
      (anything under `wp-content/themes/bbj-v2-theme/`,
-     `wp-content/plugins/bigbrotherjunkies-data/`, `docs/superpowers/`,
+     `wp-content/plugins/bigbrotherjunkies-data/`,
+     `wp-content/plugins/bbj-v2/`, `docs/superpowers/`,
      etc.), PAUSE and ask me:
      - Which files to include in a commit
      - A commit message (or suggest one based on the diff)
@@ -37,12 +39,17 @@ I work directly on `staging` (no feature branches, no worktrees — see the
 
 ## Deploy to staging server
 
-Both the theme and the `bigbrotherjunkies-data` plugin live in this
-(bbj) repo. Run each script sequentially; stop on failure of either.
+The theme and both active BBJ plugins (`bigbrotherjunkies-data`, `bbj-v2`)
+live in this (bbj) repo. Run each script sequentially; stop on failure of
+either.
 
-5. **Plugin deploy:**
+5. **Plugin deploy (deploys BOTH plugins by default):**
    ```bash
    bash .claude/scripts/deploy-plugin.sh --staging
+   ```
+   To deploy a single plugin only:
+   ```bash
+   bash .claude/scripts/deploy-plugin.sh bbj-v2 --staging
    ```
 6. **Theme deploy:**
    ```bash

@@ -39,10 +39,10 @@ usort($active, function ($a, $b) {
 
 // Eliminated: finish_place ASC (NULL last), then evicted_date DESC
 usort($eliminated, function ($a, $b) {
-    $fa = (isset($a['bbj_finish_place']) && $a['bbj_finish_place'] !== null && $a['bbj_finish_place'] !== '')
-        ? (int) $a['bbj_finish_place'] : null;
-    $fb = (isset($b['bbj_finish_place']) && $b['bbj_finish_place'] !== null && $b['bbj_finish_place'] !== '')
-        ? (int) $b['bbj_finish_place'] : null;
+    $fa = (isset($a['finish_place']) && $a['finish_place'] !== null && $a['finish_place'] !== '')
+        ? (int) $a['finish_place'] : null;
+    $fb = (isset($b['finish_place']) && $b['finish_place'] !== null && $b['finish_place'] !== '')
+        ? (int) $b['finish_place'] : null;
     if ($fa !== null && $fb !== null && $fa !== $fb) return $fa <=> $fb;
     if ($fa !== null && $fb === null) return -1;
     if ($fa === null && $fb !== null) return 1;
