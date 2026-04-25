@@ -203,7 +203,7 @@ function bbj_v2_season_profile_neighbors(int $post_id, int $window = 5): array
             $r['abbreviation'] = 'BB' . $r['season_number'];
         }
         $r['is_current'] = ((int) $r['post_id'] === $post_id);
-        $r['url']        = home_url('/bigbrother-seasons/' . $r['slug'] . '/');
+        $r['url']        = get_permalink((int) $r['post_id']);
     }
     unset($r);
 

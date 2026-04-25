@@ -71,7 +71,7 @@ get_header();
     <span class="k">Switch season</span>
     <div class="pills">
       <?php foreach ($neighbors as $n) : ?>
-        <a href="<?php echo esc_url($n['url']); ?>" class="<?php echo $n['is_current'] ? 'on' : ''; ?>">
+        <a href="<?php echo esc_url($n['url']); ?>" class="<?php echo esc_attr($n['is_current'] ? 'on' : ''); ?>">
           <?php echo esc_html($n['abbreviation']); ?>
         </a>
       <?php endforeach; ?>
