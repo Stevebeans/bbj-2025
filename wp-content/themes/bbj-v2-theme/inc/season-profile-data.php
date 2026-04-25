@@ -293,3 +293,166 @@ function bbj_v2_season_profile_cast(int $post_id): array
 
     return $rows;
 }
+
+/**
+ * Eviction order table data. Returns rows ordered by week_num ASC.
+ * Vote tally: count rows in wp_bbj_weeks_players where voted_for = evictee
+ * for that week.
+ */
+function bbj_v2_season_profile_evictions(int $post_id): array
+{
+    global $wpdb;
+
+    $weeks = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT id, week_num, start_date, end_date
+             FROM {$wpdb->prefix}bbj_weeks
+             WHERE season_id = %d
+             ORDER BY week_num ASC",
+            $post_id
+        ),
+        ARRAY_A
+    );
+    if (!$weeks) return [];
+
+    $week_ids    = array_map('intval', array_column($weeks, 'id'));
+    $week_id_csv = implode(',', $week_ids);
+    $max_week    = (int) max(array_column($weeks, 'week_num'));
+
+    // Index weeks by id for join
+    $weeks_by_id = [];
+    foreach ($weeks as $w) {
+        $weeks_by_id[(int) $w['id']] = $w;
+    }
+    $first_week_start = $weeks[0]['start_date'] ?? null;
+
+    // All evictees in any week of this season
+    $evictee_rows = $wpdb->get_results(
+        "SELECT wp.id AS wpid, wp.week_id, wp.player_id, p.post_title, p.post_name AS player_slug, bp.profile_picture
+         FROM {$wpdb->prefix}bbj_weeks_players wp
+         INNER JOIN {$wpdb->posts} p ON p.ID = wp.player_id
+         LEFT JOIN {$wpdb->prefix}bbj_players bp
+                ON (bp.post_id = wp.player_id OR (bp.id = wp.player_id AND bp.post_id = 0))
+         WHERE wp.evicted = 1 AND wp.week_id IN ({$week_id_csv})",
+        ARRAY_A
+    );
+    if (!$evictee_rows) return [];
+
+    // HoH per week
+    $hoh_rows = $wpdb->get_results(
+        "SELECT wp.week_id, p.post_title AS hoh_name
+         FROM {$wpdb->prefix}bbj_weeks_players wp
+         INNER JOIN {$wpdb->posts} p ON p.ID = wp.player_id
+         WHERE wp.hoh = 1 AND wp.week_id IN ({$week_id_csv})",
+        ARRAY_A
+    );
+    $hoh_by_week = [];
+    foreach ($hoh_rows as $h) {
+        $hoh_by_week[(int) $h['week_id']] = (string) $h['hoh_name'];
+    }
+
+    // Vote-counts: count voted_for occurrences per (week_id, evictee_id)
+    $vote_rows = $wpdb->get_results(
+        "SELECT week_id, voted_for, COUNT(*) AS n
+         FROM {$wpdb->prefix}bbj_weeks_players
+         WHERE week_id IN ({$week_id_csv}) AND voted_for > 0
+         GROUP BY week_id, voted_for",
+        ARRAY_A
+    );
+    $votes_by_pair = [];
+    foreach ($vote_rows as $v) {
+        $votes_by_pair[(int) $v['week_id'] . '_' . (int) $v['voted_for']] = (int) $v['n'];
+    }
+
+    // Group evictees by week_num to detect doubles
+    $by_week_num = [];
+    foreach ($evictee_rows as $e) {
+        $w = $weeks_by_id[(int) $e['week_id']] ?? null;
+        if (!$w) continue;
+        $by_week_num[(int) $w['week_num']][] = $e + ['week_num' => (int) $w['week_num'], 'week_end' => $w['end_date']];
+    }
+
+    $out = [];
+    foreach ($by_week_num as $week_num => $evs) {
+        $type = count($evs) > 1 ? 'Double' : 'Regular';
+        if ((int) $week_num === $max_week) $type = 'Finale';
+        foreach ($evs as $e) {
+            $day = '';
+            if (!empty($e['week_end']) && !empty($first_week_start)) {
+                try {
+                    $d1 = new DateTime($first_week_start);
+                    $d2 = new DateTime($e['week_end']);
+                    $day = 'Day ' . max(0, (int) $d1->diff($d2)->days);
+                } catch (Exception $ex) {}
+            }
+            $vote_count = $votes_by_pair[(int) $e['week_id'] . '_' . (int) $e['player_id']] ?? null;
+            $out[] = [
+                'week_num'    => (int) $week_num,
+                'week_label'  => $type === 'Finale' ? 'Fin' : str_pad((string) $week_num, 2, '0', STR_PAD_LEFT),
+                'name'        => (string) $e['post_title'],
+                'slug'        => (string) $e['player_slug'],
+                'player_id'   => (int) $e['player_id'],
+                'profile_pic' => (int) ($e['profile_picture'] ?? 0),
+                'day'         => $day,
+                'vote'        => $vote_count !== null ? ($vote_count . '–?') : '',
+                'type'        => $type,
+                'hoh_name'    => $hoh_by_week[(int) $e['week_id']] ?? '',
+            ];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Comp winners weekly table. One row per week with HoH, PoV, nominees,
+ * veto used on. Returns ordered by week_num ASC.
+ */
+function bbj_v2_season_profile_comps(int $post_id): array
+{
+    global $wpdb;
+
+    $weeks = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT id, week_num
+             FROM {$wpdb->prefix}bbj_weeks
+             WHERE season_id = %d
+             ORDER BY week_num ASC",
+            $post_id
+        ),
+        ARRAY_A
+    );
+    if (!$weeks) return [];
+
+    $week_id_csv = implode(',', array_map('intval', array_column($weeks, 'id')));
+
+    $rows = $wpdb->get_results(
+        "SELECT wp.week_id, wp.player_id, wp.hoh, wp.pov, wp.nom, wp.saved, p.post_title AS name
+         FROM {$wpdb->prefix}bbj_weeks_players wp
+         INNER JOIN {$wpdb->posts} p ON p.ID = wp.player_id
+         WHERE wp.week_id IN ({$week_id_csv})
+           AND (wp.hoh = 1 OR wp.pov = 1 OR wp.nom = 1 OR wp.saved = 1)",
+        ARRAY_A
+    );
+
+    $by_week = [];
+    foreach ($weeks as $w) {
+        $by_week[(int) $w['id']] = [
+            'week_num' => (int) $w['week_num'],
+            'hoh'      => [],
+            'pov'      => [],
+            'nom'      => [],
+            'saved'    => [],
+        ];
+    }
+    foreach ($rows as $r) {
+        $wid  = (int) $r['week_id'];
+        $name = (string) $r['name'];
+        if ((int) $r['hoh'])   $by_week[$wid]['hoh'][]   = $name;
+        if ((int) $r['pov'])   $by_week[$wid]['pov'][]   = $name;
+        if ((int) $r['nom'])   $by_week[$wid]['nom'][]   = $name;
+        if ((int) $r['saved']) $by_week[$wid]['saved'][] = $name;
+    }
+
+    return array_values($by_week);
+}

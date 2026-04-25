@@ -19,6 +19,8 @@ $season    = bbj_v2_season_profile_data($post_id);
 $facts     = bbj_v2_season_profile_facts($season);
 $neighbors = bbj_v2_season_profile_neighbors($post_id, 5);
 $cast      = bbj_v2_season_profile_cast($post_id);
+$evictions = bbj_v2_season_profile_evictions($post_id);
+$comps     = bbj_v2_season_profile_comps($post_id);
 
 // Determine winner / runner-up / AFP from the cast set
 $winner = $runner_up = $afp = null;
@@ -34,7 +36,7 @@ if ($afp_id > 0) {
 }
 
 // Build section list — order matters, matches scroll order.
-// Future tasks will append: evictions, comps, memories, articles.
+// Future tasks will append: memories, articles.
 $sections = [];
 if (!empty($season['content']) || !empty($facts)) {
     $sections[] = ['id' => 'overview', 'label' => 'Overview',   'count' => null];
@@ -44,6 +46,12 @@ if ($winner || $runner_up) {
 }
 if (!empty($cast)) {
     $sections[] = ['id' => 'cast',     'label' => 'Cast',        'count' => count($cast)];
+}
+if (!empty($evictions)) {
+    $sections[] = ['id' => 'evictions', 'label' => 'Evictions',    'count' => count($evictions)];
+}
+if (!empty($comps)) {
+    $sections[] = ['id' => 'comps',     'label' => 'Comp Winners', 'count' => count($comps)];
 }
 
 get_header();
@@ -303,6 +311,93 @@ get_header();
             <div class="s"><?php echo esc_html($sub); ?></div>
           </a>
           <?php endforeach; ?>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- EVICTION ORDER -->
+      <?php if (!empty($evictions)) : ?>
+      <section id="evictions">
+        <div class="sech">
+          <h2>Eviction Order</h2>
+          <span class="sub">Week by week</span>
+        </div>
+        <div class="evtable">
+          <table>
+            <thead><tr><th>Wk</th><th>Houseguest</th><th>Day</th><th>Vote</th><th>Type</th><th>Evicted By</th></tr></thead>
+            <tbody>
+              <?php foreach ($evictions as $e) :
+                $type_class = 'reg';
+                if ($e['type'] === 'Double') $type_class = 'db';
+                if ($e['type'] === 'Finale') $type_class = 'fin';
+                $initials = strtoupper(substr($e['name'] ?: 'XX', 0, 2));
+                $url = get_permalink($e['player_id']);
+              ?>
+              <tr>
+                <td class="wk"><?php echo esc_html($e['week_label']); ?></td>
+                <td>
+                  <a class="hg" href="<?php echo esc_url($url); ?>">
+                    <span class="a"><?php echo esc_html($initials); ?></span><?php echo esc_html($e['name']); ?>
+                  </a>
+                </td>
+                <td class="day"><?php echo esc_html($e['day']); ?></td>
+                <td class="vote"><?php echo esc_html($e['vote']); ?></td>
+                <td><span class="typ <?php echo esc_attr($type_class); ?>"><?php echo esc_html($e['type']); ?></span></td>
+                <td><?php echo $e['hoh_name'] ? 'HoH ' . esc_html($e['hoh_name']) : ''; ?></td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- COMP WINNERS -->
+      <?php if (!empty($comps)) : ?>
+      <section id="comps">
+        <div class="sech">
+          <h2>Competition Winners</h2>
+          <span class="sub">HoH &amp; Veto each week</span>
+        </div>
+        <div class="comptable">
+          <table>
+            <thead><tr><th>Week</th><th>Head of Household</th><th>Power of Veto</th><th>Nominees</th><th>Veto Used On</th></tr></thead>
+            <tbody>
+              <?php foreach ($comps as $c) : ?>
+              <tr>
+                <td class="wkhead">W<?php echo (int) $c['week_num']; ?></td>
+                <td>
+                  <?php if (!empty($c['hoh'])) : ?>
+                    <?php foreach ($c['hoh'] as $name) : ?>
+                      <span class="cell"><span class="a"><?php echo esc_html(strtoupper(substr($name, 0, 2))); ?></span><?php echo esc_html($name); ?></span>
+                    <?php endforeach; ?>
+                  <?php else : ?>
+                    <span class="cell empty">—</span>
+                  <?php endif; ?>
+                </td>
+                <td>
+                  <?php if (!empty($c['pov'])) : ?>
+                    <?php foreach ($c['pov'] as $name) : ?>
+                      <span class="cell"><span class="a"><?php echo esc_html(strtoupper(substr($name, 0, 2))); ?></span><?php echo esc_html($name); ?></span>
+                    <?php endforeach; ?>
+                  <?php else : ?>
+                    <span class="cell empty">—</span>
+                  <?php endif; ?>
+                </td>
+                <td><?php echo esc_html(implode(' · ', $c['nom'])); ?></td>
+                <td>
+                  <?php if (!empty($c['saved'])) : ?>
+                    <?php foreach ($c['saved'] as $name) : ?>
+                      <span class="cell"><span class="a"><?php echo esc_html(strtoupper(substr($name, 0, 2))); ?></span><?php echo esc_html($name); ?></span>
+                    <?php endforeach; ?>
+                  <?php else : ?>
+                    <span class="cell empty">Not used</span>
+                  <?php endif; ?>
+                </td>
+              </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
         </div>
       </section>
       <?php endif; ?>
