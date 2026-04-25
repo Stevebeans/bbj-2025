@@ -29,6 +29,42 @@ get_header();
     <b><?php echo esc_html($season['title'] ?: get_the_title()); ?></b>
   </nav>
 
+  <!-- HERO -->
+  <div class="hero">
+    <div class="inner">
+      <div>
+        <div class="kk"><b>Season <?php echo (int) $season['number']; ?></b>USA · CBS</div>
+        <h1><?php echo esc_html($season['name']); ?></h1>
+        <?php if (!empty($season['content'])) : ?>
+          <p class="sub"><?php echo wp_kses_post(wp_trim_words(strip_tags($season['content']), 38)); ?></p>
+        <?php endif; ?>
+        <div class="stripstats">
+          <?php if ($season['winner_name']) : ?>
+            <div class="s"><span class="k">Winner</span><span class="v"><?php echo esc_html($season['winner_name']); ?></span></div>
+          <?php endif; ?>
+          <?php if ($season['prize']) : ?>
+            <div class="s"><span class="k">Prize</span><span class="v"><b><?php echo esc_html($season['prize']); ?></b></span></div>
+          <?php endif; ?>
+          <?php if ($season['days']) : ?>
+            <div class="s"><span class="k">Days</span><span class="v"><?php echo (int) $season['days']; ?></span></div>
+          <?php endif; ?>
+          <?php if ($season['hg_count']) : ?>
+            <div class="s"><span class="k">Houseguests</span><span class="v"><?php echo (int) $season['hg_count']; ?></span></div>
+          <?php endif; ?>
+        </div>
+        <div class="actions">
+          <a class="b prim" href="<?php echo esc_url(home_url('/feed-updates/')); ?>">&#9654; Live Feed Updates</a>
+        </div>
+      </div>
+      <div class="poster">
+        <span class="tag">Season</span>
+        <div class="num"><?php echo (int) $season['number']; ?></div>
+        <div class="ttl"><?php echo esc_html($season['abbr']); ?></div>
+        <div class="chip"><?php echo esc_html($season['abbr']); ?> · <?php echo esc_html(date_i18n('F Y', strtotime($season['start_date'] ?? $season['post_date']))); ?></div>
+      </div>
+    </div>
+  </div>
+
   <!-- Sections — added in subsequent tasks -->
 
 </main>
