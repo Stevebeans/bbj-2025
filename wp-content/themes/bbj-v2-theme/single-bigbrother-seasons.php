@@ -36,7 +36,7 @@ get_header();
         <div class="kk"><b>Season <?php echo (int) $season['number']; ?></b>USA · CBS</div>
         <h1><?php echo esc_html($season['name']); ?></h1>
         <?php if (!empty($season['content'])) : ?>
-          <p class="sub"><?php echo wp_kses_post(wp_trim_words(strip_tags($season['content']), 38)); ?></p>
+          <p class="sub"><?php echo esc_html(wp_trim_words(wp_strip_all_tags($season['content'] ?? ''), 38)); ?></p>
         <?php endif; ?>
         <div class="stripstats">
           <?php if ($season['winner_name']) : ?>

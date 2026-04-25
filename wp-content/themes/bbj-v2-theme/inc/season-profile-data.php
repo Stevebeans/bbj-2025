@@ -67,7 +67,26 @@ function bbj_v2_season_profile_data(int $post_id): array
     );
 
     if (!$row) {
-        return ['post_id' => $post_id, 'title' => get_the_title($post_id)];
+        $title = get_the_title($post_id);
+        return [
+            'post_id'        => $post_id,
+            'title'          => $title,
+            'slug'           => '',
+            'name'           => $title,
+            'number'         => 0,
+            'abbr'           => '',
+            'start_date'     => null,
+            'end_date'       => null,
+            'post_date'      => get_post_field('post_date', $post_id) ?: null,
+            'content'        => '',
+            'winner_post_id' => 0,
+            'winner_name'    => '',
+            'runner_up_id'   => 0,
+            'afp_id'         => 0,
+            'hg_count'       => 0,
+            'days'           => null,
+            'prize'          => null,
+        ];
     }
 
     // Derive season number from title if not stored ("Big Brother 27" -> 27)
