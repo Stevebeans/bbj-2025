@@ -16,6 +16,10 @@
 }
 body.single-bigbrother-seasons{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
 
+/* page container — the theme doesn't define .wrap globally, each
+   page-scoped stylesheet provides its own (matches player-profile.css) */
+body.single-bigbrother-seasons .wrap{max-width:1280px;margin:0 auto;padding:0 20px}
+
 /* breadcrumb */
 .crumb{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;padding:14px 0 10px}
 .crumb a:hover{color:var(--bb-blue)}
