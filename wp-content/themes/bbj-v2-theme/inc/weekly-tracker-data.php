@@ -26,8 +26,46 @@ if (!defined('ABSPATH')) {
 }
 
 // Function bodies implemented in subsequent tasks.
-function bbj_v2_comp_types_active(): array { return []; }
-function bbj_v2_comp_types_all(): array { return []; }
+function bbj_v2_comp_types_active(): array
+{
+    $cache_key = 'bbj_v2_comp_types_active';
+    $cached = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    global $wpdb;
+    $rows = $wpdb->get_results(
+        "SELECT id, slug, name, sort_order, is_archived
+           FROM {$wpdb->prefix}bbj_comp_types
+          WHERE is_archived = 0
+          ORDER BY sort_order ASC, name ASC",
+        ARRAY_A
+    ) ?: [];
+
+    wp_cache_set($cache_key, $rows, 'bbj_v2', HOUR_IN_SECONDS);
+    return $rows;
+}
+
+function bbj_v2_comp_types_all(): array
+{
+    $cache_key = 'bbj_v2_comp_types_all';
+    $cached = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    global $wpdb;
+    $rows = $wpdb->get_results(
+        "SELECT id, slug, name, sort_order, is_archived
+           FROM {$wpdb->prefix}bbj_comp_types
+          ORDER BY is_archived ASC, sort_order ASC, name ASC",
+        ARRAY_A
+    ) ?: [];
+
+    wp_cache_set($cache_key, $rows, 'bbj_v2', HOUR_IN_SECONDS);
+    return $rows;
+}
 function bbj_v2_player_career_totals(int $player_post_id): array { return []; }
 function bbj_v2_player_weeks(int $player_post_id, int $season_post_id): array { return []; }
 function bbj_v2_season_weeks(int $season_post_id): array { return []; }
