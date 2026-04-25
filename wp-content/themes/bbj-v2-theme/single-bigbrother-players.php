@@ -302,6 +302,23 @@ get_header();
       </section>
       <?php endif; ?>
 
+      <!-- WEEK BY WEEK -->
+      <?php
+      if (!empty($seasons) && is_array($seasons)) {
+          foreach ($seasons as $season) {
+              $season_post_id = (int) ($season['bbj_season'] ?? 0);
+              if ($season_post_id <= 0) continue;
+              $season_label = (string) ($season['season_name'] ?? '');
+
+              get_template_part('template-parts/player/week-by-week', null, [
+                  'player_post_id' => $post_id,
+                  'season_post_id' => $season_post_id,
+                  'season_label'   => $season_label,
+              ]);
+          }
+      }
+      ?>
+
       <!-- CASTMATES -->
       <?php
       $castmates = ($latest && !empty($latest['bbj_season']))

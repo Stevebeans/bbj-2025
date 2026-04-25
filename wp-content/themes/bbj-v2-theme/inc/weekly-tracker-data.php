@@ -120,7 +120,67 @@ function bbj_v2_player_career_totals(int $player_post_id): array
     wp_cache_set($cache_key, $totals, 'bbj_v2', HOUR_IN_SECONDS);
     return $totals;
 }
-function bbj_v2_player_weeks(int $player_post_id, int $season_post_id): array { return []; }
+function bbj_v2_player_weeks(int $player_post_id, int $season_post_id): array
+{
+    $cache_key = 'bbj_v2_player_weeks_' . $player_post_id . '_' . $season_post_id;
+    $cached = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    global $wpdb;
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT w.id AS week_id, w.week_num, w.start_date, w.end_date, w.summary,
+                wp.nom, wp.evicted, wp.veto_played, wp.saved_by_player_id, wp.voted_for,
+                p_saver.post_title  AS saved_by_name,
+                p_voted.post_title  AS voted_for_name
+           FROM {$wpdb->prefix}bbj_weeks w
+           LEFT JOIN {$wpdb->prefix}bbj_weeks_players wp
+                  ON wp.week_id = w.id AND wp.player_id = %d
+           LEFT JOIN {$wpdb->posts} p_saver  ON p_saver.ID  = wp.saved_by_player_id
+           LEFT JOIN {$wpdb->posts} p_voted  ON p_voted.ID  = wp.voted_for
+          WHERE w.season_id = %d
+          ORDER BY w.week_num ASC",
+        $player_post_id, $season_post_id
+    ), ARRAY_A) ?: [];
+
+    if (empty($rows)) {
+        wp_cache_set($cache_key, [], 'bbj_v2', HOUR_IN_SECONDS);
+        return [];
+    }
+
+    // Pull per-week comps for this player
+    $week_ids = array_column($rows, 'week_id');
+    $placeholders = implode(',', array_fill(0, count($week_ids), '%d'));
+    $comp_rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT wc.week_id, ct.name, ct.slug
+           FROM {$wpdb->prefix}bbj_week_comps wc
+           INNER JOIN {$wpdb->prefix}bbj_comp_types ct ON ct.id = wc.comp_type_id
+          WHERE wc.player_id = %d AND wc.week_id IN ($placeholders)",
+        array_merge([$player_post_id], $week_ids)
+    ), ARRAY_A) ?: [];
+
+    $comps_by_week = [];
+    foreach ($comp_rows as $cr) {
+        $comps_by_week[(int) $cr['week_id']][] = ['name' => $cr['name'], 'slug' => $cr['slug']];
+    }
+
+    foreach ($rows as &$r) {
+        $r['comps'] = $comps_by_week[(int) $r['week_id']] ?? [];
+
+        // Resolve saved_by: 'self/twist' if it's the player themselves, name otherwise
+        if ((int) ($r['saved_by_player_id'] ?? 0) === $player_post_id) {
+            $r['saved_by_label'] = 'self / twist';
+        } elseif ((int) ($r['saved_by_player_id'] ?? 0) > 0) {
+            $r['saved_by_label'] = $r['saved_by_name'] ?: '—';
+        } else {
+            $r['saved_by_label'] = '';
+        }
+    }
+
+    wp_cache_set($cache_key, $rows, 'bbj_v2', HOUR_IN_SECONDS);
+    return $rows;
+}
 function bbj_v2_season_weeks(int $season_post_id): array
 {
     $cache_key = 'bbj_v2_season_weeks_' . $season_post_id;
