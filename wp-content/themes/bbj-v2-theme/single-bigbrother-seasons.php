@@ -21,8 +21,9 @@ $neighbors = bbj_v2_season_profile_neighbors($post_id, 5);
 $cast      = bbj_v2_season_profile_cast($post_id);
 $evictions = bbj_v2_season_profile_evictions($post_id);
 $comps     = bbj_v2_season_profile_comps($post_id);
-$top_feed  = bbj_v2_season_profile_top_feed_updates($post_id, 9);
-$articles  = bbj_v2_season_profile_articles($post_id, 4);
+$top_feed       = bbj_v2_season_profile_top_feed_updates($post_id, 9);
+$articles       = bbj_v2_season_profile_articles($post_id, 4);
+$week_summaries = bbj_v2_season_profile_week_summaries((int) $post_id);
 
 // Determine winner / runner-up / AFP from the cast set
 $winner = $runner_up = $afp = null;
@@ -54,6 +55,9 @@ if (!empty($evictions)) {
 }
 if (!empty($comps)) {
     $sections[] = ['id' => 'comps',     'label' => 'Comp Winners', 'count' => count($comps)];
+}
+if (!empty($week_summaries)) {
+    $sections[] = ['id' => 'week-recap', 'label' => 'Week Recap', 'count' => count($week_summaries)];
 }
 if (!empty($top_feed)) {
     $sections[] = ['id' => 'memories', 'label' => 'Memorable Moments', 'count' => count($top_feed)];
@@ -406,6 +410,27 @@ get_header();
               <?php endforeach; ?>
             </tbody>
           </table>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- WEEK-BY-WEEK RECAP -->
+      <?php if (!empty($week_summaries)): ?>
+      <section id="week-recap">
+        <div class="sech">
+          <h2>Week-by-week recap</h2>
+          <span class="sub"><?php echo (int) count($week_summaries); ?> weeks</span>
+        </div>
+        <div class="space-y-3">
+          <?php foreach ($week_summaries as $w): ?>
+            <article class="border border-stone-200 bg-white p-4 rounded">
+              <header class="flex items-baseline justify-between gap-3 mb-1">
+                <h3 class="font-osw text-base text-stone-900">Week <?php echo (int) $w['week_num']; ?></h3>
+                <span class="font-mono text-[11px] text-stone-500"><?php echo esc_html($w['start_date']); ?> &#8211; <?php echo esc_html($w['end_date']); ?></span>
+              </header>
+              <p class="text-sm text-stone-700"><?php echo esc_html($w['summary']); ?></p>
+            </article>
+          <?php endforeach; ?>
         </div>
       </section>
       <?php endif; ?>

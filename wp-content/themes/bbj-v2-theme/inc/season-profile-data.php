@@ -629,6 +629,32 @@ function bbj_v2_season_profile_comps(int $post_id): array
 }
 
 /**
+ * Returns weeks for the season with editor-written summary text.
+ * Filters to weeks that have a non-empty summary.
+ */
+function bbj_v2_season_profile_week_summaries(int $season_post_id): array
+{
+    $cache_key = 'season_profile_week_summaries_' . $season_post_id;
+    $cached = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    global $wpdb;
+    $rows = $wpdb->get_results($wpdb->prepare(
+        "SELECT id, week_num, start_date, end_date, summary
+           FROM {$wpdb->prefix}bbj_weeks
+          WHERE season_id = %d
+            AND summary IS NOT NULL AND summary <> ''
+          ORDER BY week_num ASC",
+        $season_post_id
+    ), ARRAY_A) ?: [];
+
+    wp_cache_set($cache_key, $rows, 'bbj_v2', HOUR_IN_SECONDS);
+    return $rows;
+}
+
+/**
  * Bust the season profile object caches when relevant content changes.
  * Coarse strategy — bust everything for a season on any of its related saves.
  * Optimization opportunity later (only bust the affected cache key) — for
@@ -645,6 +671,7 @@ function bbj_v2_season_profile_bust_cache_for_post(int $post_id): void
     foreach (['data', 'cast', 'evictions', 'comps', 'top_feed', 'articles'] as $bucket) {
         wp_cache_delete('season_profile_' . $bucket . '_' . $post_id, 'bbj_v2');
     }
+    wp_cache_delete('season_profile_week_summaries_' . $post_id, 'bbj_v2');
 }
 
 function bbj_v2_season_profile_bust_all_caches(): void

@@ -263,6 +263,7 @@ function bbj_v2_bust_weekly_caches(int $week_id, int $player_id): void
     wp_cache_delete('bbj_v2_player_weeks_' . $player_id . '_' . $season_id, 'bbj_v2');
     wp_cache_delete('bbj_v2_archive_all_players', 'bbj_v2');
     wp_cache_delete('season_profile_data_' . $season_id, 'bbj_v2');
+    wp_cache_delete('season_profile_week_summaries_' . $season_id, 'bbj_v2');
 }
 
 // ---------------------------------------------------------------------------
