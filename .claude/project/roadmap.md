@@ -32,6 +32,12 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 - **Spoiler Bar editor** (`/admin?tab=seasons&edit=<id>#spoiler`) — card-per-player UI on the default edit tab; adds `bbj_finish_place` column for correct double-eviction sort; uncached preview strip; Purge Cache button; reuses existing `bbj_v2_update_season()` handler
 - **Settings pane** (`/admin?tab=settings`) — current-season dropdown + info card with quick-jump to the active season's spoiler bar; cache-bust on switch. Ports the old `/wp-admin/admin.php?page=bbj-v2-settings` page into the new admin shell.
 - **Player profile** (`single-bigbrother-players.php`) — flat editorial aesthetic, vitals, season participation timeline, stats, related feeds + posts. Shipped on staging 2026-04-24. Captures LEFT JOIN + id-vs-post_id + `bbj_finish_place` query conventions.
+- **Feed Updates Hub skeleton** (`/feed-updates/`) — full design ported from `BBJ Feed Updates Hub.html`. Server-renders day-grouped thread of all 11.5k+ updates with vanilla-JS category-tab + checkbox-filter + search + sort over the visible page. Page header (kicker / H1 / season+week+day+today-count meta strip), black "On the Feeds Now" livebar with HoH/Veto/Block summary + today/week/season counts, featured "latest update" card (placeholder until pinning lands), toolbar, day dividers, rich update cards w/ category accent stripe + author avatar + thumbnail + comment count + open link, Load-More pagination via `?paged=N`. Sidebar: Live Right Now (HoH/Veto/Block/Next-evict from `bbj_v2_get_spoiler_bar()`), Filter card, Follow Us, Newsletter (disabled placeholder), Hot This Week (top blog posts by 7d comment count), 300×600 ad slot. Defer: vote interactivity, auto-refresh (slated Premium), houseguest chips per update, trending hashtags, quote blocks, pinning. Shipped 2026-04-25. 🟡
+
+  **URL trap discovered**: the live-feed-updates CPT registers with `rewrite => ['slug' => 'feed-updates']` (in `bbj-v2-plugin/src/PostTypes/FeedUpdates.php`). The internal post-type name and the URL slug differ. Real archive URL has always been `/feed-updates/` — and 11.5k+ singles already live at `/feed-updates/<slug>/`. No URL migration needed; canonical URL preserved. Old WP page at `/feed-updates/` (ID 50269, post_status=publish) is now orphaned — CPT archive rewrite rule wins request resolution, so the page never renders. Safe to trash.
+
+  **Note**: any time a CPT/taxonomy/rewrite_slug is added or modified, the rewrite_rules option cache must be flushed. Easiest is wp-admin → Settings → Permalinks → Save. The cache predates the live-feed-updates CPT being registered, which is why this archive 404'd until I flushed it.
+
 - **Houseguest archive skeleton** (`/bigbrother-players/`) — flat-aesthetic skeleton: server-renders all players in one query (post × `wp_bbj_players` × aggregated `wp_bbj_v2_player_season` stats), responsive 2/3/4/5-col card grid, vanilla-JS filter bar (search-as-you-type by name + season + status + sort). No design yet — placeholder layout for QA navigation. Shipped 2026-04-25. 🟡
 - **Seasons archive skeleton** (`/bigbrother-seasons/`) — flat-aesthetic table: Season / Start / End / Winner / AFP / Runner-up; rows link to season profiles, name cells link to player profiles. Mobile horizontal scroll. No design yet. Shipped 2026-04-25. 🟡
 - **Season profile** (`single-bigbrother-seasons.php`) — flat editorial aesthetic, sticky tab nav + scroll-spy, evictions/comps tables from `wp_bbj_weeks`, sidebar (TOC, Quick Facts, More Seasons, ad), object cache + `save_post` busters. Shipped on staging 2026-04-24; CSS-collision + content-fallback fixes 2026-04-25 (commits 16c859a..5903cdf).
@@ -112,17 +118,26 @@ Both pages currently render against partial data (BB27 cast still being entered,
 
 ---
 
-### Sprint D — Feed Update Hub ⬜ 🎨
+### Sprint D — Feed Update Hub 🟡 (skeleton shipped 2026-04-25)
 
-**Reference design:** `.claude/claude-design/bbj-home-page/project/BBJ Feed Updates Hub.html` + the screenshot you just shared (BB27 header, LIVE RIGHT NOW sidebar, filter chips, category checkboxes).
+**What shipped:** see "What's shipped" up top — full design layout ported, real data wired (11.5k+ live-feed-updates, type/location terms, comment counts, sidebar Live Right Now from spoiler bar). DOM-level category-tab + checkbox-filter + search + sort works on the visible page; pagination via `?paged=N`.
 
-**Scope:**
-- `archive-live-feed-updates.php` → `/live-feed-updates/` — auto-refresh thread with "ON THE FEEDS NOW" live banner, stats row (today/week/season), pinned discussion, filter chips (ALL / DRAMA / CEREMONY / STRATEGY / CHITCHAT / MEDIA), sort + date + search, day-grouped timeline
-- Right rail: LIVE RIGHT NOW panel (HoH / Veto / Block / Next Evict) + WATCH ON PARAMOUNT+ CTA + category filter
-- `single-live-feed-updates.php` — permalink view of a single update
-- Auto-refresh every 30 sec via tiny REST poll (only on archive view, not single)
+**Follow-ups (when actual user need arises):**
+- 🔒 Auto-refresh every 30s — slated as **Premium-only** feature (paywall via MemberPress). Surface a "Refresh" button gated by membership
+- Vote interactivity — `wp_bbj_feed_ratings` table exists; needs REST endpoint + cast-vote/poll JS
+- Pinned mechanic — currently shows most-recent update in featured slot. Add a `_bbj_pinned` post-meta flag + admin UI
+- Trending hashtags — backburner content-mining job (scan title/content hourly for top mentions outside stop-list)
+- Houseguest chips per update — auto-detect from content scan once trending-hashtag job exists
+- Quote blocks — defer until content authors actually use a quote field
+- Switch DOM-level page filter to AJAX/REST so filters apply across all 11.5k updates, not just the loaded page
+- Newsletter form — wire to whichever ESP is on the homepage Newsletter widget
+- Real "Next eviction" date instead of "Thursday" hardcode — needs a season-level or settings field
+- Mobile polish — sidebar stacks correctly today but layout pass needed once Claude Design returns
 
-**Done when:** archive live-updates without page reload, filters actually filter, LIVE RIGHT NOW pulls from spoiler bar data (depends on Sprint A).
+**Cleanup follow-ups:**
+- Trash the orphaned WP page at `/feed-updates/` (post ID 50269 on local; check IDs on staging+prod) — CPT archive rewrite wins request resolution so the page is unreachable, but it's clutter
+- 301 `/live-feed-archives/*` → `/feed-updates/` via EPS Redirects plugin (old daily roundup URL pattern; 2 internal posts still link there)
+- The unused `page-feed-updates.php` template can be deleted from the theme — nothing references it now
 
 ---
 
