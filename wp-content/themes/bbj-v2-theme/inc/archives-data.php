@@ -32,10 +32,6 @@ function bbj_v2_archive_all_players(): array
             bp.date_of_birth,
             bp.hometown_city,
             bp.hometown_state,
-            COALESCE(SUM(j.bbj_total_hoh), 0)                 AS total_hoh,
-            COALESCE(SUM(j.bbj_total_pov), 0)                 AS total_pov,
-            COALESCE(SUM(j.bbj_total_nom), 0)                 AS total_nom,
-            COALESCE(SUM(j.bbj_votes_received), 0)            AS total_votes,
             COUNT(DISTINCT j.bbj_season)                      AS season_count,
             MIN(NULLIF(j.finish_place, 0))                    AS best_finish,
             GROUP_CONCAT(DISTINCT j.bbj_season ORDER BY j.bbj_season) AS season_ids
@@ -87,6 +83,12 @@ function bbj_v2_archive_all_players(): array
         $row['season_ids'] = $row['season_ids']
             ? array_map('intval', explode(',', $row['season_ids']))
             : [];
+
+        $totals_for_card = bbj_v2_player_career_totals((int) $row['post_id']);
+        $row['total_hoh']   = $totals_for_card['hoh'];
+        $row['total_pov']   = $totals_for_card['pov'];
+        $row['total_nom']   = $totals_for_card['noms'];
+        $row['total_votes'] = $totals_for_card['votes_received'];
     }
     unset($row);
 
