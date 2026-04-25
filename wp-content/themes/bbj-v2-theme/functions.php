@@ -26,4 +26,5 @@ require_once BBJ_V2_THEME_PATH . '/inc/player-profile-data.php';
 require_once BBJ_V2_THEME_PATH . '/inc/season-profile-data.php';
 require_once BBJ_V2_THEME_PATH . '/inc/archives-data.php';
 require_once BBJ_V2_THEME_PATH . '/inc/feed-updates-hub-data.php';
+require_once BBJ_V2_THEME_PATH . '/inc/weekly-tracker-data.php';
 require_once BBJ_V2_THEME_PATH . '/inc/admin-shell.php';
