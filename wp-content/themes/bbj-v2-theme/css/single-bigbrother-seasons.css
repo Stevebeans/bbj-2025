@@ -1,7 +1,10 @@
 /**
- * Season profile — scoped styles.
+ * Single Season Profile — editorial redesign.
  *
- * Ported from .claude/claude-design/bbj-season-profile/bbj-home-page/project/BBJ Season Profile.html
+ * Scoped to body.single-bigbrother-seasons (loaded only on that template
+ * via inc/enqueue.php). Ported from the Claude Design mockup at
+ * .claude/claude-design/bbj-season-profile/bbj-home-page/project/BBJ Season Profile.html
+ *
  * Theme chrome (topbar, header, nav, footer, .wrap, html/body/a/button resets) stripped — provided by theme globals.
  */
 
@@ -11,6 +14,7 @@
   --line:#E5E7EB;--line-2:#D6DADF;--paper:#FBFAF6;--paper-2:#F3F1EA;
   --display:'Oswald',sans-serif;--serif:'Source Serif 4',Georgia,serif;--sans:'Inter Tight',system-ui,sans-serif;--mono:'IBM Plex Mono',monospace;
 }
+body.single-bigbrother-seasons{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
 
 /* breadcrumb */
 .crumb{font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);text-transform:uppercase;padding:14px 0 10px}
@@ -19,7 +23,7 @@
 .crumb b{color:var(--ink);font-weight:600}
 
 /* ==== HERO ==== */
-main{padding-bottom:60px}
+body.single-bigbrother-seasons main{padding-bottom:60px}
 .hero{background:linear-gradient(135deg,#1a2935 0%,#35546e 40%,#4b3a5a 100%);color:#fff;border-radius:8px;overflow:hidden;position:relative;margin-bottom:22px}
 .hero::before{content:"";position:absolute;inset:0;background:radial-gradient(120% 60% at 20% 10%,rgba(255,191,15,.18),transparent 55%), radial-gradient(80% 80% at 90% 100%,rgba(210,59,43,.18),transparent 60%)}
 .hero::after{content:"";position:absolute;inset:0;background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.04) 0 1px,transparent 1px 60px), repeating-linear-gradient(90deg,rgba(255,255,255,.04) 0 1px,transparent 1px 60px);opacity:.6}

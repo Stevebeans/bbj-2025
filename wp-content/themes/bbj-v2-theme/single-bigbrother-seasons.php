@@ -23,11 +23,11 @@ get_header();
 <main class="wrap">
 
   <!-- Breadcrumb -->
-  <div class="crumb">
+  <nav class="crumb" aria-label="Breadcrumb">
     <a href="<?php echo esc_url(home_url('/')); ?>">Home</a><span class="sep">/</span>
     <a href="<?php echo esc_url(home_url('/bigbrother-seasons/')); ?>">Seasons</a><span class="sep">/</span>
     <b><?php echo esc_html($season['title'] ?: get_the_title()); ?></b>
-  </div>
+  </nav>
 
   <!-- Sections — added in subsequent tasks -->
 
