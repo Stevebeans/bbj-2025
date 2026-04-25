@@ -45,6 +45,114 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 
 ---
 
+## Page coverage audit (2026-04-25)
+
+> Sources: bbj-v2-theme (current), legacy `BBJ` theme (live, deprecating), shelved bbj-app Next.js prototype at `C:/xampp/htdocs/bbj-app/src/app/`.
+> Percentage = rough completeness vs. fully-designed and feature-complete. Skeletons w/ no design land at 30-40%.
+
+### Public pages
+
+| Slug | Page Name | Status   |
+|------|-----------|--------|
+| `/` | Homepage | ✅ Shipped |
+| `/<post-slug>/` | Single post | ✅ Shipped |
+| `/<page-slug>/` | Generic page | ✅ Shipped |
+| `/feed-updates/` | Feed Updates Hub | 🟡 Partial (~70%) — Sprint D skeleton; design ported, voting / auto-refresh / pinning / chips / trending / quotes deferred |
+| `/feed-updates/<slug>/` | Single feed update | 🟡 Partial (~50%) — template exists from earlier work, design pass not done |
+| `/bigbrother-players/` | Player directory | 🟡 Partial (~30%) — Sprint C skeleton, no design yet |
+| `/bigbrother-players/<slug>/` | Single player | ✅ Shipped (Sprint B) |
+| `/bigbrother-seasons/` | Seasons directory | 🟡 Partial (~30%) — Sprint C skeleton, no design yet |
+| `/bigbrother-seasons/<slug>/` | Single season | ✅ Shipped (Sprint B) |
+| `/search/` | Search results | 🟡 Partial (~10%) — default WP stub; Sprint M |
+| `/404` | 404 page | 🟡 Partial (~10%) — default WP stub; Sprint M |
+| `/stats` | Site-wide stats | ⬜ Not started — Sprint J (replaces legacy `/big-brother-stats/`) |
+| `/compare` | Player compare picker | ⬜ Not started — Sprint K |
+| `/compare/<a-vs-b>/` | Specific matchup | ⬜ Not started — Sprint K (shareable URL) |
+| `/player-map` | Geographic map | ⬜ Not started — Sprint L |
+| `/users/<username>/` | Public user profile | ⬜ Not started — shares data with `/dashboard?tab=profile` (Sprint F) |
+| `/contact/` | Contact form | ⬜ Not started — Sprint N (shortcode-based) |
+| `/power-rankings/` | Power rankings | ⬜ Not started — referenced in nav but no template |
+| `/forums/` | Forums | ⬜ Not started — referenced in nav but no template |
+| `/watch-feeds/` | Watch live feeds CTA | ⬜ Not started — referenced in nav |
+
+### Auth / account / transactional
+
+| Slug | Page Name | Status |
+|------|-----------|--------|
+| `/login/` | Custom login page | ⬜ Default WP — bbj-app had a custom design, not ported |
+| `/reset-password/` | Password reset | ⬜ Default WP — bbj-app had custom UX |
+| `/email/confirm/` | Email confirmation | ⬜ Not started — bbj-app reference |
+| `/unsubscribe/` | Newsletter unsubscribe | ⬜ Not started — bbj-app reference |
+| `/become-supporter/` | Premium upsell | ⬜ Not ported — OLD `page-become-supporter.php` exists; needs MemberPress wiring (Sprint G area) |
+| `/checkout/success/` | Checkout success | ⬜ Not started — Stripe / MemberPress flow |
+| `/checkout/cancel/` | Checkout cancel | ⬜ Not started — Stripe / MemberPress flow |
+| `/privacy-policy/` | Privacy policy | ⬜ Likely a WP page; verify on prod |
+
+### Admin tabs (`/admin/?tab=…`)
+
+| Tab | Pane Name | Status |
+|-----|-----------|--------|
+| `overview` | Overview | ✅ Shipped |
+| `feed-updates` | Feed Updates | 🟡 Partial (~80%) — MVP shipped (Sprint I); image edit on existing rows / search / filter / N+1 tune deferred |
+| `settings` | Settings | ✅ Shipped |
+| `seasons` | Seasons | 🟡 Partial (~50%) — basic info + spoiler bar shipped; images / winners / roster tabs stubbed |
+| `posts` | Posts manager | ⬜ Stub — Sprint O (paired with Sprint P composer) |
+| `comments` | Comments moderation | ⬜ Stub — Sprint O |
+| `players` | Players CRUD | ⬜ Stub — Sprint O (currently still in old bbj-v2 plugin UI) |
+| `announcements` | Broadcast notifications | ⬜ Stub — Sprint O |
+| `content-engine` | FB post generator | ⬜ Stub — Sprint O low priority |
+| `users` | Users + bulk cleanup | ⬜ Stub — Sprint O |
+| `stats` | GA4 + GSC dashboard | ⬜ Stub — Sprint J |
+| `ads` | Ad slots hub | ⬜ Stub — Sprint O low priority |
+| `preview-as` | Role impersonation | ⬜ Not started — Sprint O |
+| `bug-reports` | Bug reports inbox | ⬜ Not started — bbj-app reference, not on roadmap yet |
+| `spoiler-bar` | Spoiler bar editor | ✅ Shipped (folded into seasons edit) |
+
+### User dashboard tabs (`/dashboard/?tab=…`)
+
+| Tab | Pane Name | Status |
+|-----|-----------|--------|
+| `overview` | Overview | 🟡 Partial (~30%) — basic shell, no real activity data |
+| `activity` | Activity feed | ⬜ Stub — Sprint F |
+| `saved` | Saved posts | ⬜ Stub — Sprint F (depends on save-button infra on cards) |
+| `notifications` | Notifications | ⬜ Stub — Sprint E |
+| `profile` | Public profile editor | ⬜ Stub — Sprint F |
+| `premium` | MemberPress status | ⬜ Stub — Sprint G |
+| `settings` | Account settings | ⬜ Stub — Sprint F |
+| `feeds-blog` | Feeds Blog | ⬜ Stub — listed in sidebar but not yet in any sprint |
+| `power-rankings` | Power Rankings | ⬜ Stub — listed in sidebar but not yet in any sprint |
+| `leaderboard` | Leaderboard | ⬜ Stub — listed in sidebar but not yet in any sprint |
+
+### Editor / composer (Sprint P)
+
+| Slug | Page Name | Status |
+|------|-----------|--------|
+| `/editor/` | Editor landing | ⬜ Not started — Sprint P |
+| `/editor/new/` | New post composer | ⬜ Not started — Sprint P |
+| `/editor/<id>/` | Edit existing post | ⬜ Not started — Sprint P |
+| `/preview/<id>/` | Preview drafts | ⬜ Not started — bbj-app had this |
+
+### Legacy `BBJ` theme pages — decisions pending
+
+These exist in the soon-to-be-deprecated theme. Decide whether to port, replace, or trash before the theme flip.
+
+| Legacy slug / template | Decision |
+|------------------------|----------|
+| `page-big-brother-stats.php` (`/big-brother-stats/`) | **Replace** with `/stats` (Sprint J) |
+| `page-all-seasons.php` (`/all-seasons/`) | **Trash** — `/bigbrother-seasons/` covers it |
+| `page-season-list.php` (`/season-list/`) | **Trash** — duplicate of `/all-seasons/` |
+| `page-player-directory.php` (`/player-directory/`) | **Replace** — done; `/bigbrother-players/` covers it |
+| `page-player-relationships.php` (`/player-relationships/`) | **Decision needed** — port, redesign, or trash? |
+| `page-my-profile.php` (`/my-profile/`) | **Replace** with `/dashboard?tab=profile` (Sprint F) |
+| `page-user-dashboard.php` (`/user-dashboard/`) | **Replace** — done; `/dashboard/` already covers it |
+| `page-feed-updates.php` (`/feed-updates/`) | **Replaced** — CPT archive wins now; orphaned page can be trashed |
+| `page-login.php` (`/login/`) | **Decision needed** — keep custom or use default WP login |
+| `page-become-supporter.php` (`/become-supporter/`) | **Port** to bbj-v2-theme (Sprint G area) |
+| `page-stripe-test.php` (`/stripe-test/`) | **Trash** — dev-only |
+| `page-testing.php`, `page-testingtwo.php`, `page-testtwo.php` | **Trash** — dev scratchpads |
+
+---
+
 ## Architectural decisions locked in
 
 - **Directory split into separate pages** (not `/directory?tab=x`). Each gets its own URL + SEO + schema:

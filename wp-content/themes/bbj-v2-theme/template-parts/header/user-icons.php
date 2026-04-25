@@ -23,6 +23,15 @@ $avatar_url   = get_avatar_url($current_user->ID, ['size' => 64]);
 ?>
 <div class="flex items-center gap-2">
     <?php if ($can_admin): ?>
+        <a href="<?php echo esc_url(add_query_arg('tab', 'roadmap', home_url('/admin/'))); ?>"
+           class="inline-flex items-center justify-center w-9 h-9 text-stone-600 hover:text-primary-500 hover:bg-stone-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
+           title="<?php esc_attr_e('Roadmap', 'bbj-v2-theme'); ?>"
+           aria-label="<?php esc_attr_e('Roadmap & page coverage', 'bbj-v2-theme'); ?>">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 6.75V15m0-8.25l-6 3.75v8.25l6-3.75m0-8.25l6 3.75m0 0v8.25m0-8.25l6-3.75v8.25l-6 3.75m0-8.25v8.25m-6-3.75v3.75"/>
+            </svg>
+        </a>
+
         <a href="<?php echo esc_url(home_url('/admin/')); ?>"
            class="inline-flex items-center justify-center w-9 h-9 text-stone-600 hover:text-primary-500 hover:bg-stone-100 dark:text-slate-300 dark:hover:bg-slate-800 transition"
            title="<?php esc_attr_e('Admin', 'bbj-v2-theme'); ?>"

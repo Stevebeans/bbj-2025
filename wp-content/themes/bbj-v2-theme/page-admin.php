@@ -47,6 +47,8 @@ get_header();
                 ?>
             <?php elseif ($active_tab === 'settings'): ?>
                 <?php get_template_part('template-parts/admin/pane-settings'); ?>
+            <?php elseif ($active_tab === 'roadmap'): ?>
+                <?php get_template_part('template-parts/admin/pane-roadmap'); ?>
             <?php else: ?>
                 <?php get_template_part('template-parts/admin/pane-stub', null, [
                     'tab' => $active_tab,
