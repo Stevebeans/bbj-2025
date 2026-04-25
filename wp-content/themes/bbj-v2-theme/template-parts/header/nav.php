@@ -62,8 +62,8 @@ function bbj_v2_primary_menu_items(): array
     return [
         ['label' => 'Home',           'url' => home_url('/'),               'match' => is_front_page()],
         ['label' => 'Feed Updates',   'url' => home_url('/feed-updates/'),  'match' => is_page('feed-updates') || is_post_type_archive('live-feed-updates') || is_singular('live-feed-updates')],
-        ['label' => 'Houseguests',    'url' => home_url('/houseguests/'),   'match' => is_post_type_archive('bigbrother-players') || is_singular('bigbrother-players')],
-        ['label' => 'Seasons',        'url' => home_url('/seasons/'),       'match' => is_post_type_archive('bigbrother-seasons') || is_singular('bigbrother-seasons')],
+        ['label' => 'Player Directory', 'url' => home_url('/bigbrother-players/'), 'match' => is_post_type_archive('bigbrother-players') || is_singular('bigbrother-players')],
+        ['label' => 'Seasons',        'url' => home_url('/bigbrother-seasons/'), 'match' => is_post_type_archive('bigbrother-seasons') || is_singular('bigbrother-seasons')],
         ['label' => 'Power Rankings', 'url' => home_url('/power-rankings/'),'match' => is_page('power-rankings')],
         ['label' => 'Forums',         'url' => home_url('/forums/'),        'match' => is_page('forums')],
     ];

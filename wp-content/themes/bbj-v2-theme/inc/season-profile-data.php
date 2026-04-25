@@ -7,7 +7,8 @@
  * the template can iterate without further processing.
  *
  * Drift conventions (per memory/references/bbj_data_schema.md):
- * - LEFT JOIN wp_bbj_seasons (BB22+ has no row)
+ * - LEFT JOIN wp_bbj_seasons ON (post_id = X OR (id = X AND post_id = 0))
+ *   (BB22-BB26 use the modern admin's id-vs-post_id pattern, like wp_bbj_players)
  * - LEFT JOIN wp_bbj_players ON (post_id = X OR (id = X AND post_id = 0))
  * - Use `finish_place` (no prefix) for placement
  * - Prefer finish_place === 1/2 over season_winner/runner_up post-pointers
@@ -46,7 +47,7 @@ function bbj_v2_season_profile_data(int $post_id): array
 
     global $wpdb;
 
-    // Core row (LEFT JOIN — BB22+ has no wp_bbj_seasons row)
+    // Core row — bridge legacy (post_id=p.ID) and modern (id=p.ID, post_id=0) admins.
     $row = $wpdb->get_row(
         $wpdb->prepare(
             "SELECT
@@ -64,7 +65,8 @@ function bbj_v2_season_profile_data(int $post_id): array
                 s.runner_up         AS runner_up_id,
                 s.afp               AS afp_id
              FROM {$wpdb->posts} p
-             LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = p.ID
+             LEFT JOIN {$wpdb->prefix}bbj_seasons s
+                    ON (s.post_id = p.ID OR (s.id = p.ID AND s.post_id = 0))
              WHERE p.ID = %d AND p.post_type = 'bigbrother-seasons'
              LIMIT 1",
             $post_id
@@ -179,7 +181,8 @@ function bbj_v2_season_profile_neighbors(int $post_id, int $window = 5): array
             s.season_number,
             s.abbreviation
          FROM {$wpdb->posts} p
-         LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = p.ID
+         LEFT JOIN {$wpdb->prefix}bbj_seasons s
+                ON (s.post_id = p.ID OR (s.id = p.ID AND s.post_id = 0))
          WHERE p.post_type = 'bigbrother-seasons' AND p.post_status = 'publish'
          ORDER BY COALESCE(s.season_number, 0) DESC, p.post_date DESC",
         ARRAY_A

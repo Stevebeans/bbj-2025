@@ -1,7 +1,7 @@
 # BBJ v2 Theme — Roadmap
 
 > Living document. Edit freely — I'll update it as sprints ship.
-> Last updated: 2026-04-22
+> Last updated: 2026-04-25
 
 ---
 
@@ -31,6 +31,10 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 - **Seasons admin pane** (`/admin?tab=seasons`) — flat list with status badges + current-season accent, Add Season draft flow, edit page shell with 3-tab layout (Spoiler Bar / Info / Photos); Season Info tab live for BasicInfo + Dates; Images / Winners / Roster stubbed for Sprint A 🟡
 - **Spoiler Bar editor** (`/admin?tab=seasons&edit=<id>#spoiler`) — card-per-player UI on the default edit tab; adds `bbj_finish_place` column for correct double-eviction sort; uncached preview strip; Purge Cache button; reuses existing `bbj_v2_update_season()` handler
 - **Settings pane** (`/admin?tab=settings`) — current-season dropdown + info card with quick-jump to the active season's spoiler bar; cache-bust on switch. Ports the old `/wp-admin/admin.php?page=bbj-v2-settings` page into the new admin shell.
+- **Player profile** (`single-bigbrother-players.php`) — flat editorial aesthetic, vitals, season participation timeline, stats, related feeds + posts. Shipped on staging 2026-04-24. Captures LEFT JOIN + id-vs-post_id + `bbj_finish_place` query conventions.
+- **Houseguest archive skeleton** (`/bigbrother-players/`) — flat-aesthetic skeleton: server-renders all players in one query (post × `wp_bbj_players` × aggregated `wp_bbj_v2_player_season` stats), responsive 2/3/4/5-col card grid, vanilla-JS filter bar (search-as-you-type by name + season + status + sort). No design yet — placeholder layout for QA navigation. Shipped 2026-04-25. 🟡
+- **Seasons archive skeleton** (`/bigbrother-seasons/`) — flat-aesthetic table: Season / Start / End / Winner / AFP / Runner-up; rows link to season profiles, name cells link to player profiles. Mobile horizontal scroll. No design yet. Shipped 2026-04-25. 🟡
+- **Season profile** (`single-bigbrother-seasons.php`) — flat editorial aesthetic, sticky tab nav + scroll-spy, evictions/comps tables from `wp_bbj_weeks`, sidebar (TOC, Quick Facts, More Seasons, ad), object cache + `save_post` busters. Shipped on staging 2026-04-24; CSS-collision + content-fallback fixes 2026-04-25 (commits 16c859a..5903cdf).
 - **Feed Updates admin pane** (`/admin?tab=feed-updates`) — quick-post form (headline + details + image + category + mode + social toggles) with 50-row list below, inline edit + force-delete. Permission gated via `PermissionChecker::userCan('feed_updates')` so the native permissions UI drives access. REST: extended `POST /bbjd/v1/feed-updates/create` to accept user-written titles/details/taxonomy; added PUT + DELETE handlers; PUT never re-posts to social. See `docs/superpowers/specs/2026-04-23-feed-updates-admin-pane-design.md`. Sprint I scope pulled forward. 🟡
 
 ---
@@ -38,8 +42,8 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 ## Architectural decisions locked in
 
 - **Directory split into separate pages** (not `/directory?tab=x`). Each gets its own URL + SEO + schema:
-  - `/houseguests` — player directory
-  - `/seasons` — seasons list
+  - `/bigbrother-players/` — player directory (matches singular slug `/bigbrother-players/<name>/`; decided 2026-04-25 not to remap to `/houseguests`)
+  - `/bigbrother-seasons/` — seasons list (already the live URL; matches singular slug)
   - `/stats` — site-wide stats
   - `/player-map` — geographic map of players
   - `/compare` (list) + `/compare/<a-vs-b>` (specific matchup, shareable)
@@ -67,25 +71,44 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 
 ---
 
-### Sprint B — Player + Season profiles ⬜
+### Sprint B — Player + Season profiles ✅ (shipped 2026-04-24)
 
-**Why:** Every feed update, post, and houseboard cell links to these. Highest-visited pages after homepage. Currently running as stubs with old rounded/shadow card aesthetic.
+**Why:** Every feed update, post, and houseboard cell links to these. Highest-visited pages after homepage. Were previously running as stubs with old rounded/shadow card aesthetic.
 
-**Scope:**
-- `single-bigbrother-players.php` — flat editorial aesthetic, player photo, vitals (age, hometown, occupation), season participation timeline, stats, related feed updates, related posts tagged with them
-- `single-bigbrother-seasons.php` — flat editorial aesthetic, cast list, winner/runner-up/AFP, season stats, week-by-week summary, related posts
+**Scope shipped:**
+- `single-bigbrother-players.php` — flat editorial aesthetic, player photo, vitals (age, hometown, occupation), season participation timeline, stats, related feed updates, related posts tagged with them.
+- `single-bigbrother-seasons.php` — flat editorial aesthetic, sticky tab nav + scroll-spy, sidebar (TOC, Quick Facts, More Seasons, ad), evictions/comps tables from `wp_bbj_weeks`, object cache + `save_post` busters.
 
-**Done when:** both page types render clean and the homepage + archives link to them with no 500s.
+**Follow-up: data-complete pass ⬜**
+
+Both pages currently render against partial data (BB27 cast still being entered, older seasons have gaps in `wp_bbj_weeks`, finish places not all backfilled). Schedule a QA sweep once a season is fully populated:
+
+- Walk a fully-loaded season + each cast member's player profile end-to-end on desktop
+- Mobile QA pass on the same set — sticky tab nav, sidebar collapse, evictions/comps table overflow, photo aspect ratios
+- Watch for empty-state holes (missing AFP, missing runner-up, week with no comps) and confirm graceful fallbacks
+- Re-check the placeholder/fallback paths added in commits 07f18c8 (memorable-moments → `post_title`) and de9e05b (`.wrap` max-width) to make sure real data hasn't reintroduced the original layout issues
+- Lighthouse / PageSpeed both page types once real images are in
+
+**Trigger:** when the BB27 cast + spoiler bar are fully entered (Sprint A follow-up content work) — that's the first season with complete data top-to-bottom.
 
 ---
 
-### Sprint C — Houseguests + Seasons directories ⬜
+### Sprint C — Houseguests + Seasons directories 🟡 (skeletons shipped 2026-04-25)
 
-**Scope:**
-- `archive-bigbrother-players.php` → `/houseguests` — grid of player cards, filters (season, alive/evicted, winner status), search
-- `archive-bigbrother-seasons.php` → `/seasons` — grid of season cards with winner + photo
+**What shipped:**
+- `archive-bigbrother-players.php` → `/bigbrother-players/` — server-rendered card grid (~365 players in one query), vanilla-JS filter bar: search-as-you-type, season select, status select (Winner/Runner-up/Played), sort (name asc/desc, most HOH, most POV, most seasons). Card shows avatar/initial, name, age, location, status badge, HOH/POV/NOM/Votes stat row. Skeleton aesthetic — inline styles, no design yet.
+- `archive-bigbrother-seasons.php` → `/bigbrother-seasons/` — flat table: Season / Start / End / Winner / AFP / Runner-up. Rows link to season profile; name cells link to player profile. Mobile horizontal-scroll wrapper.
+- Data layer: new `inc/archives-data.php` with `bbj_v2_archive_all_players()` + `bbj_v2_archive_all_seasons()`. Single SQL pass each, no caching yet.
+- Header nav `/houseguests/` + `/seasons/` links retargeted to the actual CPT archive slugs; `single-bigbrother-players.php` breadcrumb same.
 
-**Done when:** both archives are browsable with working filters.
+**Follow-ups (when designs land):**
+- Claude Design pass for both archive aesthetics
+- Add caching (object cache + `save_post` busters) once page is hit enough to matter
+- Player archive: pagination or virtualization if 365 cards becomes a perf issue (currently fine in skeleton testing)
+- Status filter semantics — for skeleton, "Winner/Runner-up/Played" derived from career-best `finish_place`; doesn't surface "currently in jury" or "currently evicted" because those are season-specific
+- Seasons archive: click-to-sort columns, filter by decade, season photo column
+
+**Done-when (full sprint):** both archives have a designed aesthetic, filter UX matches the design, and the data is cached.
 
 ---
 

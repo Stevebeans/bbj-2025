@@ -154,7 +154,8 @@ function bbj_v2_player_profile_seasons(int $post_id): array
                     WHERE j2.bbj_season = j.bbj_season) AS season_size
              FROM {$wpdb->prefix}bbj_v2_player_season j
              INNER JOIN {$wpdb->posts} p ON p.ID = j.bbj_season
-             LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
+             LEFT JOIN {$wpdb->prefix}bbj_seasons s
+                    ON (s.post_id = j.bbj_season OR (s.id = j.bbj_season AND s.post_id = 0))
              WHERE j.bbj_player = %d
                AND p.post_status = 'publish'
              ORDER BY COALESCE(s.start_date, p.post_date) DESC",
@@ -263,7 +264,8 @@ function bbj_v2_player_profile_castmates(int $player_post_id, int $season_post_i
              INNER JOIN {$wpdb->posts} p ON p.ID = j.bbj_player
              LEFT JOIN {$wpdb->prefix}bbj_players bp
                     ON (bp.post_id = j.bbj_player OR (bp.id = j.bbj_player AND bp.post_id = 0))
-             LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = j.bbj_season
+             LEFT JOIN {$wpdb->prefix}bbj_seasons s
+                    ON (s.post_id = j.bbj_season OR (s.id = j.bbj_season AND s.post_id = 0))
              WHERE j.bbj_season = %d
                AND j.bbj_player != %d
                AND p.post_status = 'publish'

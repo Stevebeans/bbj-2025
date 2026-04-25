@@ -36,7 +36,7 @@ if (!empty($player['socials']))                $person_schema['sameAs']      = a
 
 $breadcrumb_items = [
     ['@type' => 'ListItem', 'position' => 1, 'name' => 'Home',        'item' => home_url('/')],
-    ['@type' => 'ListItem', 'position' => 2, 'name' => 'Houseguests', 'item' => home_url('/houseguests/')],
+    ['@type' => 'ListItem', 'position' => 2, 'name' => 'Houseguests', 'item' => home_url('/bigbrother-players/')],
 ];
 if ($latest && !empty($latest['season_slug'])) {
     $breadcrumb_items[] = [
@@ -74,7 +74,7 @@ get_header();
   <!-- Breadcrumb -->
   <nav class="crumb" aria-label="Breadcrumb">
     <a href="<?php echo esc_url(home_url('/')); ?>">Home</a><span class="sep">/</span>
-    <a href="<?php echo esc_url(home_url('/houseguests/')); ?>">Houseguests</a><span class="sep">/</span>
+    <a href="<?php echo esc_url(home_url('/bigbrother-players/')); ?>">Houseguests</a><span class="sep">/</span>
     <?php if ($latest && !empty($latest['season_slug'])) : ?>
       <a href="<?php echo esc_url(home_url('/bigbrother-seasons/' . $latest['season_slug'] . '/')); ?>">
         <?php echo esc_html($latest['season_abbr'] ?: $latest['season_name']); ?>
