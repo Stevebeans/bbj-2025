@@ -209,3 +209,28 @@ function bbj_v2_season_profile_neighbors(int $post_id, int $window = 5): array
 
     return $slice;
 }
+
+/**
+ * Return the "Season Facts" dl content for the Overview block.
+ * Each item is [label, value]. Skips anything we don't have.
+ */
+function bbj_v2_season_profile_facts(array $season): array
+{
+    $facts = [];
+    if (!empty($season['start_date'])) {
+        $facts[] = ['Premiere', date_i18n('M j, Y', strtotime($season['start_date']))];
+    }
+    if (!empty($season['end_date'])) {
+        $facts[] = ['Finale', date_i18n('M j, Y', strtotime($season['end_date']))];
+    }
+    if (!empty($season['days'])) {
+        $facts[] = ['Days', (string) $season['days']];
+    }
+    if (!empty($season['hg_count'])) {
+        $facts[] = ['Houseguests', (string) $season['hg_count']];
+    }
+    if (!empty($season['prize'])) {
+        $facts[] = ['Prize', $season['prize']];
+    }
+    return $facts;
+}

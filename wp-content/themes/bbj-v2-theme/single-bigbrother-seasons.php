@@ -14,8 +14,17 @@ if (!have_posts()) {
 }
 
 the_post();
-$post_id = get_the_ID();
-$season  = bbj_v2_season_profile_data($post_id);
+$post_id   = get_the_ID();
+$season    = bbj_v2_season_profile_data($post_id);
+$facts     = bbj_v2_season_profile_facts($season);
+$neighbors = bbj_v2_season_profile_neighbors($post_id, 5);
+
+// Build section list — order matters, matches scroll order.
+// Future tasks will append: winners, cast, evictions, comps, memories, articles.
+$sections = [];
+if (!empty($season['content']) || !empty($facts)) {
+    $sections[] = ['id' => 'overview', 'label' => 'Overview', 'count' => null];
+}
 
 get_header();
 ?>
@@ -65,7 +74,6 @@ get_header();
     </div>
   </div>
 
-  <?php $neighbors = bbj_v2_season_profile_neighbors($post_id, 5); ?>
   <?php if (!empty($neighbors)) : ?>
   <div class="switcher">
     <span class="k">Switch season</span>
@@ -80,7 +88,59 @@ get_header();
   </div>
   <?php endif; ?>
 
-  <!-- Sections — added in subsequent tasks -->
+  <?php if (!empty($sections)) : ?>
+  <div class="sectionnav">
+    <?php foreach ($sections as $i => $sec) : ?>
+      <a href="#<?php echo esc_attr($sec['id']); ?>" class="<?php echo esc_attr($i === 0 ? 'on' : ''); ?>">
+        <?php echo esc_html($sec['label']); ?>
+        <?php if ($sec['count'] !== null) : ?>
+          <span class="ct"><?php echo esc_html((string) $sec['count']); ?></span>
+        <?php endif; ?>
+      </a>
+    <?php endforeach; ?>
+  </div>
+  <?php endif; ?>
+
+  <div class="grid">
+    <!-- MAIN -->
+    <div>
+
+      <!-- OVERVIEW -->
+      <?php if (in_array('overview', array_column($sections, 'id'), true)) : ?>
+      <section id="overview">
+        <div class="sech">
+          <h2>Season Overview</h2>
+          <span class="sub">At a glance</span>
+        </div>
+        <div class="overview">
+          <div class="copy">
+            <?php if (!empty($season['content'])) : ?>
+              <?php echo apply_filters('the_content', $season['content']); ?>
+            <?php else : ?>
+              <p class="lead">Season recap coming soon.</p>
+            <?php endif; ?>
+          </div>
+          <?php if (!empty($facts)) : ?>
+          <div class="facts">
+            <h4>Season Facts</h4>
+            <dl>
+              <?php foreach ($facts as $f) : ?>
+                <dt><?php echo esc_html($f[0]); ?></dt><dd><?php echo esc_html($f[1]); ?></dd>
+              <?php endforeach; ?>
+            </dl>
+          </div>
+          <?php endif; ?>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- additional sections appended by later tasks -->
+
+    </div>
+
+    <!-- SIDEBAR placeholder (Task 8 fills it) -->
+    <aside><div class="stick"></div></aside>
+  </div>
 
 </main>
 
