@@ -171,6 +171,90 @@ function bbj_v2_attach_week_comps(array $rows, int $week_id): array
     return $rows;
 }
 
-function bbj_v2_save_week_comp(int $week_id, int $player_id, int $comp_type_id, ?int $opponents_count = null, ?string $notes = null): int { return 0; }
-function bbj_v2_delete_week_comp(int $id): bool { return false; }
-function bbj_v2_save_week_player(array $row): int { return 0; }
+function bbj_v2_save_week_comp(int $week_id, int $player_id, int $comp_type_id, ?int $opponents_count = null, ?string $notes = null): int
+{
+    global $wpdb;
+    $existing = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}bbj_week_comps
+         WHERE week_id = %d AND player_id = %d AND comp_type_id = %d
+         LIMIT 1",
+        $week_id, $player_id, $comp_type_id
+    ));
+
+    $data = [
+        'week_id'         => $week_id,
+        'player_id'       => $player_id,
+        'comp_type_id'    => $comp_type_id,
+        'opponents_count' => $opponents_count,
+        'notes'           => $notes,
+    ];
+
+    if ($existing > 0) {
+        $wpdb->update("{$wpdb->prefix}bbj_week_comps", $data, ['id' => $existing]);
+        $id = $existing;
+    } else {
+        $wpdb->insert("{$wpdb->prefix}bbj_week_comps", $data);
+        $id = (int) $wpdb->insert_id;
+    }
+
+    do_action('bbj_v2_week_comp_saved', $week_id, $player_id);
+    return $id;
+}
+
+function bbj_v2_delete_week_comp(int $id): bool
+{
+    global $wpdb;
+    $row = $wpdb->get_row($wpdb->prepare(
+        "SELECT week_id, player_id FROM {$wpdb->prefix}bbj_week_comps WHERE id = %d",
+        $id
+    ), ARRAY_A);
+    if (!$row) {
+        return false;
+    }
+    $deleted = $wpdb->delete("{$wpdb->prefix}bbj_week_comps", ['id' => $id]);
+    if ($deleted) {
+        do_action('bbj_v2_week_comp_saved', (int) $row['week_id'], (int) $row['player_id']);
+    }
+    return (bool) $deleted;
+}
+
+function bbj_v2_save_week_player(array $row): int
+{
+    global $wpdb;
+    $week_id   = (int) ($row['week_id']   ?? 0);
+    $player_id = (int) ($row['player_id'] ?? 0);
+    if ($week_id <= 0 || $player_id <= 0) {
+        return 0;
+    }
+
+    $existing = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT id FROM {$wpdb->prefix}bbj_weeks_players
+         WHERE week_id = %d AND player_id = %d
+         LIMIT 1",
+        $week_id, $player_id
+    ));
+
+    $data = [
+        'week_id'             => $week_id,
+        'player_id'           => $player_id,
+        'season_id'           => (int) ($row['season_id'] ?? 0),
+        'nom'                 => isset($row['nom'])                 ? (int) $row['nom']                 : 0,
+        'evicted'             => isset($row['evicted'])             ? (int) $row['evicted']             : 0,
+        'veto_played'         => isset($row['veto_played'])         ? (int) $row['veto_played']         : 0,
+        'voted_for'           => isset($row['voted_for'])           ? (int) $row['voted_for']           : 0,
+        'vote_to_win'         => isset($row['vote_to_win'])         ? (int) $row['vote_to_win']         : 0,
+        'active'              => isset($row['active'])              ? (int) $row['active']              : 1,
+        'saved_by_player_id'  => isset($row['saved_by_player_id'])  ? (int) $row['saved_by_player_id'] ?: null : null,
+    ];
+
+    if ($existing > 0) {
+        $wpdb->update("{$wpdb->prefix}bbj_weeks_players", $data, ['id' => $existing]);
+        $id = $existing;
+    } else {
+        $wpdb->insert("{$wpdb->prefix}bbj_weeks_players", $data);
+        $id = (int) $wpdb->insert_id;
+    }
+
+    do_action('bbj_v2_week_player_saved', $week_id, $player_id);
+    return $id;
+}

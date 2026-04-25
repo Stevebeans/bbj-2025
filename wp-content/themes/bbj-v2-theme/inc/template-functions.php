@@ -242,3 +242,25 @@ function bbj_v2_bust_comp_types_cache(): void
     wp_cache_delete('bbj_v2_comp_types_active', 'bbj_v2');
     wp_cache_delete('bbj_v2_comp_types_all',    'bbj_v2');
 }
+
+/**
+ * Cache busters for week comp and week player mutations.
+ * Wired to the actions fired by bbj_v2_save_week_comp, bbj_v2_delete_week_comp,
+ * and bbj_v2_save_week_player in inc/weekly-tracker-data.php.
+ */
+add_action('bbj_v2_week_comp_saved',   'bbj_v2_bust_weekly_caches', 10, 2);
+add_action('bbj_v2_week_player_saved', 'bbj_v2_bust_weekly_caches', 10, 2);
+function bbj_v2_bust_weekly_caches(int $week_id, int $player_id): void
+{
+    global $wpdb;
+    $season_id = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT season_id FROM {$wpdb->prefix}bbj_weeks WHERE id = %d",
+        $week_id
+    ));
+
+    wp_cache_delete('bbj_v2_season_weeks_' . $season_id, 'bbj_v2');
+    wp_cache_delete('bbj_v2_player_career_totals_' . $player_id, 'bbj_v2');
+    wp_cache_delete('bbj_v2_player_weeks_' . $player_id . '_' . $season_id, 'bbj_v2');
+    wp_cache_delete('bbj_v2_archive_all_players', 'bbj_v2');
+    wp_cache_delete('season_profile_data_' . $season_id, 'bbj_v2');
+}
