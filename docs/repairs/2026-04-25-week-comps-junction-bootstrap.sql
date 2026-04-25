@@ -20,6 +20,13 @@
 --   - Prod:     same with prod DB credentials
 -- =============================================================================
 
+-- ----- BEFORE snapshot (run is idempotent — counts already at AFTER state on re-run) -----
+SELECT 'BEFORE' AS stage,
+       (SELECT COUNT(*) FROM wp_bbj_comp_types)        AS comp_types_count,
+       (SELECT COUNT(*) FROM wp_bbj_week_comps)        AS week_comps_count,
+       (SELECT COUNT(*) FROM wp_bbj_weeks_players
+         WHERE saved_by_player_id IS NOT NULL)         AS saved_by_filled;
+
 -- ----- 1. wp_bbj_comp_types -----
 CREATE TABLE IF NOT EXISTS wp_bbj_comp_types (
     id BIGINT NOT NULL AUTO_INCREMENT,
