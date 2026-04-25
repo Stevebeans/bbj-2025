@@ -42,6 +42,7 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 - **Seasons archive skeleton** (`/bigbrother-seasons/`) — flat-aesthetic table: Season / Start / End / Winner / AFP / Runner-up; rows link to season profiles, name cells link to player profiles. Mobile horizontal scroll. No design yet. Shipped 2026-04-25. 🟡
 - **Season profile** (`single-bigbrother-seasons.php`) — flat editorial aesthetic, sticky tab nav + scroll-spy, evictions/comps tables from `wp_bbj_weeks`, sidebar (TOC, Quick Facts, More Seasons, ad), object cache + `save_post` busters. Shipped on staging 2026-04-24; CSS-collision + content-fallback fixes 2026-04-25 (commits 16c859a..5903cdf).
 - **Feed Updates admin pane** (`/admin?tab=feed-updates`) — quick-post form (headline + details + image + category + mode + social toggles) with 50-row list below, inline edit + force-delete. Permission gated via `PermissionChecker::userCan('feed_updates')` so the native permissions UI drives access. REST: extended `POST /bbjd/v1/feed-updates/create` to accept user-written titles/details/taxonomy; added PUT + DELETE handlers; PUT never re-posts to social. See `docs/superpowers/specs/2026-04-23-feed-updates-admin-pane-design.md`. Sprint I scope pulled forward. 🟡
+- **Sprint R — Weekly Tracker** (shipped 2026-04-25): Junction-based per-player-per-week tracker drives the Week-by-Week block on player profiles + recap rail on season profiles. Two new tables (`wp_bbj_comp_types`, `wp_bbj_week_comps`) + columns (`saved_by_player_id` on `wp_bbj_weeks_players`, `summary` on `wp_bbj_weeks`). Admin: `/admin?tab=comp-types` for CRUD, plus a Weeks tab on the season editor (`/admin?tab=seasons&edit=<id>#weeks`) with per-week edit grid. Spec: `docs/superpowers/specs/2026-04-25-weekly-tracker-design.md`. 🟡 (admin shipped, BB1-21 backfill is owner content work over time).
 
 ---
 
@@ -95,7 +96,7 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 | `overview` | Overview | ✅ Shipped |
 | `feed-updates` | Feed Updates | 🟡 Partial (~80%) — MVP shipped (Sprint I); image edit on existing rows / search / filter / N+1 tune deferred |
 | `settings` | Settings | ✅ Shipped |
-| `seasons` | Seasons | 🟡 Partial (~50%) — basic info + spoiler bar shipped; images / winners / roster tabs stubbed |
+| `seasons` | Seasons | 🟡 Partial (~50%) — basic info + spoiler bar shipped; images / winners / roster tabs stubbed + Weeks sub-tab (Sprint R) |
 | `posts` | Posts manager | ⬜ Stub — Sprint O (paired with Sprint P composer) |
 | `comments` | Comments moderation | ⬜ Stub — Sprint O |
 | `players` | Players CRUD | ⬜ Stub — Sprint O (currently still in old bbj-v2 plugin UI) |
@@ -107,6 +108,7 @@ Reading order: sprints are listed in priority order. Sprint letters are stable; 
 | `preview-as` | Role impersonation | ⬜ Not started — Sprint O |
 | `bug-reports` | Bug reports inbox | ⬜ Not started — bbj-app reference, not on roadmap yet |
 | `spoiler-bar` | Spoiler bar editor | ✅ Shipped (folded into seasons edit) |
+| `comp-types` | Comp Types | ✅ Shipped | - | Sprint R — game data CRUD |
 
 ### User dashboard tabs (`/dashboard/?tab=…`)
 
