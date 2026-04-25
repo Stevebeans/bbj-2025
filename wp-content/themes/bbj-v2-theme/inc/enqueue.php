@@ -111,6 +111,23 @@ function bbj_v2_enqueue_assets(): void
         );
     }
 
+    // Single season profile — scoped stylesheet + scroll-spy JS.
+    if (is_singular('bigbrother-seasons')) {
+        wp_enqueue_style(
+            'bbj-v2-single-season',
+            BBJ_V2_THEME_URL . '/css/single-bigbrother-seasons.css',
+            [],
+            bbj_v2_asset_ver('/css/single-bigbrother-seasons.css')
+        );
+        wp_enqueue_script(
+            'bbj-v2-season-profile',
+            BBJ_V2_THEME_URL . '/src/js/season-profile.js',
+            [],
+            bbj_v2_asset_ver('/src/js/season-profile.js'),
+            ['strategy' => 'defer', 'in_footer' => true]
+        );
+    }
+
     // WP core block styles are frontend-unused for our theme — dequeue
     wp_dequeue_style('wp-block-library');
     wp_dequeue_style('wp-block-library-theme');
@@ -124,8 +141,8 @@ function bbj_v2_preload_fonts(): void
 {
     $base_url = 'https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Oswald:wght@400;500;600;700&family=Yanone+Kaffeesatz:wght@400;500;600;700&family=Caveat:wght@400;500;600;700';
 
-    // Editorial fonts for the player profile (retiring Yanone on that page).
-    if (is_singular('bigbrother-players')) {
+    // Editorial fonts for the player + season profiles (retiring Yanone on those pages).
+    if (is_singular('bigbrother-players') || is_singular('bigbrother-seasons')) {
         $base_url .= '&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=Inter+Tight:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500';
     }
 
