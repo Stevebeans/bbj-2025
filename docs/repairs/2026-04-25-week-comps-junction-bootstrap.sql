@@ -16,16 +16,29 @@
 --
 -- How to run:
 --   - Local:    mysql -u root bbj_db < docs/repairs/2026-04-25-week-comps-junction-bootstrap.sql
---   - Staging:  same with staging DB credentials
---   - Prod:     same with prod DB credentials
+--   - Staging:  same with staging credentials + DB name (ftgtnduhbt)
+--   - Prod:     same with prod credentials + DB name (duesaptjae)
+--
+-- When to re-run:
+--   Only when moving the migration to a new environment (e.g., first run on
+--   staging, or first run on prod). The script is idempotent so re-running on
+--   an already-migrated DB is safe (no-ops via IF NOT EXISTS, INSERT IGNORE,
+--   and the unique key on wp_bbj_week_comps).
 -- =============================================================================
 
--- ----- BEFORE snapshot (run is idempotent — counts already at AFTER state on re-run) -----
+-- ----- BEFORE snapshot — confirms which migration steps are still needed -----
 SELECT 'BEFORE' AS stage,
-       (SELECT COUNT(*) FROM wp_bbj_comp_types)        AS comp_types_count,
-       (SELECT COUNT(*) FROM wp_bbj_week_comps)        AS week_comps_count,
-       (SELECT COUNT(*) FROM wp_bbj_weeks_players
-         WHERE saved_by_player_id IS NOT NULL)         AS saved_by_filled;
+       (SELECT COUNT(*) FROM information_schema.TABLES
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME IN ('wp_bbj_comp_types','wp_bbj_week_comps')) AS new_tables_exist,
+       (SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'wp_bbj_weeks_players'
+           AND COLUMN_NAME = 'saved_by_player_id')                     AS saved_by_col_exists,
+       (SELECT COUNT(*) FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE()
+           AND TABLE_NAME = 'wp_bbj_weeks'
+           AND COLUMN_NAME = 'summary')                                AS summary_col_exists;
 
 -- ----- 1. wp_bbj_comp_types -----
 CREATE TABLE IF NOT EXISTS wp_bbj_comp_types (
@@ -49,7 +62,6 @@ CREATE TABLE IF NOT EXISTS wp_bbj_week_comps (
     notes VARCHAR(140) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
-    KEY idx_week_player (week_id, player_id),
     KEY idx_player_type (player_id, comp_type_id),
     UNIQUE KEY uniq_week_player_type (week_id, player_id, comp_type_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
