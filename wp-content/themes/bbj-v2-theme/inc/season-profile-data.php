@@ -151,3 +151,61 @@ function bbj_v2_season_profile_data(int $post_id): array
         'prize'          => $prize,
     ];
 }
+
+/**
+ * Return ±$window seasons by season_number around the given season.
+ * Falls back to ordering by post_date when season_number is missing.
+ */
+function bbj_v2_season_profile_neighbors(int $post_id, int $window = 5): array
+{
+    global $wpdb;
+
+    $rows = $wpdb->get_results(
+        "SELECT
+            p.ID         AS post_id,
+            p.post_title AS title,
+            p.post_name  AS slug,
+            p.post_date  AS post_date,
+            s.season_number,
+            s.abbreviation
+         FROM {$wpdb->posts} p
+         LEFT JOIN {$wpdb->prefix}bbj_seasons s ON s.post_id = p.ID
+         WHERE p.post_type = 'bigbrother-seasons' AND p.post_status = 'publish'
+         ORDER BY COALESCE(s.season_number, 0) DESC, p.post_date DESC",
+        ARRAY_A
+    );
+
+    if (!$rows) return [];
+
+    // Find current season's index in the ordered list
+    $current = null;
+    foreach ($rows as $i => $r) {
+        if ((int) $r['post_id'] === $post_id) {
+            $current = $i;
+            break;
+        }
+    }
+    if ($current === null) return [];
+
+    $start = max(0, $current - $window);
+    $end   = min(count($rows) - 1, $current + $window);
+    $slice = array_slice($rows, $start, $end - $start + 1);
+
+    foreach ($slice as &$r) {
+        // Derive season_number from title if missing
+        if (empty($r['season_number']) && !empty($r['title'])) {
+            if (preg_match('/(\d+)/', $r['title'], $m)) {
+                $r['season_number'] = (int) $m[1];
+            }
+        }
+        // Derive abbreviation if missing
+        if (empty($r['abbreviation']) && !empty($r['season_number'])) {
+            $r['abbreviation'] = 'BB' . $r['season_number'];
+        }
+        $r['is_current'] = ((int) $r['post_id'] === $post_id);
+        $r['url']        = home_url('/bigbrother-seasons/' . $r['slug'] . '/');
+    }
+    unset($r);
+
+    return $slice;
+}

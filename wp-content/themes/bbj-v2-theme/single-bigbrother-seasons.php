@@ -65,6 +65,21 @@ get_header();
     </div>
   </div>
 
+  <?php $neighbors = bbj_v2_season_profile_neighbors($post_id, 5); ?>
+  <?php if (!empty($neighbors)) : ?>
+  <div class="switcher">
+    <span class="k">Switch season</span>
+    <div class="pills">
+      <?php foreach ($neighbors as $n) : ?>
+        <a href="<?php echo esc_url($n['url']); ?>" class="<?php echo $n['is_current'] ? 'on' : ''; ?>">
+          <?php echo esc_html($n['abbreviation']); ?>
+        </a>
+      <?php endforeach; ?>
+    </div>
+    <a class="all" href="<?php echo esc_url(home_url('/bigbrother-seasons/')); ?>">All seasons &rarr;</a>
+  </div>
+  <?php endif; ?>
+
   <!-- Sections — added in subsequent tasks -->
 
 </main>
