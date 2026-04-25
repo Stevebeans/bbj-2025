@@ -476,8 +476,63 @@ get_header();
 
     </div>
 
-    <!-- SIDEBAR placeholder (Task 8 fills it) -->
-    <aside><div class="stick"></div></aside>
+    <!-- SIDEBAR -->
+    <aside>
+      <div class="stick">
+
+        <?php if (!empty($sections)) : ?>
+        <div class="card toc">
+          <h4>On This Page</h4>
+          <ul>
+            <?php foreach ($sections as $sec) : ?>
+              <li>
+                <a href="#<?php echo esc_attr($sec['id']); ?>">
+                  <span><?php echo esc_html($sec['label']); ?></span>
+                  <?php if ($sec['count'] !== null) : ?>
+                    <span><?php echo esc_html((string) $sec['count']); ?></span>
+                  <?php endif; ?>
+                </a>
+              </li>
+            <?php endforeach; ?>
+          </ul>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($facts)) : ?>
+        <div class="card facts-card">
+          <h4>Quick Facts</h4>
+          <dl>
+            <?php foreach ($facts as $f) : ?>
+              <dt><?php echo esc_html($f[0]); ?></dt>
+              <dd><?php echo esc_html($f[1]); ?></dd>
+            <?php endforeach; ?>
+          </dl>
+        </div>
+        <?php endif; ?>
+
+        <?php
+        // More Seasons — reuse $neighbors but exclude current and limit to 4
+        $more = array_values(array_filter($neighbors, function ($n) { return !$n['is_current']; }));
+        $more = array_slice($more, 0, 4);
+        ?>
+        <?php if (!empty($more)) : ?>
+        <div class="card">
+          <h4>More Seasons</h4>
+          <div class="seas-mini">
+            <?php foreach ($more as $n) : ?>
+              <a href="<?php echo esc_url($n['url']); ?>">
+                <span class="num"><?php echo (int) $n['season_number']; ?></span>
+                <span class="win">Season<b><?php echo esc_html($n['abbreviation']); ?></b></span>
+              </a>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
+
+        <div class="ad"><div class="mock">300 × 600</div></div>
+
+      </div>
+    </aside>
   </div>
 
 </main>
