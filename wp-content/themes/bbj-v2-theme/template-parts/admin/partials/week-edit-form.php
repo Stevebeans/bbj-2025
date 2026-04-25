@@ -124,8 +124,11 @@ $comp_types = bbj_v2_comp_types_active();
                                 <input type="checkbox" name="rows[<?php echo $i; ?>][evicted]" value="1" <?php checked((int) ($p['evicted'] ?? 0)); ?>>
                             </td>
                             <td class="px-3 py-2">
+                                <?php $row_is_nom = ((int) ($p['nom'] ?? 0) === 1); ?>
                                 <select name="rows[<?php echo $i; ?>][voted_for]"
-                                        class="w-full px-2 py-1 border border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded text-sm">
+                                        <?php disabled($row_is_nom); ?>
+                                        title="<?php echo $row_is_nom ? esc_attr__('Nominees do not vote', 'bbj-v2-theme') : ''; ?>"
+                                        class="w-full px-2 py-1 border border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded text-sm <?php echo $row_is_nom ? 'opacity-50 cursor-not-allowed' : ''; ?>">
                                     <option value="0">—</option>
                                     <?php foreach ($players as $target):
                                         $tid = (int) $target['player_id'];
