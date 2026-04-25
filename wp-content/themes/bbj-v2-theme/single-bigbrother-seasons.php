@@ -343,7 +343,7 @@ get_header();
                 <td class="day"><?php echo esc_html($e['day']); ?></td>
                 <td class="vote"><?php echo esc_html($e['vote']); ?></td>
                 <td><span class="typ <?php echo esc_attr($type_class); ?>"><?php echo esc_html($e['type']); ?></span></td>
-                <td><?php echo $e['hoh_name'] ? 'HoH ' . esc_html($e['hoh_name']) : ''; ?></td>
+                <td><?php echo $e['hoh_name'] ? esc_html('HoH ' . $e['hoh_name']) : ''; ?></td>
               </tr>
               <?php endforeach; ?>
             </tbody>
