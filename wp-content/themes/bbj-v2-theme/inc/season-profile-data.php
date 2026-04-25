@@ -234,3 +234,62 @@ function bbj_v2_season_profile_facts(array $season): array
     }
     return $facts;
 }
+
+/**
+ * Return all houseguests for a season with player profile data joined.
+ * Ordered by finish_place ASC (NULLs last → still-playing first).
+ *
+ * Uses the id OR (id AND post_id=0) join pattern to handle both
+ * legacy-imported players (wp_bbj_players.post_id = wp_posts.ID) and
+ * modern players from bbj-app admin (wp_bbj_players.id = wp_posts.ID,
+ * post_id = 0). See memory/references/bbj_data_schema.md.
+ */
+function bbj_v2_season_profile_cast(int $post_id): array
+{
+    global $wpdb;
+
+    $rows = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT
+                j.bbj_player        AS player_post_id,
+                j.finish_place,
+                j.bbj_evicted_date,
+                j.current_jury,
+                j.current_evicted,
+                j.bbj_total_hoh,
+                j.bbj_total_pov,
+                j.bbj_total_nom,
+                bp.first_name,
+                bp.last_name,
+                bp.official_nickname,
+                bp.profile_picture,
+                p.post_title        AS post_title,
+                p.post_name         AS player_slug
+             FROM {$wpdb->prefix}bbj_v2_player_season j
+             INNER JOIN {$wpdb->posts} p ON p.ID = j.bbj_player
+             LEFT JOIN {$wpdb->prefix}bbj_players bp
+                    ON (bp.post_id = j.bbj_player OR (bp.id = j.bbj_player AND bp.post_id = 0))
+             WHERE j.bbj_season = %d
+               AND p.post_status = 'publish'
+             ORDER BY (j.finish_place IS NULL), j.finish_place ASC, p.post_title ASC",
+            $post_id
+        ),
+        ARRAY_A
+    );
+
+    if (!$rows) return [];
+
+    foreach ($rows as &$row) {
+        // Fall back to splitting wp_posts.post_title for first/last when
+        // wp_bbj_players row is missing entirely (modern players that don't
+        // have a row at all in either id-form or post_id-form).
+        if (empty($row['first_name']) && empty($row['last_name'])) {
+            $parts = array_values(array_filter(explode(' ', trim((string) ($row['post_title'] ?? '')), 2)));
+            $row['first_name'] = $parts[0] ?? '';
+            $row['last_name']  = $parts[1] ?? '';
+        }
+    }
+    unset($row);
+
+    return $rows;
+}

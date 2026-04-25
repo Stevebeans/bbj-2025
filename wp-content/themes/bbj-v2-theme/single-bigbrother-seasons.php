@@ -18,12 +18,32 @@ $post_id   = get_the_ID();
 $season    = bbj_v2_season_profile_data($post_id);
 $facts     = bbj_v2_season_profile_facts($season);
 $neighbors = bbj_v2_season_profile_neighbors($post_id, 5);
+$cast      = bbj_v2_season_profile_cast($post_id);
+
+// Determine winner / runner-up / AFP from the cast set
+$winner = $runner_up = $afp = null;
+foreach ($cast as $cm) {
+    if ((int) $cm['finish_place'] === 1) $winner    = $cm;
+    if ((int) $cm['finish_place'] === 2) $runner_up = $cm;
+}
+$afp_id = (int) ($season['afp_id'] ?? 0);
+if ($afp_id > 0) {
+    foreach ($cast as $cm) {
+        if ((int) $cm['player_post_id'] === $afp_id) { $afp = $cm; break; }
+    }
+}
 
 // Build section list — order matters, matches scroll order.
-// Future tasks will append: winners, cast, evictions, comps, memories, articles.
+// Future tasks will append: evictions, comps, memories, articles.
 $sections = [];
 if (!empty($season['content']) || !empty($facts)) {
-    $sections[] = ['id' => 'overview', 'label' => 'Overview', 'count' => null];
+    $sections[] = ['id' => 'overview', 'label' => 'Overview',   'count' => null];
+}
+if ($winner || $runner_up) {
+    $sections[] = ['id' => 'winners',  'label' => 'Top 3 & AFP', 'count' => null];
+}
+if (!empty($cast)) {
+    $sections[] = ['id' => 'cast',     'label' => 'Cast',        'count' => count($cast)];
 }
 
 get_header();
@@ -130,6 +150,155 @@ get_header();
             </dl>
           </div>
           <?php endif; ?>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- WINNERS PODIUM -->
+      <?php if ($winner || $runner_up) : ?>
+      <section id="winners">
+        <div class="sech">
+          <h2>Top 3 &amp; AFP</h2>
+          <span class="sub">How the season ended</span>
+        </div>
+        <div class="podium">
+          <?php if ($runner_up) :
+            $ru_full = trim($runner_up['first_name'] . ' ' . $runner_up['last_name']);
+            $ru_init = strtoupper(substr($ru_full ?: 'XX', 0, 2));
+          ?>
+            <div class="p r">
+              <div class="pc"<?php echo empty($runner_up['profile_picture']) ? ' data-i="' . esc_attr($ru_init) . '"' : ''; ?>>
+                <?php if (!empty($runner_up['profile_picture'])) {
+                    echo wp_get_attachment_image((int) $runner_up['profile_picture'], 'medium', false, [
+                        'alt'   => $ru_full,
+                        'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
+                    ]);
+                } ?>
+                <span class="lbl">2nd · Runner-up</span>
+              </div>
+              <div class="body">
+                <div class="name"><?php echo esc_html($ru_full); ?></div>
+                <div class="role">Final 2</div>
+                <div class="nums">
+                  <span><b><?php echo (int) $runner_up['bbj_total_hoh']; ?></b>HoH</span>
+                  <span><b><?php echo (int) $runner_up['bbj_total_pov']; ?></b>PoV</span>
+                  <span><b><?php echo (int) $runner_up['bbj_total_nom']; ?></b>Nom</span>
+                </div>
+              </div>
+            </div>
+          <?php endif; ?>
+
+          <?php if ($winner) :
+            $w_full = trim($winner['first_name'] . ' ' . $winner['last_name']);
+            $w_init = strtoupper(substr($w_full ?: 'XX', 0, 2));
+          ?>
+            <div class="p w">
+              <div class="pc"<?php echo empty($winner['profile_picture']) ? ' data-i="' . esc_attr($w_init) . '"' : ''; ?>>
+                <?php if (!empty($winner['profile_picture'])) {
+                    echo wp_get_attachment_image((int) $winner['profile_picture'], 'medium', false, [
+                        'alt'   => $w_full,
+                        'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
+                    ]);
+                } ?>
+                <span class="lbl">&#9733; Winner</span>
+              </div>
+              <div class="body">
+                <div class="name"><?php echo esc_html($w_full); ?></div>
+                <div class="role"><?php echo esc_html($season['abbr']); ?> Winner</div>
+                <div class="nums">
+                  <span><b><?php echo (int) $winner['bbj_total_hoh']; ?></b>HoH</span>
+                  <span><b><?php echo (int) $winner['bbj_total_pov']; ?></b>PoV</span>
+                  <span><b><?php echo (int) $winner['bbj_total_nom']; ?></b>Nom</span>
+                </div>
+                <?php if (!empty($season['prize'])) : ?>
+                  <div class="prize"><?php echo esc_html($season['prize']); ?></div>
+                <?php endif; ?>
+              </div>
+            </div>
+          <?php endif; ?>
+
+          <?php if ($afp) :
+            $afp_full = trim($afp['first_name'] . ' ' . $afp['last_name']);
+            $afp_init = strtoupper(substr($afp_full ?: 'XX', 0, 2));
+            $afp_url  = get_permalink((int) $afp['player_post_id']);
+          ?>
+            <div class="p a">
+              <a href="<?php echo esc_url($afp_url); ?>">
+                <div class="pc"<?php echo empty($afp['profile_picture']) ? ' data-i="' . esc_attr($afp_init) . '"' : ''; ?>>
+                  <?php if (!empty($afp['profile_picture'])) {
+                      echo wp_get_attachment_image((int) $afp['profile_picture'], 'medium', false, [
+                          'alt'   => $afp_full,
+                          'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
+                      ]);
+                  } ?>
+                  <span class="lbl">AFP</span>
+                </div>
+                <div class="body">
+                  <div class="name"><?php echo esc_html($afp_full); ?></div>
+                  <div class="role">America's Favorite</div>
+                  <div class="nums">
+                    <span><b><?php echo (int) $afp['bbj_total_hoh']; ?></b>HoH</span>
+                    <span><b><?php echo (int) $afp['bbj_total_pov']; ?></b>PoV</span>
+                    <span><b><?php echo (int) $afp['bbj_total_nom']; ?></b>Nom</span>
+                  </div>
+                </div>
+              </a>
+            </div>
+          <?php endif; ?>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- CAST GRID -->
+      <?php if (!empty($cast)) : ?>
+      <section id="cast">
+        <div class="sech">
+          <h2>Cast of <?php echo esc_html($season['abbr']); ?></h2>
+          <span class="sub"><?php echo (int) count($cast); ?> houseguests</span>
+        </div>
+        <div class="castgrid">
+          <?php foreach ($cast as $cm) :
+            $cm_full    = trim($cm['first_name'] . ' ' . $cm['last_name']);
+            $cm_display = $cm['official_nickname'] ?: ($cm['first_name'] ?: $cm_full);
+            $cm_url     = get_permalink((int) $cm['player_post_id']);
+            $cm_finish  = (int) ($cm['finish_place'] ?? 0);
+
+            $tag_class = 'pre';
+            $tag_text  = 'Out';
+            $is_afp    = ($afp_id > 0 && (int) $cm['player_post_id'] === $afp_id);
+            if ($cm_finish === 1)                  { $tag_class = 'win';  $tag_text = 'Winner'; }
+            elseif ($cm_finish === 2)              { $tag_class = 'ru';   $tag_text = '2nd'; }
+            elseif ($is_afp)                       { $tag_class = 'afp';  $tag_text = 'AFP'; }
+            elseif (!empty($cm['current_jury']))   { $tag_class = 'jury'; $tag_text = 'Jury'; }
+
+            $days = '';
+            if (!empty($cm['bbj_evicted_date']) && !empty($season['start_date'])) {
+                try {
+                    $d1 = new DateTime($season['start_date']);
+                    $d2 = new DateTime($cm['bbj_evicted_date']);
+                    $days = max(0, (int) $d1->diff($d2)->days) . 'd';
+                } catch (Exception $e) {}
+            }
+            $sub = $cm_finish > 0
+                ? bbj_v2_season_profile_ordinal($cm_finish) . ($days ? ' · ' . $days : '')
+                : 'Active';
+
+            $cm_init = strtoupper(substr($cm_display ?: $cm_full ?: 'XX', 0, 2));
+          ?>
+          <a class="c" href="<?php echo esc_url($cm_url); ?>" title="<?php echo esc_attr($cm_full); ?>">
+            <div class="face"<?php echo empty($cm['profile_picture']) ? ' data-i="' . esc_attr($cm_init) . '"' : ''; ?>>
+              <?php if (!empty($cm['profile_picture'])) {
+                  echo wp_get_attachment_image((int) $cm['profile_picture'], 'thumbnail', false, [
+                      'alt'   => $cm_full,
+                      'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
+                  ]);
+              } ?>
+              <span class="tag <?php echo esc_attr($tag_class); ?>"><?php echo esc_html($tag_text); ?></span>
+            </div>
+            <div class="n"><?php echo esc_html($cm_display); ?></div>
+            <div class="s"><?php echo esc_html($sub); ?></div>
+          </a>
+          <?php endforeach; ?>
         </div>
       </section>
       <?php endif; ?>
