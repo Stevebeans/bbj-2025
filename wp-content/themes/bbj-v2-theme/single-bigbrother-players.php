@@ -164,7 +164,7 @@ get_header();
     </div>
   <?php endif; ?>
 
-  <div class="grid">
+  <div class="player-page-grid">
 
     <!-- MAIN COLUMN -->
     <div>

@@ -137,7 +137,7 @@ get_header();
   </div>
   <?php endif; ?>
 
-  <div class="grid">
+  <div class="season-page-grid">
     <!-- MAIN -->
     <div>
 
