@@ -455,7 +455,12 @@ get_header();
         <div class="artrow">
           <?php foreach ($articles as $a) : ?>
           <a class="art" href="<?php echo esc_url($a['url']); ?>">
-            <div class="thm" data-label="Article" <?php if (!empty($a['thumb'])) echo 'style="background-image:url(' . esc_url($a['thumb']) . ');background-size:cover;background-position:center"'; ?>></div>
+            <div class="thm" data-label="Article" <?php
+              if (!empty($a['thumb'])) {
+                  $style = 'background-image:url(' . esc_url($a['thumb']) . ');background-size:cover;background-position:center';
+                  echo 'style="' . esc_attr($style) . '"';
+              }
+            ?>></div>
             <div class="txt">
               <span class="k"><?php echo esc_html($a['category']); ?></span>
               <h3><?php echo esc_html($a['title']); ?></h3>

@@ -414,8 +414,16 @@ function bbj_v2_season_profile_top_feed_updates(int $post_id, int $limit = 9): a
     global $wpdb;
 
     $season = bbj_v2_season_profile_data($post_id);
-    $start = $season['start_date'] ?: $season['post_date'];
-    if (!$start) return [];
+    $start_raw = $season['start_date'] ?: $season['post_date'];
+    if (!$start_raw) return [];
+
+    // Normalize to Y-m-d regardless of whether it came with a time component
+    // (post_date is a full datetime, start_date is date-only).
+    try {
+        $start = (new DateTime($start_raw))->format('Y-m-d');
+    } catch (Exception $e) {
+        return [];
+    }
 
     if (!empty($season['end_date'])) {
         $end = $season['end_date'];
@@ -476,10 +484,13 @@ function bbj_v2_season_profile_articles(int $post_id, int $limit = 4): array
     $out = [];
     foreach ($posts as $p) {
         $thumb_id = get_post_thumbnail_id($p->ID);
+        $excerpt = $p->post_excerpt !== ''
+            ? $p->post_excerpt
+            : wp_trim_words(wp_strip_all_tags((string) $p->post_content), 30);
         $out[] = [
             'id'       => (int) $p->ID,
             'title'    => get_the_title($p),
-            'excerpt'  => (string) get_the_excerpt($p),
+            'excerpt'  => (string) $excerpt,
             'url'      => get_permalink($p),
             'thumb'    => $thumb_id ? (wp_get_attachment_image_url($thumb_id, 'medium') ?: '') : '',
             'date'     => $p->post_date,
