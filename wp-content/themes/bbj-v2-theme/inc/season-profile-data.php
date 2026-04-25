@@ -38,6 +38,12 @@ function bbj_v2_season_profile_ordinal(int $n): string
  */
 function bbj_v2_season_profile_data(int $post_id): array
 {
+    $cache_key = 'season_profile_data_' . $post_id;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
     global $wpdb;
 
     // Core row (LEFT JOIN — BB22+ has no wp_bbj_seasons row)
@@ -68,7 +74,7 @@ function bbj_v2_season_profile_data(int $post_id): array
 
     if (!$row) {
         $title = get_the_title($post_id);
-        return [
+        $result = [
             'post_id'        => $post_id,
             'title'          => $title,
             'slug'           => '',
@@ -87,6 +93,8 @@ function bbj_v2_season_profile_data(int $post_id): array
             'days'           => null,
             'prize'          => null,
         ];
+        wp_cache_set($cache_key, $result, 'bbj_v2', 300);
+        return $result;
     }
 
     // Derive season number from title if not stored ("Big Brother 27" -> 27)
@@ -131,7 +139,7 @@ function bbj_v2_season_profile_data(int $post_id): array
     elseif ($sn >= 19)  $prize = '$500k';
     elseif ($sn >= 1)   $prize = '$500k';
 
-    return [
+    $result = [
         'post_id'        => $post_id,
         'title'          => $row['title'],
         'slug'           => $row['slug'],
@@ -150,6 +158,8 @@ function bbj_v2_season_profile_data(int $post_id): array
         'days'           => $days,
         'prize'          => $prize,
     ];
+    wp_cache_set($cache_key, $result, 'bbj_v2', 300);
+    return $result;
 }
 
 /**
@@ -246,6 +256,12 @@ function bbj_v2_season_profile_facts(array $season): array
  */
 function bbj_v2_season_profile_cast(int $post_id): array
 {
+    $cache_key = 'season_profile_cast_' . $post_id;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
     global $wpdb;
 
     $rows = $wpdb->get_results(
@@ -277,7 +293,10 @@ function bbj_v2_season_profile_cast(int $post_id): array
         ARRAY_A
     );
 
-    if (!$rows) return [];
+    if (!$rows) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
+        return [];
+    }
 
     foreach ($rows as &$row) {
         // Fall back to splitting wp_posts.post_title for first/last when
@@ -291,6 +310,7 @@ function bbj_v2_season_profile_cast(int $post_id): array
     }
     unset($row);
 
+    wp_cache_set($cache_key, $rows, 'bbj_v2', 300);
     return $rows;
 }
 
@@ -301,6 +321,12 @@ function bbj_v2_season_profile_cast(int $post_id): array
  */
 function bbj_v2_season_profile_evictions(int $post_id): array
 {
+    $cache_key = 'season_profile_evictions_' . $post_id;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
     global $wpdb;
 
     $weeks = $wpdb->get_results(
@@ -313,7 +339,10 @@ function bbj_v2_season_profile_evictions(int $post_id): array
         ),
         ARRAY_A
     );
-    if (!$weeks) return [];
+    if (!$weeks) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
+        return [];
+    }
 
     $week_ids    = array_map('intval', array_column($weeks, 'id'));
     $week_id_csv = implode(',', $week_ids);
@@ -336,7 +365,10 @@ function bbj_v2_season_profile_evictions(int $post_id): array
          WHERE wp.evicted = 1 AND wp.week_id IN ({$week_id_csv})",
         ARRAY_A
     );
-    if (!$evictee_rows) return [];
+    if (!$evictee_rows) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
+        return [];
+    }
 
     // HoH per week
     $hoh_rows = $wpdb->get_results(
@@ -401,6 +433,7 @@ function bbj_v2_season_profile_evictions(int $post_id): array
         }
     }
 
+    wp_cache_set($cache_key, $out, 'bbj_v2', 300);
     return $out;
 }
 
@@ -411,17 +444,27 @@ function bbj_v2_season_profile_evictions(int $post_id): array
  */
 function bbj_v2_season_profile_top_feed_updates(int $post_id, int $limit = 9): array
 {
+    $cache_key = 'season_profile_top_feed_' . $post_id;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
     global $wpdb;
 
     $season = bbj_v2_season_profile_data($post_id);
     $start_raw = $season['start_date'] ?: $season['post_date'];
-    if (!$start_raw) return [];
+    if (!$start_raw) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
+        return [];
+    }
 
     // Normalize to Y-m-d regardless of whether it came with a time component
     // (post_date is a full datetime, start_date is date-only).
     try {
         $start = (new DateTime($start_raw))->format('Y-m-d');
     } catch (Exception $e) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
         return [];
     }
 
@@ -431,11 +474,12 @@ function bbj_v2_season_profile_top_feed_updates(int $post_id, int $limit = 9): a
         try {
             $end = (new DateTime($start))->modify('+100 days')->format('Y-m-d');
         } catch (Exception $e) {
+            wp_cache_set($cache_key, [], 'bbj_v2', 300);
             return [];
         }
     }
 
-    return $wpdb->get_results(
+    $result = $wpdb->get_results(
         $wpdb->prepare(
             "SELECT
                 p.ID, p.post_title, p.post_excerpt, p.post_content, p.post_date, p.post_name,
@@ -454,6 +498,9 @@ function bbj_v2_season_profile_top_feed_updates(int $post_id, int $limit = 9): a
         ),
         ARRAY_A
     ) ?: [];
+
+    wp_cache_set($cache_key, $result, 'bbj_v2', 300);
+    return $result;
 }
 
 /**
@@ -464,13 +511,25 @@ function bbj_v2_season_profile_top_feed_updates(int $post_id, int $limit = 9): a
  */
 function bbj_v2_season_profile_articles(int $post_id, int $limit = 4): array
 {
+    $cache_key = 'season_profile_articles_' . $post_id;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
     $season = bbj_v2_season_profile_data($post_id);
     $number = (int) ($season['number'] ?? 0);
-    if ($number <= 0) return [];
+    if ($number <= 0) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
+        return [];
+    }
 
     $slug = 'big-brother-' . $number;
     $term = get_term_by('slug', $slug, 'category');
-    if (!$term) return [];
+    if (!$term) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
+        return [];
+    }
 
     $posts = get_posts([
         'post_type'      => 'post',
@@ -497,6 +556,8 @@ function bbj_v2_season_profile_articles(int $post_id, int $limit = 4): array
             'category' => 'BBJ Blog',
         ];
     }
+
+    wp_cache_set($cache_key, $out, 'bbj_v2', 300);
     return $out;
 }
 
@@ -506,6 +567,12 @@ function bbj_v2_season_profile_articles(int $post_id, int $limit = 4): array
  */
 function bbj_v2_season_profile_comps(int $post_id): array
 {
+    $cache_key = 'season_profile_comps_' . $post_id;
+    $cached    = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
     global $wpdb;
 
     $weeks = $wpdb->get_results(
@@ -518,7 +585,10 @@ function bbj_v2_season_profile_comps(int $post_id): array
         ),
         ARRAY_A
     );
-    if (!$weeks) return [];
+    if (!$weeks) {
+        wp_cache_set($cache_key, [], 'bbj_v2', 300);
+        return [];
+    }
 
     $week_id_csv = implode(',', array_map('intval', array_column($weeks, 'id')));
 
@@ -550,5 +620,64 @@ function bbj_v2_season_profile_comps(int $post_id): array
         if ((int) $r['saved']) $by_week[$wid]['saved'][] = $name;
     }
 
-    return array_values($by_week);
+    $result = array_values($by_week);
+    wp_cache_set($cache_key, $result, 'bbj_v2', 300);
+    return $result;
+}
+
+/**
+ * Bust the season profile object caches when relevant content changes.
+ * Coarse strategy — bust everything for a season on any of its related saves.
+ * Optimization opportunity later (only bust the affected cache key) — for
+ * now, the broad bust matches WordPress save patterns where the trigger
+ * doesn't tell us specifically what changed.
+ */
+add_action('save_post_bigbrother-seasons',  'bbj_v2_season_profile_bust_cache_for_post');
+add_action('save_post_bigbrother-players',  'bbj_v2_season_profile_bust_all_caches');
+add_action('save_post_live-feed-updates',   'bbj_v2_season_profile_bust_current_feed_cache');
+add_action('save_post_post',                'bbj_v2_season_profile_bust_all_articles_caches');
+
+function bbj_v2_season_profile_bust_cache_for_post(int $post_id): void
+{
+    foreach (['data', 'cast', 'evictions', 'comps', 'top_feed', 'articles'] as $bucket) {
+        wp_cache_delete('season_profile_' . $bucket . '_' . $post_id, 'bbj_v2');
+    }
+}
+
+function bbj_v2_season_profile_bust_all_caches(): void
+{
+    // Player saves can affect any season's cast/evictions — coarse bust.
+    $season_ids = get_posts([
+        'post_type'   => 'bigbrother-seasons',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'fields'      => 'ids',
+    ]);
+    foreach ($season_ids as $sid) {
+        bbj_v2_season_profile_bust_cache_for_post((int) $sid);
+    }
+}
+
+function bbj_v2_season_profile_bust_current_feed_cache(): void
+{
+    // Only bust the current season's top-feed cache — feed updates always
+    // belong to the active season per the bbj_v2_current_season option.
+    $current = (int) get_option('bbj_v2_current_season');
+    if ($current > 0) {
+        wp_cache_delete('season_profile_top_feed_' . $current, 'bbj_v2');
+    }
+}
+
+function bbj_v2_season_profile_bust_all_articles_caches(): void
+{
+    // Article post saves — bust all season article caches (low frequency).
+    $season_ids = get_posts([
+        'post_type'   => 'bigbrother-seasons',
+        'post_status' => 'publish',
+        'numberposts' => -1,
+        'fields'      => 'ids',
+    ]);
+    foreach ($season_ids as $sid) {
+        wp_cache_delete('season_profile_articles_' . (int) $sid, 'bbj_v2');
+    }
 }
