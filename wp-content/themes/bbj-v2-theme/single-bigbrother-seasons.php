@@ -21,6 +21,8 @@ $neighbors = bbj_v2_season_profile_neighbors($post_id, 5);
 $cast      = bbj_v2_season_profile_cast($post_id);
 $evictions = bbj_v2_season_profile_evictions($post_id);
 $comps     = bbj_v2_season_profile_comps($post_id);
+$top_feed  = bbj_v2_season_profile_top_feed_updates($post_id, 9);
+$articles  = bbj_v2_season_profile_articles($post_id, 4);
 
 // Determine winner / runner-up / AFP from the cast set
 $winner = $runner_up = $afp = null;
@@ -52,6 +54,12 @@ if (!empty($evictions)) {
 }
 if (!empty($comps)) {
     $sections[] = ['id' => 'comps',     'label' => 'Comp Winners', 'count' => count($comps)];
+}
+if (!empty($top_feed)) {
+    $sections[] = ['id' => 'memories', 'label' => 'Memorable Moments', 'count' => count($top_feed)];
+}
+if (!empty($articles)) {
+    $sections[] = ['id' => 'articles', 'label' => 'Articles',          'count' => count($articles)];
 }
 
 get_header();
@@ -402,7 +410,64 @@ get_header();
       </section>
       <?php endif; ?>
 
-      <!-- additional sections appended by later tasks -->
+      <!-- TOP FEED UPDATES (Memorable Moments) -->
+      <?php if (!empty($top_feed)) : ?>
+      <section id="memories">
+        <div class="sech">
+          <h2>Memorable Moments</h2>
+          <span class="sub">Top fan-rated feed updates</span>
+        </div>
+        <div class="memories">
+          <?php foreach ($top_feed as $u) :
+            $week = '';
+            if (!empty($season['start_date'])) {
+                try {
+                    $d1 = new DateTime($season['start_date']);
+                    $d2 = new DateTime((string) ($u['post_date'] ?? ''));
+                    $diff_days = (int) $d1->diff($d2)->days;
+                    $week = 'Week ' . max(1, (int) floor($diff_days / 7) + 1);
+                } catch (Exception $e) {}
+            }
+            $quote = (string) ($u['post_excerpt'] ?? '');
+            if ($quote === '') {
+                $quote = wp_trim_words(wp_strip_all_tags((string) ($u['post_content'] ?? '')), 28);
+            }
+          ?>
+          <div class="mem">
+            <div class="qt"><?php echo esc_html($quote); ?></div>
+            <div class="att">
+              <span><?php echo esc_html(date_i18n('M j', strtotime((string) ($u['post_date'] ?? '')))); ?></span>
+              <b><?php echo esc_html($week); ?></b>
+            </div>
+          </div>
+          <?php endforeach; ?>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- ARTICLES -->
+      <?php if (!empty($articles)) : ?>
+      <section id="articles">
+        <div class="sech">
+          <h2>Articles About <?php echo esc_html($season['abbr']); ?></h2>
+          <span class="sub"><?php echo (int) count($articles); ?> on the BBJ blog</span>
+        </div>
+        <div class="artrow">
+          <?php foreach ($articles as $a) : ?>
+          <a class="art" href="<?php echo esc_url($a['url']); ?>">
+            <div class="thm" data-label="Article" <?php if (!empty($a['thumb'])) echo 'style="background-image:url(' . esc_url($a['thumb']) . ');background-size:cover;background-position:center"'; ?>></div>
+            <div class="txt">
+              <span class="k"><?php echo esc_html($a['category']); ?></span>
+              <h3><?php echo esc_html($a['title']); ?></h3>
+              <span class="m"><?php echo esc_html(human_time_diff(strtotime((string) ($a['date'] ?? '')), current_time('timestamp')) . ' ago'); ?></span>
+            </div>
+          </a>
+          <?php endforeach; ?>
+        </div>
+      </section>
+      <?php endif; ?>
+
+      <!-- additional sections: sidebar at task 8, caching at task 9 -->
 
     </div>
 

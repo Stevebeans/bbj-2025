@@ -405,6 +405,91 @@ function bbj_v2_season_profile_evictions(int $post_id): array
 }
 
 /**
+ * Top feed updates for the season, by total_rating DESC.
+ * Date window: wp_bbj_seasons.start_date/end_date if available, else
+ * season post_date as start + 100 days as end (covers BB22+).
+ */
+function bbj_v2_season_profile_top_feed_updates(int $post_id, int $limit = 9): array
+{
+    global $wpdb;
+
+    $season = bbj_v2_season_profile_data($post_id);
+    $start = $season['start_date'] ?: $season['post_date'];
+    if (!$start) return [];
+
+    if (!empty($season['end_date'])) {
+        $end = $season['end_date'];
+    } else {
+        try {
+            $end = (new DateTime($start))->modify('+100 days')->format('Y-m-d');
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    return $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT
+                p.ID, p.post_title, p.post_excerpt, p.post_content, p.post_date, p.post_name,
+                CAST(IFNULL(pm.meta_value, '0') AS UNSIGNED) AS rating
+             FROM {$wpdb->posts} p
+             LEFT JOIN {$wpdb->postmeta} pm
+                    ON pm.post_id = p.ID AND pm.meta_key = 'total_rating'
+             WHERE p.post_type = 'live-feed-updates'
+               AND p.post_status = 'publish'
+               AND p.post_date BETWEEN %s AND %s
+             ORDER BY rating DESC, p.post_date DESC
+             LIMIT %d",
+            $start . ' 00:00:00',
+            $end . ' 23:59:59',
+            $limit
+        ),
+        ARRAY_A
+    ) ?: [];
+}
+
+/**
+ * Articles tagged with this season's category.
+ * Convention: each season has a category whose slug is "big-brother-{number}"
+ * (e.g., "big-brother-27"). Returns [] if the category doesn't exist
+ * or has no published posts.
+ */
+function bbj_v2_season_profile_articles(int $post_id, int $limit = 4): array
+{
+    $season = bbj_v2_season_profile_data($post_id);
+    $number = (int) ($season['number'] ?? 0);
+    if ($number <= 0) return [];
+
+    $slug = 'big-brother-' . $number;
+    $term = get_term_by('slug', $slug, 'category');
+    if (!$term) return [];
+
+    $posts = get_posts([
+        'post_type'      => 'post',
+        'post_status'    => 'publish',
+        'posts_per_page' => $limit,
+        'category'       => (int) $term->term_id,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ]);
+
+    $out = [];
+    foreach ($posts as $p) {
+        $thumb_id = get_post_thumbnail_id($p->ID);
+        $out[] = [
+            'id'       => (int) $p->ID,
+            'title'    => get_the_title($p),
+            'excerpt'  => (string) get_the_excerpt($p),
+            'url'      => get_permalink($p),
+            'thumb'    => $thumb_id ? (wp_get_attachment_image_url($thumb_id, 'medium') ?: '') : '',
+            'date'     => $p->post_date,
+            'category' => 'BBJ Blog',
+        ];
+    }
+    return $out;
+}
+
+/**
  * Comp winners weekly table. One row per week with HoH, PoV, nominees,
  * veto used on. Returns ordered by week_num ASC.
  */
