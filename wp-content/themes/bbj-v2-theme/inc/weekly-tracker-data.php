@@ -67,7 +67,59 @@ function bbj_v2_comp_types_all(): array
     wp_cache_set($cache_key, $rows, 'bbj_v2', HOUR_IN_SECONDS);
     return $rows;
 }
-function bbj_v2_player_career_totals(int $player_post_id): array { return []; }
+function bbj_v2_player_career_totals(int $player_post_id): array
+{
+    $cache_key = 'bbj_v2_player_career_totals_' . $player_post_id;
+    $cached = wp_cache_get($cache_key, 'bbj_v2');
+    if (is_array($cached)) {
+        return $cached;
+    }
+
+    global $wpdb;
+    $totals = [
+        'hoh' => 0, 'pov' => 0, 'misc' => 0,
+        'noms' => 0, 'votes_received' => 0, 'season_count' => 0,
+    ];
+
+    // Per-season aggregate, junction-first.
+    $seasons = $wpdb->get_results($wpdb->prepare(
+        "SELECT j.bbj_season AS season_id,
+                j.bbj_total_hoh, j.bbj_total_pov, j.bbj_total_misc,
+                j.bbj_total_nom, j.bbj_votes_received,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}bbj_week_comps wc
+                  INNER JOIN {$wpdb->prefix}bbj_weeks w ON w.id = wc.week_id
+                 WHERE wc.player_id = j.bbj_player AND w.season_id = j.bbj_season) AS junction_total,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}bbj_week_comps wc
+                  INNER JOIN {$wpdb->prefix}bbj_weeks w ON w.id = wc.week_id
+                  INNER JOIN {$wpdb->prefix}bbj_comp_types ct ON ct.id = wc.comp_type_id
+                 WHERE wc.player_id = j.bbj_player AND w.season_id = j.bbj_season AND ct.slug = 'hoh') AS junction_hoh,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}bbj_week_comps wc
+                  INNER JOIN {$wpdb->prefix}bbj_weeks w ON w.id = wc.week_id
+                  INNER JOIN {$wpdb->prefix}bbj_comp_types ct ON ct.id = wc.comp_type_id
+                 WHERE wc.player_id = j.bbj_player AND w.season_id = j.bbj_season AND ct.slug = 'pov') AS junction_pov,
+                (SELECT COUNT(*) FROM {$wpdb->prefix}bbj_week_comps wc
+                  INNER JOIN {$wpdb->prefix}bbj_weeks w ON w.id = wc.week_id
+                  INNER JOIN {$wpdb->prefix}bbj_comp_types ct ON ct.id = wc.comp_type_id
+                 WHERE wc.player_id = j.bbj_player AND w.season_id = j.bbj_season AND ct.slug = 'misc') AS junction_misc
+           FROM {$wpdb->prefix}bbj_v2_player_season j
+          WHERE j.bbj_player = %d",
+        $player_post_id
+    ), ARRAY_A) ?: [];
+
+    foreach ($seasons as $s) {
+        $totals['season_count']++;
+        $has_junction = ((int) $s['junction_total']) > 0;
+
+        $totals['hoh']  += $has_junction ? (int) $s['junction_hoh']  : (int) $s['bbj_total_hoh'];
+        $totals['pov']  += $has_junction ? (int) $s['junction_pov']  : (int) $s['bbj_total_pov'];
+        $totals['misc'] += $has_junction ? (int) $s['junction_misc'] : (int) $s['bbj_total_misc'];
+        $totals['noms']           += (int) $s['bbj_total_nom'];
+        $totals['votes_received'] += (int) $s['bbj_votes_received'];
+    }
+
+    wp_cache_set($cache_key, $totals, 'bbj_v2', HOUR_IN_SECONDS);
+    return $totals;
+}
 function bbj_v2_player_weeks(int $player_post_id, int $season_post_id): array { return []; }
 function bbj_v2_season_weeks(int $season_post_id): array
 {
