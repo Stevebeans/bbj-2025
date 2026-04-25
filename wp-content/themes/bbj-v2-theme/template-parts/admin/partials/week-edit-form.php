@@ -130,6 +130,7 @@ $comp_types = bbj_v2_comp_types_active();
                                     <?php foreach ($players as $target):
                                         $tid = (int) $target['player_id'];
                                         if ($tid === $pid) continue;
+                                        if ((int) ($target['nom'] ?? 0) !== 1) continue;
                                     ?>
                                         <option value="<?php echo $tid; ?>"
                                                 <?php selected((int) ($p['voted_for'] ?? 0), $tid); ?>>
