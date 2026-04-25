@@ -428,9 +428,15 @@ get_header();
                     $week = 'Week ' . max(1, (int) floor($diff_days / 7) + 1);
                 } catch (Exception $e) {}
             }
-            $quote = (string) ($u['post_excerpt'] ?? '');
+            // Quote precedence: post_excerpt → post_content (trimmed) → post_title.
+            // Many older feed updates only used the subject line (post_title) with
+            // an empty body, so title is the safety-net to avoid blank quote cards.
+            $quote = trim((string) ($u['post_excerpt'] ?? ''));
             if ($quote === '') {
-                $quote = wp_trim_words(wp_strip_all_tags((string) ($u['post_content'] ?? '')), 28);
+                $quote = trim(wp_trim_words(wp_strip_all_tags((string) ($u['post_content'] ?? '')), 28));
+            }
+            if ($quote === '') {
+                $quote = trim((string) ($u['post_title'] ?? ''));
             }
           ?>
           <div class="mem">
