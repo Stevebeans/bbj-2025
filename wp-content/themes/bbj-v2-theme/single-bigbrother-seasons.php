@@ -167,24 +167,26 @@ get_header();
             $ru_init = strtoupper(substr($ru_full ?: 'XX', 0, 2));
           ?>
             <div class="p r">
-              <div class="pc"<?php echo empty($runner_up['profile_picture']) ? ' data-i="' . esc_attr($ru_init) . '"' : ''; ?>>
-                <?php if (!empty($runner_up['profile_picture'])) {
-                    echo wp_get_attachment_image((int) $runner_up['profile_picture'], 'medium', false, [
-                        'alt'   => $ru_full,
-                        'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
-                    ]);
-                } ?>
-                <span class="lbl">2nd · Runner-up</span>
-              </div>
-              <div class="body">
-                <div class="name"><?php echo esc_html($ru_full); ?></div>
-                <div class="role">Final 2</div>
-                <div class="nums">
-                  <span><b><?php echo (int) $runner_up['bbj_total_hoh']; ?></b>HoH</span>
-                  <span><b><?php echo (int) $runner_up['bbj_total_pov']; ?></b>PoV</span>
-                  <span><b><?php echo (int) $runner_up['bbj_total_nom']; ?></b>Nom</span>
+              <a href="<?php echo esc_url(get_permalink((int) $runner_up['player_post_id'])); ?>">
+                <div class="pc"<?php echo empty($runner_up['profile_picture']) ? ' data-i="' . esc_attr($ru_init) . '"' : ''; ?>>
+                  <?php if (!empty($runner_up['profile_picture'])) {
+                      echo wp_get_attachment_image((int) $runner_up['profile_picture'], 'medium', false, [
+                          'alt'   => esc_attr($ru_full),
+                          'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
+                      ]);
+                  } ?>
+                  <span class="lbl">2nd · Runner-up</span>
                 </div>
-              </div>
+                <div class="body">
+                  <div class="name"><?php echo esc_html($ru_full); ?></div>
+                  <div class="role">Final 2</div>
+                  <div class="nums">
+                    <span><b><?php echo (int) $runner_up['bbj_total_hoh']; ?></b>HoH</span>
+                    <span><b><?php echo (int) $runner_up['bbj_total_pov']; ?></b>PoV</span>
+                    <span><b><?php echo (int) $runner_up['bbj_total_nom']; ?></b>Nom</span>
+                  </div>
+                </div>
+              </a>
             </div>
           <?php endif; ?>
 
@@ -193,27 +195,29 @@ get_header();
             $w_init = strtoupper(substr($w_full ?: 'XX', 0, 2));
           ?>
             <div class="p w">
-              <div class="pc"<?php echo empty($winner['profile_picture']) ? ' data-i="' . esc_attr($w_init) . '"' : ''; ?>>
-                <?php if (!empty($winner['profile_picture'])) {
-                    echo wp_get_attachment_image((int) $winner['profile_picture'], 'medium', false, [
-                        'alt'   => $w_full,
-                        'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
-                    ]);
-                } ?>
-                <span class="lbl">&#9733; Winner</span>
-              </div>
-              <div class="body">
-                <div class="name"><?php echo esc_html($w_full); ?></div>
-                <div class="role"><?php echo esc_html($season['abbr']); ?> Winner</div>
-                <div class="nums">
-                  <span><b><?php echo (int) $winner['bbj_total_hoh']; ?></b>HoH</span>
-                  <span><b><?php echo (int) $winner['bbj_total_pov']; ?></b>PoV</span>
-                  <span><b><?php echo (int) $winner['bbj_total_nom']; ?></b>Nom</span>
+              <a href="<?php echo esc_url(get_permalink((int) $winner['player_post_id'])); ?>">
+                <div class="pc"<?php echo empty($winner['profile_picture']) ? ' data-i="' . esc_attr($w_init) . '"' : ''; ?>>
+                  <?php if (!empty($winner['profile_picture'])) {
+                      echo wp_get_attachment_image((int) $winner['profile_picture'], 'medium', false, [
+                          'alt'   => esc_attr($w_full),
+                          'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
+                      ]);
+                  } ?>
+                  <span class="lbl">&#9733; Winner</span>
                 </div>
-                <?php if (!empty($season['prize'])) : ?>
-                  <div class="prize"><?php echo esc_html($season['prize']); ?></div>
-                <?php endif; ?>
-              </div>
+                <div class="body">
+                  <div class="name"><?php echo esc_html($w_full); ?></div>
+                  <div class="role"><?php echo esc_html($season['abbr']); ?> Winner</div>
+                  <div class="nums">
+                    <span><b><?php echo (int) $winner['bbj_total_hoh']; ?></b>HoH</span>
+                    <span><b><?php echo (int) $winner['bbj_total_pov']; ?></b>PoV</span>
+                    <span><b><?php echo (int) $winner['bbj_total_nom']; ?></b>Nom</span>
+                  </div>
+                  <?php if (!empty($season['prize'])) : ?>
+                    <div class="prize"><?php echo esc_html($season['prize']); ?></div>
+                  <?php endif; ?>
+                </div>
+              </a>
             </div>
           <?php endif; ?>
 
@@ -227,7 +231,7 @@ get_header();
                 <div class="pc"<?php echo empty($afp['profile_picture']) ? ' data-i="' . esc_attr($afp_init) . '"' : ''; ?>>
                   <?php if (!empty($afp['profile_picture'])) {
                       echo wp_get_attachment_image((int) $afp['profile_picture'], 'medium', false, [
-                          'alt'   => $afp_full,
+                          'alt'   => esc_attr($afp_full),
                           'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
                       ]);
                   } ?>
@@ -289,7 +293,7 @@ get_header();
             <div class="face"<?php echo empty($cm['profile_picture']) ? ' data-i="' . esc_attr($cm_init) . '"' : ''; ?>>
               <?php if (!empty($cm['profile_picture'])) {
                   echo wp_get_attachment_image((int) $cm['profile_picture'], 'thumbnail', false, [
-                      'alt'   => $cm_full,
+                      'alt'   => esc_attr($cm_full),
                       'style' => 'width:100%;height:100%;object-fit:cover;position:absolute;inset:0;',
                   ]);
               } ?>
