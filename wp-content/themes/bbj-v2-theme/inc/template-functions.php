@@ -154,3 +154,91 @@ function bbj_v2_rebase_prod_url(string $url): string
         $url
     ) ?: $url;
 }
+
+/**
+ * Comp Types: save (create or update) handler.
+ * Posts to admin-post.php?action=bbj_v2_save_comp_type.
+ */
+add_action('admin_post_bbj_v2_save_comp_type', 'bbj_v2_handle_save_comp_type');
+function bbj_v2_handle_save_comp_type(): void
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Unauthorized', 'Forbidden', ['response' => 403]);
+    }
+    check_admin_referer('bbj_v2_save_comp_type');
+
+    global $wpdb;
+    $id   = isset($_POST['id'])   ? absint($_POST['id'])         : 0;
+    $name = isset($_POST['name']) ? sanitize_text_field($_POST['name']) : '';
+    $slug_raw = isset($_POST['slug']) ? sanitize_text_field($_POST['slug']) : '';
+    $slug = $slug_raw !== '' ? sanitize_title($slug_raw) : sanitize_title($name);
+    $sort = isset($_POST['sort_order']) ? (int) $_POST['sort_order'] : 0;
+
+    $redirect = add_query_arg('tab', 'comp-types', home_url('/admin/'));
+
+    if ($name === '' || $slug === '') {
+        wp_safe_redirect(add_query_arg('bbj_msg', 'name_required', $redirect));
+        exit;
+    }
+
+    $data = [
+        'name'       => $name,
+        'slug'       => $slug,
+        'sort_order' => $sort,
+    ];
+
+    if ($id > 0) {
+        $wpdb->update("{$wpdb->prefix}bbj_comp_types", $data, ['id' => $id]);
+    } else {
+        $wpdb->insert("{$wpdb->prefix}bbj_comp_types", $data + ['is_archived' => 0]);
+    }
+
+    do_action('bbj_v2_comp_types_changed');
+    wp_safe_redirect(add_query_arg('bbj_msg', 'saved', $redirect));
+    exit;
+}
+
+/**
+ * Comp Types: archive / unarchive toggle.
+ */
+add_action('admin_post_bbj_v2_toggle_comp_type', 'bbj_v2_handle_toggle_comp_type');
+function bbj_v2_handle_toggle_comp_type(): void
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Unauthorized', 'Forbidden', ['response' => 403]);
+    }
+    check_admin_referer('bbj_v2_toggle_comp_type');
+
+    global $wpdb;
+    $id = isset($_POST['id']) ? absint($_POST['id']) : 0;
+    $redirect = add_query_arg('tab', 'comp-types', home_url('/admin/'));
+
+    if ($id <= 0) {
+        wp_safe_redirect($redirect);
+        exit;
+    }
+
+    $current = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT is_archived FROM {$wpdb->prefix}bbj_comp_types WHERE id = %d",
+        $id
+    ));
+    $wpdb->update(
+        "{$wpdb->prefix}bbj_comp_types",
+        ['is_archived' => $current ? 0 : 1],
+        ['id' => $id]
+    );
+
+    do_action('bbj_v2_comp_types_changed');
+    wp_safe_redirect(add_query_arg('bbj_msg', 'toggled', $redirect));
+    exit;
+}
+
+/**
+ * Cache buster for comp-types reads.
+ */
+add_action('bbj_v2_comp_types_changed', 'bbj_v2_bust_comp_types_cache');
+function bbj_v2_bust_comp_types_cache(): void
+{
+    wp_cache_delete('bbj_v2_comp_types_active', 'bbj_v2');
+    wp_cache_delete('bbj_v2_comp_types_all',    'bbj_v2');
+}
