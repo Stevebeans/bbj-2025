@@ -19,6 +19,7 @@ $tabs = [
     ['id' => 'spoiler', 'label' => 'Spoiler Bar'],
     ['id' => 'info',    'label' => 'Season Info'],
     ['id' => 'photos',  'label' => 'Player Photos'],
+    ['id' => 'weeks',   'label' => 'Weeks'],
 ];
 ?>
 
@@ -56,9 +57,15 @@ $tabs = [
     ]); ?>
 </div>
 
+<div data-bbj-tab-panel="weeks" class="bbj-tab-panel hidden" id="weeks">
+    <?php get_template_part('template-parts/admin/pane-seasons-weeks', null, [
+        'season_post_id' => $season_id,
+    ]); ?>
+</div>
+
 <script>
 (function () {
-    var VALID = ['spoiler', 'info', 'photos'];
+    var VALID = ['spoiler', 'info', 'photos', 'weeks'];
     var DEFAULT_TAB = 'spoiler'; // Spoiler Bar is the primary reason to open this page.
 
     function showTab(tabId) {

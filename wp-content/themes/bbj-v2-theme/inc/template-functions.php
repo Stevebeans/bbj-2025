@@ -264,3 +264,160 @@ function bbj_v2_bust_weekly_caches(int $week_id, int $player_id): void
     wp_cache_delete('bbj_v2_archive_all_players', 'bbj_v2');
     wp_cache_delete('season_profile_data_' . $season_id, 'bbj_v2');
 }
+
+// ---------------------------------------------------------------------------
+// Admin-post handlers: Add Week + Save Week
+// ---------------------------------------------------------------------------
+
+add_action('admin_post_bbj_v2_add_week', 'bbj_v2_handle_add_week');
+function bbj_v2_handle_add_week(): void
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Unauthorized', 'Forbidden', ['response' => 403]);
+    }
+    check_admin_referer('bbj_v2_add_week');
+
+    global $wpdb;
+    $season_post_id = isset($_POST['season_post_id']) ? absint($_POST['season_post_id']) : 0;
+    if ($season_post_id <= 0) {
+        wp_safe_redirect(home_url('/admin/?tab=seasons'));
+        exit;
+    }
+
+    // Find the highest existing week_num for this season
+    $next_num = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT COALESCE(MAX(week_num), 0) + 1 FROM {$wpdb->prefix}bbj_weeks WHERE season_id = %d",
+        $season_post_id
+    ));
+
+    // Today as default
+    $today = current_time('Y-m-d');
+    $wpdb->insert("{$wpdb->prefix}bbj_weeks", [
+        'season_id'  => $season_post_id,
+        'week_num'   => $next_num,
+        'start_date' => $today,
+        'end_date'   => $today,
+    ]);
+    $new_week_id = (int) $wpdb->insert_id;
+
+    // Seed wp_bbj_weeks_players from previous week's active+non-evicted players,
+    // or from full cast if week 1.
+    if ($next_num === 1) {
+        $wpdb->query($wpdb->prepare(
+            "INSERT INTO {$wpdb->prefix}bbj_weeks_players (week_id, season_id, player_id, active)
+             SELECT %d, %d, j.bbj_player, 1
+               FROM {$wpdb->prefix}bbj_v2_player_season j
+              WHERE j.bbj_season = %d",
+            $new_week_id, $season_post_id, $season_post_id
+        ));
+    } else {
+        $prev_week_id = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$wpdb->prefix}bbj_weeks
+              WHERE season_id = %d AND week_num = %d
+              LIMIT 1",
+            $season_post_id, $next_num - 1
+        ));
+        if ($prev_week_id > 0) {
+            $wpdb->query($wpdb->prepare(
+                "INSERT INTO {$wpdb->prefix}bbj_weeks_players (week_id, season_id, player_id, active)
+                 SELECT %d, %d, prev.player_id, 1
+                   FROM {$wpdb->prefix}bbj_weeks_players prev
+                  WHERE prev.week_id = %d AND prev.evicted = 0",
+                $new_week_id, $season_post_id, $prev_week_id
+            ));
+        }
+    }
+
+    wp_cache_delete('bbj_v2_season_weeks_' . $season_post_id, 'bbj_v2');
+
+    $redirect = add_query_arg([
+        'tab'     => 'seasons',
+        'edit'    => $season_post_id,
+        'week'    => $new_week_id,
+        'bbj_msg' => 'week_added',
+    ], home_url('/admin/'));
+    wp_safe_redirect($redirect . '#weeks');
+    exit;
+}
+
+add_action('admin_post_bbj_v2_save_week', 'bbj_v2_handle_save_week');
+function bbj_v2_handle_save_week(): void
+{
+    if (!current_user_can('manage_options')) {
+        wp_die('Unauthorized', 'Forbidden', ['response' => 403]);
+    }
+    check_admin_referer('bbj_v2_save_week');
+
+    global $wpdb;
+    $season_post_id = isset($_POST['season_post_id']) ? absint($_POST['season_post_id']) : 0;
+    $week_id        = isset($_POST['week_id'])        ? absint($_POST['week_id'])        : 0;
+    if ($season_post_id <= 0 || $week_id <= 0) {
+        wp_safe_redirect(home_url('/admin/?tab=seasons'));
+        exit;
+    }
+
+    $wpdb->update(
+        "{$wpdb->prefix}bbj_weeks",
+        [
+            'week_num'   => isset($_POST['week_num']) ? (int) $_POST['week_num'] : 1,
+            'start_date' => sanitize_text_field($_POST['start_date'] ?? ''),
+            'end_date'   => sanitize_text_field($_POST['end_date'] ?? ''),
+            'summary'    => wp_kses_post($_POST['summary'] ?? ''),
+        ],
+        ['id' => $week_id]
+    );
+
+    $rows = isset($_POST['rows']) && is_array($_POST['rows']) ? $_POST['rows'] : [];
+    foreach ($rows as $row) {
+        $player_id = isset($row['player_id']) ? (int) $row['player_id'] : 0;
+        if ($player_id <= 0) {
+            continue;
+        }
+
+        $saved_by = isset($row['saved_by_player_id']) && $row['saved_by_player_id'] !== ''
+            ? (int) $row['saved_by_player_id']
+            : null;
+
+        bbj_v2_save_week_player([
+            'week_id'            => $week_id,
+            'player_id'          => $player_id,
+            'season_id'          => $season_post_id,
+            'nom'                => isset($row['nom'])     ? 1 : 0,
+            'evicted'            => isset($row['evicted']) ? 1 : 0,
+            'voted_for'          => isset($row['voted_for']) ? (int) $row['voted_for'] : 0,
+            'saved_by_player_id' => $saved_by,
+            'active'             => isset($row['evicted']) ? 0 : 1,
+        ]);
+
+        // Sync comp wins: insert newly checked, delete existing-but-now-unchecked
+        $checked = isset($row['comps']) && is_array($row['comps'])
+            ? array_map('intval', $row['comps'])
+            : [];
+        $existing = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, comp_type_id FROM {$wpdb->prefix}bbj_week_comps
+              WHERE week_id = %d AND player_id = %d",
+            $week_id, $player_id
+        ), ARRAY_A) ?: [];
+        $existing_type_ids = array_map('intval', array_column($existing, 'comp_type_id'));
+
+        foreach ($checked as $type_id) {
+            if (!in_array($type_id, $existing_type_ids, true)) {
+                bbj_v2_save_week_comp($week_id, $player_id, $type_id);
+            }
+        }
+        foreach ($existing as $row_e) {
+            if (!in_array((int) $row_e['comp_type_id'], $checked, true)) {
+                bbj_v2_delete_week_comp((int) $row_e['id']);
+            }
+        }
+    }
+
+    $redirect = add_query_arg([
+        'tab'     => 'seasons',
+        'edit'    => $season_post_id,
+        'week'    => $week_id,
+        'bbj_msg' => 'week_saved',
+    ], home_url('/admin/'));
+    wp_safe_redirect($redirect . '#weeks');
+    exit;
+}
