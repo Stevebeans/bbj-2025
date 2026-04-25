@@ -141,7 +141,7 @@ function bbj_v2_season_profile_data(int $post_id): array
         'start_date'     => $row['start_date'] ?: null,
         'end_date'       => $row['end_date'] ?: null,
         'post_date'      => $row['post_date'],
-        'content'        => $row['content'],
+        'content'        => (string) ($row['content'] ?? ''),
         'winner_post_id' => $winner_post_id,
         'winner_name'    => $winner_name,
         'runner_up_id'   => (int) ($row['runner_up_id'] ?? 0),
