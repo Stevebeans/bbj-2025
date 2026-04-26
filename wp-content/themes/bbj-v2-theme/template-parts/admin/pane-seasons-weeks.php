@@ -22,6 +22,10 @@ if ($season_post_id <= 0) {
     return;
 }
 
+$season_row   = bbj_v2_get_season_by_id($season_post_id);
+$season_start = (string) ($season_row['start_date'] ?? '');
+$season_end   = (string) ($season_row['end_date']   ?? '');
+
 $weeks = bbj_v2_season_weeks($season_post_id);
 $selected_week_id = isset($_GET['week']) ? (int) $_GET['week'] : ((int) ($weeks[0]['id'] ?? 0));
 $current_week = null;
@@ -76,6 +80,8 @@ $msg = isset($_GET['bbj_msg']) ? sanitize_key($_GET['bbj_msg']) : '';
         <?php get_template_part('template-parts/admin/partials/week-edit-form', null, [
             'season_post_id' => $season_post_id,
             'week'           => $current_week,
+            'season_start'   => $season_start,
+            'season_end'     => $season_end,
         ]); ?>
     <?php elseif (!empty($weeks)): ?>
         <p class="text-stone-500 italic text-sm">Select a week above to edit.</p>

@@ -331,6 +331,18 @@ function bbj_v2_handle_add_week(): void
 
     wp_cache_delete('bbj_v2_season_weeks_' . $season_post_id, 'bbj_v2');
 
+    // Bust per-player week caches for everyone seeded into the new week —
+    // otherwise a profile viewed when zero weeks existed keeps the empty []
+    // cached for an hour.
+    $seeded_player_ids = $wpdb->get_col($wpdb->prepare(
+        "SELECT player_id FROM {$wpdb->prefix}bbj_weeks_players WHERE week_id = %d",
+        $new_week_id
+    )) ?: [];
+    foreach ($seeded_player_ids as $pid) {
+        wp_cache_delete('bbj_v2_player_weeks_' . (int) $pid . '_' . $season_post_id, 'bbj_v2');
+        wp_cache_delete('bbj_v2_player_career_totals_' . (int) $pid, 'bbj_v2');
+    }
+
     $redirect = add_query_arg([
         'tab'     => 'seasons',
         'edit'    => $season_post_id,
@@ -394,6 +406,21 @@ function bbj_v2_handle_save_week(): void
         $checked = isset($row['comps']) && is_array($row['comps'])
             ? array_map('intval', $row['comps'])
             : [];
+
+        // Misc pill resolves to either the chosen subtype or the generic 'misc' comp type.
+        if (!empty($row['misc'])) {
+            $subtype_id = isset($row['misc_subtype']) ? (int) $row['misc_subtype'] : 0;
+            if ($subtype_id > 0) {
+                $checked[] = $subtype_id;
+            } else {
+                $misc_id = bbj_v2_comp_type_id_by_slug('misc');
+                if ($misc_id > 0) {
+                    $checked[] = $misc_id;
+                }
+            }
+        }
+        $checked = array_values(array_unique(array_filter($checked, static fn($id) => $id > 0)));
+
         $existing = $wpdb->get_results($wpdb->prepare(
             "SELECT id, comp_type_id FROM {$wpdb->prefix}bbj_week_comps
               WHERE week_id = %d AND player_id = %d",

@@ -14,6 +14,8 @@ if (!defined('ABSPATH')) {
 $args = $args ?? [];
 $season_post_id = (int) ($args['season_post_id'] ?? 0);
 $week = $args['week'] ?? null;
+$season_start = (string) ($args['season_start'] ?? '');
+$season_end   = (string) ($args['season_end']   ?? '');
 if ($season_post_id <= 0 || !is_array($week)) {
     return;
 }
@@ -21,6 +23,24 @@ if ($season_post_id <= 0 || !is_array($week)) {
 $week_id    = (int) $week['id'];
 $players    = bbj_v2_active_players_for_week($season_post_id, $week_id);
 $comp_types = bbj_v2_comp_types_active();
+
+// Bucket comp types so the form can render fixed HOH / POV / Misc pills with
+// the rest as a "specify subtype" dropdown under Misc.
+$hoh_type      = null;
+$pov_type      = null;
+$misc_type     = null;
+$misc_subtypes = [];
+foreach ($comp_types as $ct) {
+    switch ($ct['slug']) {
+        case 'hoh':  $hoh_type  = $ct; break;
+        case 'pov':  $pov_type  = $ct; break;
+        case 'misc': $misc_type = $ct; break;
+        default:     $misc_subtypes[] = $ct;
+    }
+}
+$misc_family_ids = [];
+if ($misc_type)        { $misc_family_ids[] = (int) $misc_type['id']; }
+foreach ($misc_subtypes as $st) { $misc_family_ids[] = (int) $st['id']; }
 ?>
 
 <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="space-y-4">
@@ -30,7 +50,7 @@ $comp_types = bbj_v2_comp_types_active();
     <input type="hidden" name="week_id" value="<?php echo (int) $week_id; ?>">
 
     <!-- Week meta -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div class="grid grid-cols-3 gap-3">
         <label class="text-sm">
             <span class="font-mono text-[10px] uppercase tracking-[0.08em] text-stone-500 dark:text-slate-400 block mb-1">Week #</span>
             <input type="number" name="week_num" value="<?php echo (int) $week['week_num']; ?>"
@@ -39,11 +59,15 @@ $comp_types = bbj_v2_comp_types_active();
         <label class="text-sm">
             <span class="font-mono text-[10px] uppercase tracking-[0.08em] text-stone-500 dark:text-slate-400 block mb-1">Start date</span>
             <input type="date" name="start_date" value="<?php echo esc_attr($week['start_date'] ?? ''); ?>"
+                   <?php if ($season_start): ?>min="<?php echo esc_attr($season_start); ?>"<?php endif; ?>
+                   <?php if ($season_end):   ?>max="<?php echo esc_attr($season_end);   ?>"<?php endif; ?>
                    class="w-full px-2 py-1 border border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded text-sm">
         </label>
         <label class="text-sm">
             <span class="font-mono text-[10px] uppercase tracking-[0.08em] text-stone-500 dark:text-slate-400 block mb-1">End date</span>
             <input type="date" name="end_date" value="<?php echo esc_attr($week['end_date'] ?? ''); ?>"
+                   <?php if ($season_start): ?>min="<?php echo esc_attr($season_start); ?>"<?php endif; ?>
+                   <?php if ($season_end):   ?>max="<?php echo esc_attr($season_end);   ?>"<?php endif; ?>
                    class="w-full px-2 py-1 border border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded text-sm">
         </label>
     </div>
@@ -81,20 +105,66 @@ $comp_types = bbj_v2_comp_types_active();
                             <td class="px-3 py-2">
                                 <?php if (empty($comp_types)): ?>
                                     <span class="text-stone-400 italic text-xs">No comp types</span>
-                                <?php else: ?>
-                                    <div class="flex flex-wrap gap-1">
-                                        <?php foreach ($comp_types as $ct):
-                                            $checked = in_array((int) $ct['id'], $existing_comp_ids, true);
-                                        ?>
-                                            <label class="bbj-comp-pill inline-flex items-center gap-1 text-[12px] px-2 py-0.5 border border-stone-300 rounded cursor-pointer <?php echo $checked ? 'bg-amber-100 border-amber-300' : 'bg-white dark:bg-slate-800 dark:border-slate-600'; ?>">
+                                <?php else:
+                                    $hoh_checked  = $hoh_type && in_array((int) $hoh_type['id'], $existing_comp_ids, true);
+                                    $pov_checked  = $pov_type && in_array((int) $pov_type['id'], $existing_comp_ids, true);
+
+                                    $misc_selected_id = 0;
+                                    foreach ($existing_comp_ids as $eid) {
+                                        if (in_array($eid, $misc_family_ids, true)) {
+                                            $misc_selected_id = $eid;
+                                            break;
+                                        }
+                                    }
+                                    $misc_checked = $misc_selected_id > 0;
+                                    $misc_subtype_id = ($misc_type && $misc_selected_id === (int) $misc_type['id'])
+                                        ? 0
+                                        : $misc_selected_id;
+                                ?>
+                                    <div class="flex flex-wrap items-center gap-1">
+                                        <?php if ($hoh_type): ?>
+                                            <label class="bbj-comp-pill inline-flex items-center gap-1 text-[12px] px-2 py-0.5 border border-stone-300 rounded cursor-pointer <?php echo $hoh_checked ? 'bg-amber-100 border-amber-300' : 'bg-white dark:bg-slate-800 dark:border-slate-600'; ?>">
                                                 <input type="checkbox"
                                                        name="rows[<?php echo $i; ?>][comps][]"
-                                                       value="<?php echo (int) $ct['id']; ?>"
-                                                       <?php checked($checked); ?>
+                                                       value="<?php echo (int) $hoh_type['id']; ?>"
+                                                       <?php checked($hoh_checked); ?>
                                                        class="hidden">
-                                                <span><?php echo esc_html($ct['name']); ?></span>
+                                                <span><?php echo esc_html($hoh_type['name']); ?></span>
                                             </label>
-                                        <?php endforeach; ?>
+                                        <?php endif; ?>
+
+                                        <?php if ($pov_type): ?>
+                                            <label class="bbj-comp-pill inline-flex items-center gap-1 text-[12px] px-2 py-0.5 border border-stone-300 rounded cursor-pointer <?php echo $pov_checked ? 'bg-amber-100 border-amber-300' : 'bg-white dark:bg-slate-800 dark:border-slate-600'; ?>">
+                                                <input type="checkbox"
+                                                       name="rows[<?php echo $i; ?>][comps][]"
+                                                       value="<?php echo (int) $pov_type['id']; ?>"
+                                                       <?php checked($pov_checked); ?>
+                                                       class="hidden">
+                                                <span><?php echo esc_html($pov_type['name']); ?></span>
+                                            </label>
+                                        <?php endif; ?>
+
+                                        <?php if ($misc_type): ?>
+                                            <label class="bbj-comp-misc-pill inline-flex items-center gap-1 text-[12px] px-2 py-0.5 border border-stone-300 rounded cursor-pointer <?php echo $misc_checked ? 'bg-amber-100 border-amber-300' : 'bg-white dark:bg-slate-800 dark:border-slate-600'; ?>">
+                                                <input type="checkbox"
+                                                       name="rows[<?php echo $i; ?>][misc]"
+                                                       value="1"
+                                                       <?php checked($misc_checked); ?>
+                                                       class="hidden bbj-misc-toggle">
+                                                <span>Misc</span>
+                                            </label>
+                                            <select name="rows[<?php echo $i; ?>][misc_subtype]"
+                                                    class="bbj-misc-subtype text-[12px] px-1 py-0.5 border border-stone-300 dark:border-slate-600 bg-white dark:bg-slate-800 rounded <?php echo $misc_checked ? '' : 'opacity-50'; ?>"
+                                                    <?php disabled(!$misc_checked); ?>>
+                                                <option value="">— specify type —</option>
+                                                <?php foreach ($misc_subtypes as $st): ?>
+                                                    <option value="<?php echo (int) $st['id']; ?>"
+                                                            <?php selected((int) $st['id'], $misc_subtype_id); ?>>
+                                                        <?php echo esc_html($st['name']); ?>
+                                                    </option>
+                                                <?php endforeach; ?>
+                                            </select>
+                                        <?php endif; ?>
                                     </div>
                                 <?php endif; ?>
                             </td>
@@ -168,6 +238,29 @@ document.querySelectorAll('.bbj-comp-pill input[type="checkbox"]').forEach(funct
         } else {
             label.classList.remove('bg-amber-100', 'border-amber-300');
             label.classList.add('bg-white');
+        }
+    });
+});
+
+// Misc pill: same visual toggle, plus enable/disable the subtype dropdown.
+document.querySelectorAll('.bbj-misc-toggle').forEach(function (cb) {
+    var label  = cb.closest('.bbj-comp-misc-pill');
+    var select = label && label.parentNode
+        ? label.parentNode.querySelector('.bbj-misc-subtype')
+        : null;
+    cb.addEventListener('change', function () {
+        if (cb.checked) {
+            label.classList.add('bg-amber-100', 'border-amber-300');
+            label.classList.remove('bg-white');
+            if (select) { select.disabled = false; select.classList.remove('opacity-50'); }
+        } else {
+            label.classList.remove('bg-amber-100', 'border-amber-300');
+            label.classList.add('bg-white');
+            if (select) {
+                select.disabled = true;
+                select.value = '';
+                select.classList.add('opacity-50');
+            }
         }
     });
 });

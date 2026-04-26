@@ -35,16 +35,6 @@ $evicted_date   = (string) ($player['bbj_evicted_date'] ?? '');
 $misc_notes     = (string) ($player['misc_notes'] ?? '');
 $finish_place   = $player['finish_place'] ?? '';
 
-// Stat counts
-$hoh_count      = (int) ($player['bbj_total_hoh'] ?? 0);
-$veto_count     = (int) ($player['bbj_total_pov'] ?? 0);
-$nom_count      = (int) ($player['bbj_total_nom'] ?? 0);
-$veto_played    = (int) ($player['bbj_veto_played'] ?? 0);
-$misc_count     = (int) ($player['bbj_total_misc'] ?? 0);
-$saved_count    = (int) ($player['bbj_total_saved'] ?? 0);
-$havenot_count  = (int) ($player['bbj_total_havenot'] ?? 0);
-$votes_received = (int) ($player['bbj_votes_received'] ?? 0);
-
 // Determine primary status for the left-border accent.
 // Winner / runner-up / AFP live on the seasons row; the rest come from the player's flags.
 $winner_id    = (int) ($season->season_winner ?? 0);
@@ -96,13 +86,35 @@ $chip_checked_on = ' has-[:checked]:bg-primary-500 has-[:checked]:text-white has
             </div>
         <?php endif; ?>
 
-        <div class="flex-1">
-            <div class="font-semibold text-stone-800 dark:text-slate-200">
+        <div class="min-w-0">
+            <div class="font-semibold text-stone-800 dark:text-slate-200 truncate">
                 <?php echo esc_html($display_full !== '' ? $display_full : '(Unnamed player)'); ?>
             </div>
-            <div class="text-xs text-stone-500 dark:text-slate-500">
+            <div class="text-xs text-stone-500 dark:text-slate-500 truncate">
                 Card name: <?php echo esc_html($display_card); ?>
             </div>
+        </div>
+
+        <!-- Status toggle chips moved into the header row to condense the card -->
+        <div class="flex flex-wrap gap-1 text-xs flex-1 justify-center">
+            <?php
+            $toggles = [
+                ['label' => 'HoH',  'name' => "current_hoh[{$player_id}]",     'checked' => $current_hoh],
+                ['label' => 'PoV',  'name' => "current_pov[{$player_id}]",     'checked' => $current_pov],
+                ['label' => 'Nom',  'name' => "current_nom[{$player_id}]",     'checked' => $current_nom],
+                ['label' => 'Safe', 'name' => "current_safe[{$player_id}]",    'checked' => $current_safe],
+                ['label' => 'HN',   'name' => "current_havenot[{$player_id}]", 'checked' => $current_havenot],
+                ['label' => 'Misc', 'name' => "current_misc[{$player_id}]",    'checked' => $current_misc],
+            ];
+            foreach ($toggles as $t):
+            ?>
+                <label class="<?php echo esc_attr($chip_base . $chip_checked_on); ?>">
+                    <input type="checkbox" name="<?php echo esc_attr($t['name']); ?>" value="1"
+                           class="sr-only"
+                           <?php checked($t['checked']); ?>>
+                    <span><?php echo esc_html($t['label']); ?></span>
+                </label>
+            <?php endforeach; ?>
         </div>
 
         <div class="flex items-center gap-2 text-xs">
@@ -112,30 +124,6 @@ $chip_checked_on = ' has-[:checked]:bg-primary-500 has-[:checked]:text-white has
                    value="<?php echo esc_attr($finish_place !== null ? $finish_place : ''); ?>"
                    class="w-14 px-2 py-1 border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900">
         </div>
-    </div>
-
-    <!-- Row 2: 8 stat counts -->
-    <div class="grid grid-cols-8 gap-2 mb-2 text-xs">
-        <?php
-        $stats = [
-            ['label' => 'HoH',   'name' => "hoh_count[{$player_id}]",      'value' => $hoh_count],
-            ['label' => 'PoV',   'name' => "veto_count[{$player_id}]",     'value' => $veto_count],
-            ['label' => 'Nom',   'name' => "nom_count[{$player_id}]",      'value' => $nom_count],
-            ['label' => 'Veto',  'name' => "veto_played[{$player_id}]",    'value' => $veto_played],
-            ['label' => 'Misc',  'name' => "misc_count[{$player_id}]",     'value' => $misc_count],
-            ['label' => 'Saved', 'name' => "saved_count[{$player_id}]",    'value' => $saved_count],
-            ['label' => 'H/N',   'name' => "havenot_count[{$player_id}]",  'value' => $havenot_count],
-            ['label' => 'Votes', 'name' => "votes_received[{$player_id}]", 'value' => $votes_received],
-        ];
-        foreach ($stats as $s):
-        ?>
-            <label class="flex flex-col items-center">
-                <span class="text-stone-500 dark:text-slate-500"><?php echo esc_html($s['label']); ?></span>
-                <input type="number" min="0" name="<?php echo esc_attr($s['name']); ?>"
-                       value="<?php echo esc_attr((string) $s['value']); ?>"
-                       class="w-full px-2 py-0.5 border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-center">
-            </label>
-        <?php endforeach; ?>
     </div>
 
     <!-- Row 3: elimination controls + misc notes -->
@@ -172,29 +160,6 @@ $chip_checked_on = ' has-[:checked]:bg-primary-500 has-[:checked]:text-white has
                    placeholder="Custom status label"
                    class="w-full px-2 py-0.5 border border-stone-300 dark:border-slate-700 bg-white dark:bg-slate-900">
         </label>
-    </div>
-
-    <!-- Row 4: status toggle chips -->
-    <div class="flex flex-wrap gap-1 text-xs">
-        <span class="text-stone-500 dark:text-slate-500 mr-1">Status:</span>
-        <?php
-        $toggles = [
-            ['label' => 'HoH',  'name' => "current_hoh[{$player_id}]",     'checked' => $current_hoh],
-            ['label' => 'PoV',  'name' => "current_pov[{$player_id}]",     'checked' => $current_pov],
-            ['label' => 'Nom',  'name' => "current_nom[{$player_id}]",     'checked' => $current_nom],
-            ['label' => 'Safe', 'name' => "current_safe[{$player_id}]",    'checked' => $current_safe],
-            ['label' => 'HN',   'name' => "current_havenot[{$player_id}]", 'checked' => $current_havenot],
-            ['label' => 'Misc', 'name' => "current_misc[{$player_id}]",    'checked' => $current_misc],
-        ];
-        foreach ($toggles as $t):
-        ?>
-            <label class="<?php echo esc_attr($chip_base . $chip_checked_on); ?>">
-                <input type="checkbox" name="<?php echo esc_attr($t['name']); ?>" value="1"
-                       class="sr-only"
-                       <?php checked($t['checked']); ?>>
-                <span><?php echo esc_html($t['label']); ?></span>
-            </label>
-        <?php endforeach; ?>
     </div>
 
 </div>

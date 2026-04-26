@@ -22,6 +22,10 @@ if ($player_post_id <= 0 || $season_post_id <= 0) {
 }
 
 $weeks = bbj_v2_player_weeks($player_post_id, $season_post_id);
+// Hide weeks where nothing happened to this player (no comp wins, no nom,
+// no eviction, no saved_by, no vote cast). If everything is empty, suppress
+// the entire section heading too.
+$weeks = array_values(array_filter($weeks, 'bbj_v2_player_week_has_activity'));
 if (empty($weeks)) {
     return;
 }

@@ -206,3 +206,31 @@ aside{min-width:0}
   .cast-grid{grid-template-columns:repeat(4,1fr)}
   .stick{position:static}
 }
+
+/* ==== GAME TIMELINE (week-by-week power map) ==== */
+/* Namespaced as .bbj-tl-* to avoid colliding with other timeline / .wk styles. */
+.bbj-tl{background:#fff;border:1px solid var(--line);border-radius:6px;padding:22px 24px 8px;position:relative;overflow:hidden}
+.bbj-tl-ruler{display:grid;grid-template-columns:repeat(var(--bbj-tl-cols, 13), 1fr);font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;padding:0 0 6px 80px;border-bottom:1px solid var(--line);margin-bottom:14px}
+.bbj-tl-ruler span{text-align:center}
+.bbj-tl-row{display:grid;grid-template-columns:80px 1fr;gap:16px;align-items:center;padding:10px 0;border-bottom:1px dashed var(--line-2);min-height:42px}
+.bbj-tl-row:last-of-type{border-bottom:0}
+.bbj-tl-lbl{font-family:var(--display);font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);font-weight:600;padding-right:10px;border-right:2px solid var(--line)}
+.bbj-tl-track{position:relative;height:22px}
+.bbj-tl-cell{position:absolute;top:0;bottom:0;display:grid;place-items:center;font-family:var(--display);font-size:10px;font-weight:600;color:#fff;border-radius:3px;padding:0 6px;letter-spacing:.04em;white-space:nowrap}
+.bbj-tl-cell--hoh{background:var(--bb-yellow);color:var(--ink)}
+.bbj-tl-cell--pov{background:var(--bb-green)}
+.bbj-tl-cell--nom{background:rgba(210,59,43,.22);color:var(--bb-red);border:1px dashed var(--bb-red)}
+.bbj-tl-cell--winner{background:linear-gradient(90deg,var(--bb-yellow),#E6A800);color:var(--ink);box-shadow:0 0 0 2px rgba(255,191,15,.25)}
+.bbj-tl-cell--runnerup{background:var(--paper-2);color:var(--ink-2);border:1px solid var(--line)}
+.bbj-tl-cell--afp{background:linear-gradient(90deg,var(--bb-yellow),#E6A800);color:var(--ink);box-shadow:0 0 0 2px rgba(255,191,15,.25)}
+.bbj-tl-legend{display:flex;gap:16px;padding:14px 0 10px;border-top:1px solid var(--line);margin-top:6px;font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);flex-wrap:wrap}
+.bbj-tl-legend span{display:inline-flex;align-items:center;gap:6px}
+.bbj-tl-sw{width:10px;height:10px;border-radius:2px;display:inline-block}
+.bbj-tl-sw--hoh{background:var(--bb-yellow)}
+.bbj-tl-sw--pov{background:var(--bb-green)}
+.bbj-tl-sw--nom{background:rgba(210,59,43,.22);border:1px dashed var(--bb-red)}
+.bbj-tl-sw--winner{background:linear-gradient(90deg,var(--bb-yellow),#E6A800)}
+.bbj-tl-section .sech{display:flex;align-items:baseline;gap:14px;margin-bottom:12px}
+.bbj-tl-section .sech h2{font-family:var(--display);font-size:22px;font-weight:600;color:var(--ink);letter-spacing:.01em;margin:0}
+.bbj-tl-section .sech h2 small{font-family:var(--display);font-size:18px;font-weight:500;color:var(--muted)}
+.bbj-tl-section .sech .sub{font-family:var(--serif);font-style:italic;font-size:13px;color:var(--muted)}

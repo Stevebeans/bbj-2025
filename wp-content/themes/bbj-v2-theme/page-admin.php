@@ -11,6 +11,8 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+bbj_v2_weekly_tracker_install();
+
 $active_tab = get_query_var('tab');
 if (!is_string($active_tab) || $active_tab === '') {
     $active_tab = 'overview';

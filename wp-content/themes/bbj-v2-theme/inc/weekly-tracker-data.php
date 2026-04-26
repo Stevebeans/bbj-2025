@@ -48,6 +48,16 @@ function bbj_v2_comp_types_active(): array
     return $rows;
 }
 
+function bbj_v2_comp_type_id_by_slug(string $slug): int
+{
+    foreach (bbj_v2_comp_types_active() as $ct) {
+        if (($ct['slug'] ?? '') === $slug) {
+            return (int) $ct['id'];
+        }
+    }
+    return 0;
+}
+
 function bbj_v2_comp_types_all(): array
 {
     $cache_key = 'bbj_v2_comp_types_all';
@@ -202,6 +212,80 @@ function bbj_v2_season_weeks(int $season_post_id): array
 
     wp_cache_set($cache_key, $rows, 'bbj_v2', HOUR_IN_SECONDS);
     return $rows;
+}
+
+/**
+ * True if a player_weeks row from bbj_v2_player_weeks() represents *anything*
+ * the player did this week. Used to skip empty week cards in the narrative
+ * Week-by-Week list.
+ */
+function bbj_v2_player_week_has_activity(array $w): bool
+{
+    if (!empty($w['comps']))                       return true;
+    if ((int) ($w['nom']     ?? 0) === 1)          return true;
+    if ((int) ($w['evicted'] ?? 0) === 1)          return true;
+    if ((int) ($w['saved_by_player_id'] ?? 0) > 0) return true;
+    if ((int) ($w['voted_for'] ?? 0) > 0)          return true;
+    return false;
+}
+
+/**
+ * Build the Game Timeline grid data for one player + season.
+ * Returns:
+ *   - max_week (int)            — total weeks in the season
+ *   - cells   (array)           — ['hoh' => [w_nums], 'pov' => [...], 'nom' => [...]]
+ *   - finale  (?array)          — ['label' => '★ AFP', 'class' => 'afp'] or null
+ *   - has_activity (bool)       — false when there's nothing worth rendering
+ */
+function bbj_v2_player_game_timeline_data(int $player_post_id, int $season_post_id): array
+{
+    $weeks = bbj_v2_player_weeks($player_post_id, $season_post_id);
+    $cells = ['hoh' => [], 'pov' => [], 'nom' => []];
+    $max_week = 0;
+
+    $season_weeks = bbj_v2_season_weeks($season_post_id);
+    foreach ($season_weeks as $sw) {
+        $max_week = max($max_week, (int) $sw['week_num']);
+    }
+
+    foreach ($weeks as $w) {
+        $wn = (int) $w['week_num'];
+        $slugs = array_column($w['comps'] ?? [], 'slug');
+        if (in_array('hoh', $slugs, true)) $cells['hoh'][] = $wn;
+        if (in_array('pov', $slugs, true)) $cells['pov'][] = $wn;
+        if ((int) ($w['nom'] ?? 0) === 1)  $cells['nom'][] = $wn;
+    }
+
+    global $wpdb;
+    $finish = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT finish_place FROM {$wpdb->prefix}bbj_v2_player_season
+          WHERE bbj_player = %d AND bbj_season = %d",
+        $player_post_id, $season_post_id
+    ));
+    $afp_id = (int) $wpdb->get_var($wpdb->prepare(
+        "SELECT afp FROM {$wpdb->prefix}bbj_seasons
+          WHERE id = %d OR (post_id = %d AND post_id != 0)
+          LIMIT 1",
+        $season_post_id, $season_post_id
+    ));
+
+    $finale = null;
+    if ($finish === 1) {
+        $finale = ['label' => '★ WIN', 'class' => 'winner'];
+    } elseif ($finish === 2) {
+        $finale = ['label' => 'RU', 'class' => 'runnerup'];
+    } elseif ($afp_id === $player_post_id) {
+        $finale = ['label' => '★ AFP', 'class' => 'afp'];
+    }
+
+    $has_activity = !empty($cells['hoh']) || !empty($cells['pov']) || !empty($cells['nom']) || $finale !== null;
+
+    return [
+        'max_week'     => $max_week,
+        'cells'        => $cells,
+        'finale'       => $finale,
+        'has_activity' => $has_activity,
+    ];
 }
 
 function bbj_v2_active_players_for_week(int $season_post_id, int $week_id): array

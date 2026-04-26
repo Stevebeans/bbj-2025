@@ -409,6 +409,7 @@ Each is its own small sprint. Order is negotiable.
 - Role/permission system beyond WP caps (currently just `manage_options` / `edit_posts`)
 - Role simulator in admin ("Preview as" — partially overlaps with `/admin?tab=preview-as` in Sprint O)
 - Login reliability hardening for FB/IG WebViews (see `project_login_reliability` memory)
+- Extend junction-first-then-legacy career totals (`bbj_v2_player_career_totals()`) to cover **noms / votes_received / saved / havenot / veto_played** — currently only hoh/pov/misc check the junction and fall back to the deprecated `bbj_total_*` columns; the others read the legacy columns directly. Mirror the same `has_junction` switch per-season-per-player so backfilling BB1-21 weekly data progressively replaces those legacy reads too.
 
 ---
 

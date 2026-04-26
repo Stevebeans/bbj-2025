@@ -128,14 +128,6 @@ function bbj_v2_update_season() {
 
     // pull in input data
     $evicted_date      = $_POST['evicted_date']      ?? [];
-    $hoh_count         = $_POST['hoh_count']         ?? [];
-    $veto_count        = $_POST['veto_count']        ?? [];
-    $misc_count        = $_POST['misc_count']        ?? [];
-    $saved_count       = $_POST['saved_count']       ?? [];
-    $nom_count         = $_POST['nom_count']         ?? [];
-    $havenot_count     = $_POST['havenot_count']     ?? [];
-    $votes_received    = $_POST['votes_received']    ?? [];
-    $veto_played       = $_POST['veto_played']       ?? [];
 
     // new fields
     $current_hoh       = $_POST['current_hoh']       ?? [];
@@ -156,14 +148,9 @@ function bbj_v2_update_season() {
         // build data array
         $data = [
             'bbj_evicted_date'    => sanitize_text_field( $date ),
-            'bbj_total_hoh'       => absint( $hoh_count[ $player_id ]         ?? 0 ),
-            'bbj_total_pov'       => absint( $veto_count[ $player_id ]        ?? 0 ),
-            'bbj_total_misc'      => absint( $misc_count[ $player_id ]        ?? 0 ),
-            'bbj_total_saved'     => absint( $saved_count[ $player_id ]       ?? 0 ),
-            'bbj_total_nom'       => absint( $nom_count[ $player_id ]         ?? 0 ),
-            'bbj_total_havenot'   => absint( $havenot_count[ $player_id ]     ?? 0 ),
-            'bbj_votes_received'  => absint( $votes_received[ $player_id ]    ?? 0 ),
-            'bbj_veto_played'     => absint( $veto_played[ $player_id ]       ?? 0 ),
+            // Career totals (bbj_total_*, bbj_votes_received, bbj_veto_played) are
+            // now derived from wp_bbj_week_comps + wp_bbj_weeks_players. The legacy
+            // columns stay populated for BB1-21 fallback reads.
             // new checkbox fields
             'current_hoh'         => isset( $current_hoh[ $player_id ] )     ? 1 : 0,
             'current_pov'         => isset( $current_pov[ $player_id ] )     ? 1 : 0,
