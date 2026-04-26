@@ -151,7 +151,7 @@ $comp_types = bbj_v2_comp_types_active();
 
     <div class="flex justify-end">
         <button type="submit"
-                class="px-5 py-2 bg-primary500 text-white text-sm font-osw uppercase tracking-wider rounded hover:bg-primaryHard transition-colors">
+                class="px-5 py-2 bg-primary-500 text-white text-sm font-osw uppercase tracking-wider rounded hover:bg-primary-600 transition-colors">
             Save Week
         </button>
     </div>

@@ -52,7 +52,7 @@ $msg = isset($_GET['bbj_msg']) ? sanitize_key($_GET['bbj_msg']) : '';
             $is_active = ((int) $w['id'] === $selected_week_id);
         ?>
             <a href="<?php echo esc_url($url); ?>#weeks"
-               class="px-3 py-1 text-xs font-osw uppercase tracking-wider rounded <?php echo $is_active ? 'bg-second500 text-primary500 dark:bg-secondHard dark:text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'; ?>">
+               class="px-3 py-1 text-xs font-osw uppercase tracking-wider rounded <?php echo $is_active ? 'bg-secondary-500 text-primary-500 dark:bg-secondary-600 dark:text-white' : 'bg-stone-100 text-stone-700 hover:bg-stone-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'; ?>">
                 Week <?php echo (int) $w['week_num']; ?>
                 <?php if ((int) $w['evicted_count'] > 0): ?>
                     <span class="ml-1 text-[10px] opacity-70">&middot;E</span>
@@ -65,7 +65,7 @@ $msg = isset($_GET['bbj_msg']) ? sanitize_key($_GET['bbj_msg']) : '';
             <input type="hidden" name="action" value="bbj_v2_add_week">
             <input type="hidden" name="season_post_id" value="<?php echo (int) $season_post_id; ?>">
             <button type="submit"
-                    class="px-3 py-1 bg-primary500 text-white text-xs font-osw uppercase tracking-wider rounded hover:bg-primaryHard transition-colors">
+                    class="px-3 py-1 bg-primary-500 text-white text-xs font-osw uppercase tracking-wider rounded hover:bg-primary-600 transition-colors">
                 + Add Week
             </button>
         </form>
