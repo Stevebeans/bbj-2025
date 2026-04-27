@@ -146,38 +146,33 @@
     @apply opacity-0;
     max-height: 0;
   }
-  .bbj-spoiler-list {
-    @apply flex gap-3 py-2 pb-3 overflow-x-auto snap-x scroll-smooth cursor-grab select-none list-none m-0 p-0;
+  /* Drag-to-scroll cursor on the scroll wrapper. */
+  [data-spoiler-bar] {
+    @apply cursor-grab select-none;
   }
-  .bbj-spoiler-list:active { @apply cursor-grabbing; }
-  .bbj-spoiler-item {
-    @apply flex-none snap-start w-14 sm:w-16 text-center;
+  [data-spoiler-bar]:active { @apply cursor-grabbing; }
+
+  /* Card-banner-photo-name layout (matches bbj-app live design). The
+     .spoilerbar-{status} classes carry the colored backgrounds + borders. */
+  .bbj-spoiler-card {
+    @apply flex-none w-[52px] lg:w-14 no-underline rounded-md overflow-hidden
+      transition-transform hover:-translate-y-0.5;
   }
-  .bbj-spoiler-link {
-    @apply flex flex-col items-center gap-1 no-underline;
+  .bbj-spoiler-banner {
+    @apply text-center text-[10px] leading-tight font-sans py-0.5 px-1
+      border-t-2 border-r-2 border-l-2 rounded-t-md truncate;
   }
-  .bbj-spoiler-link.is-dim .bbj-spoiler-name {
-    @apply text-gray-400 dark:text-gray-500;
+  .bbj-spoiler-photo {
+    @apply relative block w-full h-12 lg:h-[80px] overflow-hidden
+      border-l-2 border-r-2 bg-stone-200 dark:bg-slate-700;
   }
-  .bbj-spoiler-pill {
-    @apply inline-block text-[9px] sm:text-[10px] leading-none font-osw uppercase tracking-wider
-      px-1.5 py-1 rounded-sm border;
+  .bbj-spoiler-photo-fallback {
+    @apply absolute inset-0 flex items-center justify-center
+      font-osw uppercase text-base font-semibold text-stone-600 dark:text-slate-300;
   }
-  .bbj-spoiler-avatar {
-    @apply relative inline-flex items-center justify-center w-11 h-11 sm:w-12 sm:h-12
-      rounded-full border-2 overflow-hidden;
-  }
-  .bbj-spoiler-avatar img {
-    @apply w-full h-full object-cover rounded-full;
-  }
-  .bbj-spoiler-avatar.spoilerbar-winner {
-    box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.45);
-  }
-  .bbj-spoiler-initials {
-    @apply font-osw uppercase text-sm font-semibold;
-  }
-  .bbj-spoiler-name {
-    @apply block text-[11px] sm:text-xs text-gray-700 dark:text-gray-200 truncate w-full;
+  .bbj-spoiler-namebar {
+    @apply text-center text-[10px] leading-tight font-sans py-0.5 px-1
+      border-l-2 border-r-2 border-b-2 rounded-b-md truncate;
   }
 
   /* Auth modal — shared chrome for login/register/link/forgot/reset views. */

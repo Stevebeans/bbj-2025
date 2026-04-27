@@ -1,10 +1,14 @@
 <?php
 /**
- * Spoiler bar — compact horizontal row of current-season players with status pills.
- * Title + counts on the left, COLLAPSE toggle on the right. Circle avatars with
- * initials fallback, colored ring by status, name below.
+ * Spoiler bar — header strip of current-season players.
  *
- * Data: bbj_v2_get_spoiler_bar() (cached 300s)
+ * Card-banner-photo-name layout matching the bbj-app SpoilerBar.jsx design
+ * shown on production. Each player is a vertical card with a colored status
+ * banner on top, photo in the middle (greyed for evicted, slight grey + indigo
+ * tint for jury, never dimmed for winner/runner-up), and a colored name strip
+ * at the bottom.
+ *
+ * Data: bbj_v2_get_spoiler_bar() (cached 300s — pulls from /bbjd/v1/spoiler-bar)
  */
 
 if (!defined('ABSPATH')) {
@@ -28,14 +32,14 @@ $evicted   = 0;
 $remaining = 0;
 foreach ($players as $p) {
     $status = strtolower((string) ($p['status'] ?? 'active'));
-    if (in_array($status, ['evicted', 'jury', 'winner', 'runner_up'], true)) {
+    if (in_array($status, ['evicted', 'jury', 'winner', 'runner_up', 'runner-up'], true)) {
         $evicted++;
     } else {
         $remaining++;
     }
 }
 
-// Strips curly + straight quotes so "Will" renders initials as "Wi", not "\"W".
+// Strip curly + straight quotes so "Will" renders initials as "Wi", not "\"W".
 $initials = static function (string $name): string {
     $name = trim(str_replace(['"', '"', '"', "'"], '', $name));
     if ($name === '') return '';
@@ -71,44 +75,56 @@ $initials = static function (string $name): string {
         </div>
 
         <div id="bbj-spoiler-body" class="bbj-spoiler-body" data-bbj-spoiler-body>
-            <ul class="bbj-spoiler-list" data-spoiler-bar role="list"
-                aria-label="<?php esc_attr_e('Current season players', 'bbj-v2-theme'); ?>">
-                <?php foreach ($players as $p) :
-                    $name    = (string) ($p['name'] ?? '');
-                    $display = (string) ($p['display_name'] ?? ($p['first_name'] ?? $name));
-                    $status  = (string) ($p['status'] ?? 'active');
-                    $label   = (string) ($p['status_label'] ?? ucfirst($status));
-                    $photo   = (string) ($p['photo'] ?? '');
-                    $url     = (string) ($p['permalink'] ?? '#');
-                    $pill    = bbj_v2_status_class($status);
-                    $imgFx   = bbj_v2_status_img_class($status);
-                    $is_dim  = in_array(strtolower($status), ['evicted', 'jury'], true);
-                ?>
-                    <li class="bbj-spoiler-item">
+            <div class="overflow-x-auto py-1 scroll-smooth" data-spoiler-bar
+                 aria-label="<?php esc_attr_e('Current season players', 'bbj-v2-theme'); ?>">
+                <div class="flex flex-nowrap gap-1 w-max mx-auto">
+                    <?php foreach ($players as $p) :
+                        $name        = (string) ($p['name'] ?? '');
+                        $first       = (string) ($p['first_name'] ?? '');
+                        $last        = (string) ($p['last_name']  ?? '');
+                        $display     = (string) ($p['display_name'] ?? ($first ?: $name));
+                        $status      = strtolower((string) ($p['status'] ?? 'active'));
+                        $label       = (string) ($p['status_label'] ?? ucfirst($status));
+                        $photo       = (string) ($p['photo'] ?? '');
+                        $url         = (string) ($p['permalink'] ?? '#');
+                        $pill        = bbj_v2_status_class($status);
+                        $img_filter  = bbj_v2_status_img_class($status);
+                        $is_jury     = ($status === 'jury');
+                        $alt_text    = trim($first . ' ' . $last) ?: $name;
+                    ?>
                         <a href="<?php echo esc_url($url); ?>"
-                           class="bbj-spoiler-link<?php echo $is_dim ? ' is-dim' : ''; ?>"
-                           aria-label="<?php echo esc_attr($name . ' — ' . $label); ?>">
-                            <span class="bbj-spoiler-pill <?php echo esc_attr($pill); ?>">
-                                <?php echo esc_html(strtoupper($label)); ?>
-                            </span>
-                            <span class="bbj-spoiler-avatar <?php echo esc_attr($pill); ?>">
+                           class="bbj-spoiler-card group"
+                           title="<?php echo esc_attr($alt_text); ?>">
+                            <!-- Banner -->
+                            <div class="bbj-spoiler-banner <?php echo esc_attr($pill); ?>">
+                                <?php echo esc_html($label); ?>
+                            </div>
+
+                            <!-- Photo -->
+                            <div class="bbj-spoiler-photo <?php echo esc_attr($pill); ?>">
                                 <?php if ($photo !== '') : ?>
                                     <img src="<?php echo esc_url($photo); ?>"
-                                         alt=""
-                                         class="<?php echo esc_attr($imgFx); ?>"
-                                         loading="lazy" decoding="async"
-                                         width="48" height="48">
+                                         alt="<?php echo esc_attr($alt_text); ?>"
+                                         class="w-full h-full object-cover <?php echo esc_attr($img_filter); ?>"
+                                         loading="lazy" decoding="async">
+                                    <?php if ($is_jury) : ?>
+                                        <span class="absolute inset-0 bg-indigo-500/25 mix-blend-multiply pointer-events-none"></span>
+                                    <?php endif; ?>
                                 <?php else : ?>
-                                    <span class="bbj-spoiler-initials"><?php echo esc_html($initials($display ?: $name)); ?></span>
+                                    <span class="bbj-spoiler-photo-fallback">
+                                        <?php echo esc_html($initials($display ?: $name)); ?>
+                                    </span>
                                 <?php endif; ?>
-                            </span>
-                            <span class="bbj-spoiler-name">
+                            </div>
+
+                            <!-- Name -->
+                            <div class="bbj-spoiler-namebar <?php echo esc_attr($pill); ?>">
                                 <?php echo esc_html($display ?: $name); ?>
-                            </span>
+                            </div>
                         </a>
-                    </li>
-                <?php endforeach; ?>
-            </ul>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         </div>
     </div>
 </div>

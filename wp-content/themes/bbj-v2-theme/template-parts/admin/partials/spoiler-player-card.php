@@ -46,10 +46,10 @@ if     ($player_id === $winner_id && $winner_id > 0)       $primary = 'yellow';
 elseif ($player_id === $runner_up_id && $runner_up_id > 0) $primary = 'sky';
 elseif ($player_id === $afp_id && $afp_id > 0)             $primary = 'pink';
 elseif ($current_hoh)                                      $primary = 'emerald';
-elseif ($current_pov)                                      $primary = 'purple';
+elseif ($current_pov)                                      $primary = 'yellow'; // PoV = yellow (was purple) to match bbj-app
 elseif ($current_nom)                                      $primary = 'red';
 elseif ($current_safe)                                     $primary = 'green';
-elseif ($current_havenot)                                  $primary = 'slate';
+elseif ($current_havenot)                                  $primary = 'amber';
 elseif ($current_jury)                                     $primary = 'indigo';
 elseif ($current_evicted)                                  $primary = 'gray';
 
@@ -59,14 +59,28 @@ $border_class = match ($primary) {
     'sky'     => 'border-l-sky-500',
     'pink'    => 'border-l-pink-500',
     'emerald' => 'border-l-emerald-500',
-    'purple'  => 'border-l-purple-500',
     'red'     => 'border-l-red-500',
     'green'   => 'border-l-green-500',
-    'slate'   => 'border-l-slate-500',
+    'amber'   => 'border-l-amber-700',
     'indigo'  => 'border-l-indigo-500',
     'gray'    => 'border-l-gray-500',
     default   => 'border-l-stone-500',
 };
+
+// Avatar greyscale/opacity treatment matches bbj-app PlayerStatusCard.jsx:
+//   - Evicted (NOT a finalist) → grayscale 80% + opacity 75%
+//   - Jury                    → grayscale 40% + opacity 85% + indigo overlay
+//   - Winner / Runner-up      → never dimmed even if evicted=1
+$finish_int       = is_numeric($finish_place) ? (int) $finish_place : 0;
+$is_finalist      = ($finish_int === 1 || $finish_int === 2);
+$avatar_img_class = '';
+$avatar_overlay   = false;
+if ($current_jury) {
+    $avatar_img_class = 'spoilerbar-jury-img';
+    $avatar_overlay   = true;
+} elseif ($current_evicted && !$is_finalist) {
+    $avatar_img_class = 'spoilerbar-evicted-img';
+}
 
 // Toggle-chip helper classes
 $chip_base = 'cursor-pointer select-none inline-flex items-center justify-center px-2 py-0.5 text-xs font-semibold border text-stone-500 border-stone-300 bg-white dark:bg-slate-900 dark:text-slate-400 dark:border-slate-700 transition-colors';
@@ -78,10 +92,15 @@ $chip_checked_on = ' has-[:checked]:bg-primary-500 has-[:checked]:text-white has
     <!-- Row 1: avatar, name, finish -->
     <div class="flex items-center gap-3 mb-2">
         <?php if ($avatar_url): ?>
-            <img src="<?php echo esc_url($avatar_url); ?>" alt="<?php echo esc_attr($display_full); ?>"
-                 class="w-10 h-10 object-cover rounded-full border border-stone-200 dark:border-slate-700">
+            <span class="relative inline-block w-10 h-10 rounded-full overflow-hidden border border-stone-200 dark:border-slate-700 shrink-0">
+                <img src="<?php echo esc_url($avatar_url); ?>" alt="<?php echo esc_attr($display_full); ?>"
+                     class="w-full h-full object-cover <?php echo esc_attr($avatar_img_class); ?>">
+                <?php if ($avatar_overlay): ?>
+                    <span class="absolute inset-0 bg-indigo-500/25 mix-blend-multiply pointer-events-none"></span>
+                <?php endif; ?>
+            </span>
         <?php else: ?>
-            <div class="w-10 h-10 rounded-full bg-stone-100 dark:bg-slate-800 flex items-center justify-center text-stone-500 dark:text-slate-400 font-bold">
+            <div class="w-10 h-10 rounded-full bg-stone-100 dark:bg-slate-800 flex items-center justify-center text-stone-500 dark:text-slate-400 font-bold shrink-0">
                 <?php echo esc_html(strtoupper(substr($first_name, 0, 1))); ?>
             </div>
         <?php endif; ?>
