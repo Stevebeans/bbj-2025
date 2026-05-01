@@ -290,6 +290,29 @@ class AuthRoutes
                 ],
             ],
         ]);
+
+        // Refresh WP nonce for comment submissions (logged-in only)
+        register_rest_route(self::NAMESPACE, '/auth/refresh-nonce', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'refreshNonce'],
+            'permission_callback' => [$this, 'checkLoggedIn'],
+        ]);
+    }
+
+    /**
+     * Return a fresh WP nonce for comment submissions.
+     */
+    public function refreshNonce(): \WP_REST_Response
+    {
+        return new \WP_REST_Response(['nonce' => wp_create_nonce('bbj_comments')], 200);
+    }
+
+    /**
+     * Permission callback: allow only logged-in users.
+     */
+    public function checkLoggedIn(): bool
+    {
+        return is_user_logged_in();
     }
 
     /**
