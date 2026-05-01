@@ -4,5 +4,6 @@ if (!defined('ABSPATH')) {
 }
 require_once __DIR__ . '/../vendor/autoload.php';
 
-// Load files that contain procedural functions (not autoloaded by PSR-4).
+// PSR-4 only autoloads classes; explicit require makes the global-namespace
+// procedural functions (bbjd_cookie_or_jwt_permission etc.) available to tests.
 require_once __DIR__ . '/../src/Auth/CookieOrJwtAuth.php';
