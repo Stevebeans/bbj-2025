@@ -2,7 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --line: #E5E7EB;
+}
+
 @layer components {
+  .bbj-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 22px;
+    margin-bottom: 16px;
+  }
+
   .v2-primary-container {
     @apply mx-auto mb-4 mt-4 max-w-screen-xl px-2;
   }
@@ -38,10 +50,26 @@
   .bbj-status-strip {
     @apply bg-gray-900 dark:bg-black border-b border-gray-700 text-white;
   }
+
+  .bbj-ticker {
+    @apply relative overflow-hidden min-w-0 flex-1;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  }
+  .bbj-ticker-track {
+    @apply inline-flex items-center whitespace-nowrap;
+    animation: bbj-ticker-slide 60s linear infinite;
+  }
+  .bbj-ticker:hover .bbj-ticker-track,
+  .bbj-ticker:focus-within .bbj-ticker-track {
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bbj-ticker-track { animation: none; }
+  }
   .bbj-hero-post { @apply block; }
   .bbj-sidebar-card {
-    @apply pb-6 mb-6 border-b border-gray-200 dark:border-gray-700
-           last:border-b-0 last:mb-0 last:pb-0;
+    @apply pb-6 mb-6 last:mb-0 last:pb-0;
   }
 
   .bbj-hb-panel {
@@ -345,4 +373,9 @@
 @layer base {
   a { @apply text-primary-500 transition hover:text-secondary-500
         dark:text-primary-400 dark:hover:text-secondary-500; }
+}
+
+@keyframes bbj-ticker-slide {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
 }

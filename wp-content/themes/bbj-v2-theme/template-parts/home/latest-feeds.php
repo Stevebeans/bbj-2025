@@ -1,6 +1,6 @@
 <?php
 /**
- * Latest from the Feeds — 5 rich cards, an inline ad, then 5 more-updates rows.
+ * Latest from the Feeds — 5 rich cards, an inline ad, then 5 more rich cards.
  */
 
 if (!defined('ABSPATH')) {
@@ -11,20 +11,21 @@ $items = bbj_v2_homepage_latest_feeds(10);
 if (empty($items)) {
     return;
 }
-$rich_items    = array_slice($items, 0, 5);
-$compact_items = array_slice($items, 5, 5);
+$first_batch  = array_slice($items, 0, 5);
+$second_batch = array_slice($items, 5, 5);
 ?>
-<section id="latest-feeds" class="bbj-latest-feeds">
-    <div class="flex items-baseline justify-between mb-2">
-        <h2 class="section-header">
-            <a href="<?php echo esc_url(home_url('/feed-updates/')); ?>" class="no-underline hover:text-secondary-500">
+<section id="latest-feeds" class="bbj-card bbj-latest-feeds">
+
+    <div class="pb-3 mb-5 border-b" style="border-color:var(--line)">
+        <h2 class="font-osw text-lg md:text-xl uppercase tracking-wide text-primary-500 dark:text-secondary-500 m-0">
+            <a href="<?php echo esc_url(home_url('/feed-updates/')); ?>" class="no-underline hover:text-secondary-500 dark:hover:text-secondary-400">
                 <?php esc_html_e('Latest from the Feeds', 'bbj-v2-theme'); ?>
             </a>
         </h2>
     </div>
 
     <div class="relative border-l-2 border-gray-200 dark:border-gray-700 pl-1 sm:pl-0">
-        <?php foreach ($rich_items as $item) :
+        <?php foreach ($first_batch as $item) :
             get_template_part('template-parts/content/feed-update-card', null, [
                 'post'     => $item['post'],
                 'type'     => $item['type'],
@@ -39,31 +40,26 @@ $compact_items = array_slice($items, 5, 5);
             'slot'        => 'homepage_feeds_inline',
             'size'        => '300x250',
             'mobile_size' => '300x250',
-            'note'        => __('Homepage · between rich feeds and more updates', 'bbj-v2-theme'),
+            'note'        => __('Homepage · mid feeds break', 'bbj-v2-theme'),
         ]); ?>
     </div>
 
-    <?php if (!empty($compact_items)) : ?>
-        <div class="mt-6">
-            <h3 class="font-osw uppercase tracking-wider text-sm text-gray-700 dark:text-gray-300 mb-2">
-                <?php esc_html_e('More Updates', 'bbj-v2-theme'); ?>
-            </h3>
-            <ul class="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 px-4">
-                <?php foreach ($compact_items as $item) :
-                    get_template_part('template-parts/content/feed-update-card', null, [
-                        'post'     => $item['post'],
-                        'type'     => $item['type'],
-                        'location' => $item['location'],
-                        'variant'  => 'compact',
-                    ]);
-                endforeach; ?>
-            </ul>
+    <?php if (!empty($second_batch)) : ?>
+        <div class="relative border-l-2 border-gray-200 dark:border-gray-700 pl-1 sm:pl-0">
+            <?php foreach ($second_batch as $item) :
+                get_template_part('template-parts/content/feed-update-card', null, [
+                    'post'     => $item['post'],
+                    'type'     => $item['type'],
+                    'location' => $item['location'],
+                    'variant'  => 'rich',
+                ]);
+            endforeach; ?>
         </div>
     <?php endif; ?>
 
     <p class="mt-4 text-right">
         <a href="<?php echo esc_url(home_url('/feed-updates/')); ?>" class="font-osw uppercase tracking-wider text-sm text-primary-500 dark:text-secondary-500 hover:underline">
-            <?php esc_html_e('See all feed updates →', 'bbj-v2-theme'); ?>
+            <?php esc_html_e('Click here to see more updates →', 'bbj-v2-theme'); ?>
         </a>
     </p>
 </section>

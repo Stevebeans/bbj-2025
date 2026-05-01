@@ -16,6 +16,16 @@ $exclude        = array_merge(
 );
 $stories        = array_slice(bbj_v2_homepage_bb_stories($exclude), 0, 8);
 $season_num     = bbj_v2_current_season_number();
+$season_id      = (int) get_option('bbj_v2_current_season', 0);
+$season_row     = ($season_id > 0 && function_exists('bbj_v2_get_season_by_id'))
+    ? bbj_v2_get_season_by_id($season_id) : null;
+$season_label   = trim((string) ($season_row['full_name'] ?? ''));
+if ($season_label === '' && $season_num > 0) {
+    $season_label = sprintf('Big Brother %d', $season_num);
+}
+$heading = $season_label !== ''
+    ? sprintf(__('More %s Stories', 'bbj-v2-theme'), $season_label)
+    : __('More Stories', 'bbj-v2-theme');
 if (empty($stories)) {
     return;
 }
@@ -59,12 +69,15 @@ $render_card = static function (WP_Post $p): void {
     </article>
 <?php };
 ?>
-<section id="more-bb-stories" class="bbj-more-bb-stories">
-    <h2 class="section-header mb-4">
-        <a href="<?php echo esc_url(home_url('/category/' . bbj_v2_current_season_slug() . '/')); ?>" class="no-underline hover:text-secondary-500">
-            <?php printf(esc_html__('More BB%d Stories', 'bbj-v2-theme'), $season_num); ?>
-        </a>
-    </h2>
+<section id="more-bb-stories" class="bbj-card bbj-more-bb-stories">
+
+    <div class="pb-3 mb-5 border-b" style="border-color:var(--line)">
+        <h2 class="font-osw text-lg md:text-xl uppercase tracking-wide text-primary-500 dark:text-secondary-500 m-0">
+            <a href="<?php echo esc_url(home_url('/category/' . bbj_v2_current_season_slug() . '/')); ?>" class="no-underline hover:text-secondary-500 dark:hover:text-secondary-400">
+                <?php echo esc_html($heading); ?>
+            </a>
+        </h2>
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <?php foreach ($first_half as $p) $render_card($p); ?>

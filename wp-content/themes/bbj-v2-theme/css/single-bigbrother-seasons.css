@@ -11,7 +11,7 @@
 :root{
   --bb-blue:#35546e;--bb-blue-dk:#233C52;--bb-yellow:#FFBF0F;--bb-red:#D23B2B;--bb-green:#1D8A5C;--bb-purple:#6E4A9E;
   --ink:#15181E;--ink-2:#3A404B;--muted:#6B7280;
-  --line:#E5E7EB;--line-2:#D6DADF;--paper:#FBFAF6;--paper-2:#F3F1EA;
+  --line:#E5E7EB;--line-2:#D6DADF;--paper:#F5F2EA;--paper-2:#F3F1EA;
   --display:'Oswald',sans-serif;--serif:'Source Serif 4',Georgia,serif;--sans:'Inter Tight',system-ui,sans-serif;--mono:'IBM Plex Mono',monospace;
 }
 body.single-bigbrother-seasons{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
