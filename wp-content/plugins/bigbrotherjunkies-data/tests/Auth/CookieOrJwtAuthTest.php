@@ -13,6 +13,7 @@ final class CookieOrJwtAuthTest extends TestCase {
 
     protected function tearDown(): void {
         Monkey\tearDown();
+        unset($_SERVER['HTTP_X_BBJ_NONCE']);
         parent::tearDown();
     }
 
