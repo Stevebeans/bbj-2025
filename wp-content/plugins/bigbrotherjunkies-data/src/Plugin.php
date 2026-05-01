@@ -209,7 +209,7 @@ class Plugin
             if (in_array($origin, $allowed_origins, true)) {
                 header('Access-Control-Allow-Origin: ' . $origin);
                 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-                header('Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce');
+                header('Access-Control-Allow-Headers: Authorization, Content-Type, X-WP-Nonce, X-BBJ-Nonce');
                 header('Access-Control-Allow-Credentials: true');
                 header('Access-Control-Max-Age: 86400');
                 status_header(200);

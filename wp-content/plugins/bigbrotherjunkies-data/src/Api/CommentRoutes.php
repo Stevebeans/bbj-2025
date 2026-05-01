@@ -61,7 +61,7 @@ class CommentRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)/vote', [
             'methods' => 'POST',
             'callback' => [$this, 'voteOnComment'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
             'args' => [
                 'comment_id' => [
                     'required' => true,
@@ -94,7 +94,7 @@ class CommentRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)/report', [
             'methods' => 'POST',
             'callback' => [$this, 'reportComment'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
             'args' => [
                 'comment_id' => [
                     'required' => true,
@@ -138,7 +138,7 @@ class CommentRoutes
         register_rest_route($namespace, '/comments', [
             'methods' => 'POST',
             'callback' => [$this, 'postComment'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
             'args' => [
                 'post_id' => [
                     'required' => true,
@@ -166,7 +166,7 @@ class CommentRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)', [
             'methods' => 'PUT',
             'callback' => [$this, 'editComment'],
-            'permission_callback' => [$this, 'checkCanEditComment'],
+            'permission_callback' => [$this, 'checkCanEditCommentWithHelper'],
             'args' => [
                 'comment_id' => [
                     'required' => true,
@@ -185,7 +185,7 @@ class CommentRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)', [
             'methods' => 'DELETE',
             'callback' => [$this, 'deleteComment'],
-            'permission_callback' => [$this, 'checkCanDeleteComment'],
+            'permission_callback' => [$this, 'checkCanDeleteCommentWithHelper'],
             'args' => [
                 'comment_id' => [
                     'required' => true,
@@ -206,7 +206,7 @@ class CommentRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)/pin', [
             'methods' => 'POST',
             'callback' => [$this, 'pinComment'],
-            'permission_callback' => [$this, 'checkCanPin'],
+            'permission_callback' => [$this, 'checkCanPinWithHelper'],
             'args' => [
                 'comment_id' => [
                     'required' => true,
@@ -220,7 +220,7 @@ class CommentRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)/pin', [
             'methods' => 'DELETE',
             'callback' => [$this, 'unpinComment'],
-            'permission_callback' => [$this, 'checkCanPin'],
+            'permission_callback' => [$this, 'checkCanPinWithHelper'],
             'args' => [
                 'comment_id' => [
                     'required' => true,
@@ -985,6 +985,51 @@ class CommentRoutes
     public function checkUserLoggedIn(): bool
     {
         return is_user_logged_in();
+    }
+
+    /**
+     * Permission callback: Edit comment via cookie+nonce or JWT, then check ownership/mod cap
+     */
+    public function checkCanEditCommentWithHelper(\WP_REST_Request $request): bool
+    {
+        if (!bbjd_cookie_or_jwt_permission()) {
+            return false;
+        }
+
+        $commentId = $request->get_param('comment_id');
+        $comment = get_comment($commentId);
+
+        if (!$comment) {
+            return false;
+        }
+
+        $userId = get_current_user_id();
+
+        // Owner can edit or moderators
+        return (int) $comment->user_id === $userId || current_user_can('moderate_comments');
+    }
+
+    /**
+     * Permission callback: Delete comment via cookie+nonce or JWT, then check ownership/mod cap
+     */
+    public function checkCanDeleteCommentWithHelper(\WP_REST_Request $request): bool
+    {
+        return $this->checkCanEditCommentWithHelper($request);
+    }
+
+    /**
+     * Permission callback: Pin/unpin via cookie+nonce or JWT, then check staff role
+     */
+    public function checkCanPinWithHelper(): bool
+    {
+        if (!bbjd_cookie_or_jwt_permission()) {
+            return false;
+        }
+
+        $user = wp_get_current_user();
+        $allowedRoles = ['administrator', 'second_in_command', 'editor', 'comment_mod'];
+
+        return (bool) array_intersect($allowedRoles, $user->roles);
     }
 
     /**

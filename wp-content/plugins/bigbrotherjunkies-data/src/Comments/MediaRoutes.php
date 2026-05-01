@@ -26,14 +26,14 @@ class MediaRoutes
         register_rest_route($namespace, '/comments/media', [
             'methods' => 'POST',
             'callback' => [$this, 'uploadMedia'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
         ]);
 
         // Delete media
         register_rest_route($namespace, '/comments/media/(?P<media_id>\d+)', [
             'methods' => 'DELETE',
             'callback' => [$this, 'deleteMedia'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
             'args' => [
                 'media_id' => [
                     'required' => true,
@@ -47,7 +47,7 @@ class MediaRoutes
         register_rest_route($namespace, '/comments/media/giphy', [
             'methods' => 'POST',
             'callback' => [$this, 'storeGiphy'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
             'args' => [
                 'giphy_id' => [
                     'required' => true,

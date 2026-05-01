@@ -50,7 +50,7 @@ class ReactionRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)/reactions', [
             'methods' => 'POST',
             'callback' => [$this, 'addReaction'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
             'args' => [
                 'comment_id' => [
                     'required' => true,
@@ -69,7 +69,7 @@ class ReactionRoutes
         register_rest_route($namespace, '/comments/(?P<comment_id>\d+)/reactions', [
             'methods' => 'DELETE',
             'callback' => [$this, 'removeReaction'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => 'bbjd_cookie_or_jwt_permission',
             'args' => [
                 'comment_id' => [
                     'required' => true,
