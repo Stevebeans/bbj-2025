@@ -1014,6 +1014,8 @@ class CommentRoutes
      */
     public function checkCanDeleteCommentWithHelper(\WP_REST_Request $request): bool
     {
+        // Delete shares the same ownership + moderate_comments cap as edit.
+        // If edits ever become time-limited, split this method.
         return $this->checkCanEditCommentWithHelper($request);
     }
 

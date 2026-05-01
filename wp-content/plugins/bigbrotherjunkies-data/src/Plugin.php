@@ -194,6 +194,13 @@ class Plugin
             return array_merge($origins, $allowed_origins);
         });
 
+        // Augment WP core's Allow-Headers list (rest_send_cors_headers) so the
+        // X-BBJ-Nonce header survives on actual requests, not just preflights.
+        add_filter('rest_allowed_cors_headers', function ($headers) {
+            $headers[] = 'X-BBJ-Nonce';
+            return $headers;
+        });
+
         // Handle preflight OPTIONS requests early, before WordPress loads
         add_action('init', function () use ($allowed_origins) {
             $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
