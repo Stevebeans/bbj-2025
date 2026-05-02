@@ -295,12 +295,14 @@ class AuthRoutes
         register_rest_route(self::NAMESPACE, '/auth/refresh-nonce', [
             'methods'             => 'GET',
             'callback'            => [$this, 'refreshNonce'],
-            'permission_callback' => [$this, 'checkLoggedIn'],
+            'permission_callback' => [$this, 'checkUserLoggedIn'],
         ]);
     }
 
     /**
      * Return a fresh WP nonce for comment submissions.
+     *
+     * @return \WP_REST_Response JSON body: {nonce: string} — nonce for action 'bbj_comments'.
      */
     public function refreshNonce(): \WP_REST_Response
     {
@@ -310,7 +312,7 @@ class AuthRoutes
     /**
      * Permission callback: allow only logged-in users.
      */
-    public function checkLoggedIn(): bool
+    public function checkUserLoggedIn(): bool
     {
         return is_user_logged_in();
     }

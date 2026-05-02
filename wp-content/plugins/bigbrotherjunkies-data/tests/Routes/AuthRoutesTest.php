@@ -21,6 +21,6 @@ final class AuthRoutesTest extends TestCase {
     public function test_refresh_nonce_rejects_anonymous(): void {
         Functions\when('is_user_logged_in')->justReturn(false);
         $route = new \BigBrotherJunkies\Data\Api\AuthRoutes();
-        $this->assertFalse($route->checkLoggedIn());
+        $this->assertFalse($route->checkUserLoggedIn());
     }
 }
