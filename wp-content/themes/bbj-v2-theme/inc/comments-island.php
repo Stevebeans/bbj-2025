@@ -7,12 +7,16 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+function bbj_v2_comments_plain_mode(): bool {
+    return isset($_GET['bbjcomments']) && sanitize_key(wp_unslash($_GET['bbjcomments'])) === 'plain';
+}
+
 add_filter('comments_template', 'bbj_v2_comments_island_template', 20);
 function bbj_v2_comments_island_template(string $original): string {
     if (!comments_open()) {
         return $original;
     }
-    if (!empty($_GET['bbjcomments']) && $_GET['bbjcomments'] === 'plain') {
+    if (bbj_v2_comments_plain_mode()) {
         return get_template_directory() . '/template-parts/comments/plain-fallback.php';
     }
     return get_template_directory() . '/template-parts/comments/island-placeholder.php';
@@ -21,17 +25,13 @@ function bbj_v2_comments_island_template(string $original): string {
 add_action('wp_enqueue_scripts', 'bbj_v2_comments_island_enqueue');
 function bbj_v2_comments_island_enqueue(): void {
     if (!is_singular() || !comments_open()) return;
-    if (!empty($_GET['bbjcomments']) && $_GET['bbjcomments'] === 'plain') return;
-
-    $themeUri  = get_template_directory_uri();
-    $buildPath = get_template_directory() . '/build/comments/bootstrap.js';
-    $version   = file_exists($buildPath) ? (string) filemtime($buildPath) : '1';
+    if (bbj_v2_comments_plain_mode()) return;
 
     wp_enqueue_script(
         'bbj-comments-bootstrap',
-        $themeUri . '/build/comments/bootstrap.js',
+        get_template_directory_uri() . '/build/comments/bootstrap.js',
         [],
-        $version,
+        bbj_v2_asset_ver('/build/comments/bootstrap.js'),
         true
     );
 
