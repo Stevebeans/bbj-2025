@@ -253,8 +253,7 @@ class CommentRoutes
         // would leak one user's state to another.
         $isAnon = ! is_user_logged_in();
         if ($isAnon) {
-            $cacheKey = CommentsReadCache::versionedKey($postId, $page, $sort);
-            $cached   = wp_cache_get($cacheKey, 'bbj_v2');
+            $cached = CommentsReadCache::get($postId, $page, $sort);
             if ($cached !== false) {
                 return new \WP_REST_Response($cached, 200);
             }
@@ -358,7 +357,7 @@ class CommentRoutes
 
         // Store in cache for anonymous readers.
         if ($isAnon) {
-            wp_cache_set($cacheKey, $payload, 'bbj_v2', 60);
+            CommentsReadCache::set($postId, $page, $sort, $payload);
         }
 
         return new \WP_REST_Response($payload, 200);

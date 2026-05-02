@@ -24,13 +24,8 @@ class CommentsReadCache
     private const TTL   = 60;
 
     // ---------------------------------------------------------------
-    // Key helpers
+    // Key helper
     // ---------------------------------------------------------------
-
-    public static function key(int $postId, int $page, string $sort): string
-    {
-        return sprintf('bbj_comments_%d_p%d_s%s', $postId, $page, $sort);
-    }
 
     /**
      * Return a versioned cache key for this post/page/sort combination.
@@ -44,17 +39,17 @@ class CommentsReadCache
     }
 
     // ---------------------------------------------------------------
-    // Read / write
+    // Read / write — versioned, the only API callers should use.
     // ---------------------------------------------------------------
 
     public static function get(int $postId, int $page, string $sort)
     {
-        return wp_cache_get(self::key($postId, $page, $sort), self::GROUP);
+        return wp_cache_get(self::versionedKey($postId, $page, $sort), self::GROUP);
     }
 
     public static function set(int $postId, int $page, string $sort, $payload): bool
     {
-        return wp_cache_set(self::key($postId, $page, $sort), $payload, self::GROUP, self::TTL);
+        return wp_cache_set(self::versionedKey($postId, $page, $sort), $payload, self::GROUP, self::TTL);
     }
 
     // ---------------------------------------------------------------
@@ -102,8 +97,17 @@ class CommentsReadCache
             }
         }, 10, 1);
 
-        // deleted_comment passes $comment_id (comment already removed from DB) —
-        // we may not be able to look it up, so accept possible miss on bust.
+        // delete_comment fires BEFORE the row is removed — get_comment() still resolves.
+        // We use this for the actual bust; deleted_comment is kept as a belt-and-suspenders
+        // fallback in case some path skips the pre-delete hook.
+        add_action('delete_comment', function ($commentId) {
+            $comment = get_comment($commentId);
+            $postId  = $comment ? (int) $comment->comment_post_ID : 0;
+            if ($postId > 0) {
+                self::bust($postId);
+            }
+        }, 10, 1);
+
         add_action('deleted_comment', function ($commentId) {
             $comment = get_comment($commentId);
             $postId  = $comment ? (int) $comment->comment_post_ID : 0;
