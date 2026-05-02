@@ -18,6 +18,7 @@ function bbj_create_player_season_table() {
         bbj_season              BIGINT(20) UNSIGNED NOT NULL,
         bbj_player              BIGINT(20) UNSIGNED NOT NULL,
         bbj_evicted_date        DATE             DEFAULT NULL,
+        finish_place            TINYINT(3) UNSIGNED DEFAULT NULL,
         bbj_total_hoh           INT(11)          NOT NULL DEFAULT 0,
         bbj_total_pov           INT(11)          NOT NULL DEFAULT 0,
         bbj_total_nom           INT(11)          NOT NULL DEFAULT 0,

@@ -138,13 +138,6 @@ function bbj_player_season_link_meta_boxes( $meta_boxes ) {
         'type' => 'number',
         'required'  => false,
       ],
-      // saved from block 
-      [
-        'name' => esc_html__( 'Saved from Block', 'your-textdomain' ),
-        'id'   => $prefix . 'saved_from_block',
-        'type' => 'checkbox',
-        'required'  => false,
-      ],
        // Current pointers (many-to-many)
             [
                 'name'      => __( 'Current HOHs',            'bbj-tools' ),

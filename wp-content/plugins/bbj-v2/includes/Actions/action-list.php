@@ -35,9 +35,35 @@ add_action( 'admin_post_bbj_v2_edit_season_info', 'BBJ_load_update_season_info_h
 
 function BBJ_load_update_season_info_handler() {
     // only now load the heavy logic
-    bbj_log3(print_r('hey', true));
     require_once BBJ_FORM_SUBMITS . 'update-season.php';
     bbj_v2_edit_season_info();
+}
+
+// Create a new season (draft)
+add_action( 'admin_post_bbj_v2_create_season', 'BBJ_load_create_season_handler' );
+
+function BBJ_load_create_season_handler() {
+    // only now load the heavy logic
+    require_once BBJ_FORM_SUBMITS . 'create-season.php';
+    bbj_v2_create_season();
+}
+
+// Purge spoiler-bar cache for a single season (no DB writes)
+add_action( 'admin_post_bbj_v2_purge_season_cache', 'BBJ_load_purge_season_cache_handler' );
+
+function BBJ_load_purge_season_cache_handler() {
+    // only now load the heavy logic
+    require_once BBJ_FORM_SUBMITS . 'purge-season-cache.php';
+    bbj_v2_purge_season_cache();
+}
+
+// Set the current season (global option bbj_v2_current_season)
+add_action( 'admin_post_bbj_v2_set_current_season', 'BBJ_load_set_current_season_handler' );
+
+function BBJ_load_set_current_season_handler() {
+    // only now load the heavy logic
+    require_once BBJ_FORM_SUBMITS . 'set-current-season.php';
+    bbj_v2_set_current_season();
 }
 
 // Add or Edit Player Information

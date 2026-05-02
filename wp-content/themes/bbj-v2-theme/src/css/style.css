@@ -1,0 +1,381 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --line: #E5E7EB;
+}
+
+@layer components {
+  .bbj-card {
+    background: #fff;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 22px;
+    margin-bottom: 16px;
+  }
+
+  .v2-primary-container {
+    @apply mx-auto mb-4 mt-4 max-w-screen-xl px-2;
+  }
+
+  .v2-primary-container-inner {
+    @apply relative overflow-hidden;
+  }
+
+  .section-header {
+    @apply font-osw text-2xl font-semibold text-primary-500
+      dark:text-secondary-500 uppercase tracking-wide;
+  }
+
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-white font-osw uppercase
+      tracking-wider px-6 py-3 rounded-lg transition-all duration-200
+      hover:-translate-y-0.5 hover:shadow-lg;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary-500 hover:bg-secondary-600 text-primary-600 font-osw uppercase
+      tracking-wider px-6 py-3 rounded-lg transition-all duration-200
+      hover:-translate-y-0.5 hover:shadow-lg;
+  }
+
+  .input {
+    @apply w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-200
+      dark:border-gray-600 rounded-xl text-gray-900 dark:text-white
+      placeholder-gray-400 focus:outline-none focus:border-primary-500
+      focus:ring-2 focus:ring-primary-500/20 transition-all;
+  }
+
+  .bbj-status-strip {
+    @apply bg-gray-900 dark:bg-black border-b border-gray-700 text-white;
+  }
+
+  .bbj-ticker {
+    @apply relative overflow-hidden min-w-0 flex-1;
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+            mask-image: linear-gradient(90deg, transparent, #000 24px, #000 calc(100% - 24px), transparent);
+  }
+  .bbj-ticker-track {
+    @apply inline-flex items-center whitespace-nowrap;
+    animation: bbj-ticker-slide 60s linear infinite;
+  }
+  .bbj-ticker:hover .bbj-ticker-track,
+  .bbj-ticker:focus-within .bbj-ticker-track {
+    animation-play-state: paused;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .bbj-ticker-track { animation: none; }
+  }
+  .bbj-hero-post { @apply block; }
+  .bbj-sidebar-card {
+    @apply pb-6 mb-6 last:mb-0 last:pb-0;
+  }
+
+  .bbj-hb-panel {
+    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4;
+  }
+  .bbj-hb-label {
+    @apply font-osw uppercase tracking-wider text-xs text-center;
+  }
+  .bbj-hb-avatar {
+    @apply relative inline-flex items-center justify-center w-12 h-12 rounded-full
+           ring-2 ring-offset-2 ring-offset-white dark:ring-offset-gray-800 overflow-hidden;
+  }
+
+  /* ----- Single post / page typography ----- */
+  .bbj-post-body {
+    @apply text-[17px] leading-[1.7] text-gray-800 dark:text-gray-200;
+  }
+  .bbj-post-body > p {
+    @apply mb-6;
+  }
+  .bbj-post-body > p:first-of-type::first-letter {
+    @apply float-left font-display font-bold mr-3 mt-2 leading-none text-primary-500 dark:text-secondary-500;
+    font-size: 5rem;
+  }
+  .bbj-post-body h2 {
+    @apply font-osw uppercase tracking-wide font-bold text-2xl md:text-3xl text-gray-900 dark:text-gray-100
+           mt-12 mb-4 pt-6 border-t border-gray-300 dark:border-gray-700;
+  }
+  .bbj-post-body h3 {
+    @apply font-osw uppercase tracking-wide font-bold text-lg md:text-xl text-gray-900 dark:text-gray-100 mt-8 mb-3;
+  }
+  .bbj-post-body blockquote {
+    @apply border-l-4 border-secondary-500 pl-5 pr-4 py-3 my-8
+           bg-gray-50 dark:bg-gray-800/50 italic text-lg md:text-xl leading-snug text-gray-800 dark:text-gray-200;
+  }
+  .bbj-post-body a {
+    @apply text-primary-500 dark:text-secondary-500 underline hover:no-underline;
+  }
+  .bbj-post-body ul {
+    @apply list-disc pl-6 mb-6 space-y-2 marker:text-primary-500 dark:marker:text-secondary-500;
+  }
+  .bbj-post-body ol {
+    @apply list-decimal pl-6 mb-6 space-y-2 marker:text-primary-500 dark:marker:text-secondary-500 marker:font-osw;
+  }
+  .bbj-post-body img {
+    @apply my-8;
+  }
+  .bbj-post-body strong {
+    @apply font-bold text-gray-900 dark:text-gray-100;
+  }
+  .bbj-post-body figure {
+    @apply my-8;
+  }
+  .bbj-post-body figcaption {
+    @apply mt-2 text-xs text-gray-500 dark:text-gray-400 text-center italic;
+  }
+
+  .bbj-share-btn {
+    @apply inline-flex items-center justify-center w-9 h-9 rounded-full border border-gray-300 dark:border-gray-600
+           text-gray-700 dark:text-gray-300 hover:text-primary-500 hover:border-primary-500
+           dark:hover:text-secondary-500 dark:hover:border-secondary-500 transition-colors cursor-pointer;
+  }
+  .bbj-share-btn.is-copied {
+    @apply text-emerald-600 border-emerald-600 dark:text-emerald-400 dark:border-emerald-400;
+  }
+
+  .spoilerbar-hoh     { @apply border-emerald-600 bg-emerald-600 text-white; }
+  .spoilerbar-pov     { @apply border-yellow-500 bg-yellow-500 text-yellow-950; }
+  .spoilerbar-active  { @apply border-slate-300 bg-slate-200 text-slate-700; }
+  .spoilerbar-nom     { @apply border-red-500 bg-red-500 text-white; }
+  .spoilerbar-evicted { @apply border-slate-400 bg-slate-400 text-white; }
+  .spoilerbar-jury    { @apply border-indigo-600 bg-indigo-600 text-white; }
+  .spoilerbar-winner  { @apply border-yellow-500 bg-gradient-to-b from-yellow-400 to-yellow-600 text-slate-900 font-bold; }
+  .spoilerbar-afp     { @apply border-pink-500 bg-gradient-to-b from-pink-400 to-pink-600 text-white; }
+  .spoilerbar-safe    { @apply border-green-200 bg-green-100 text-green-900; }
+  .spoilerbar-havenot { @apply border-amber-700 bg-amber-700 text-white; }
+  .spoilerbar-runnerup{ @apply border-sky-500 bg-sky-500 text-white; }
+
+  .spoilerbar-evicted-img { @apply grayscale opacity-75; }
+  .spoilerbar-jury-img    { @apply grayscale-[40%] opacity-85; }
+
+  /* Compact spoiler bar — always-on-header, collapsible. */
+  .bbj-spoiler-bar {
+    @apply bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700;
+  }
+  .bbj-spoiler-head {
+    @apply flex items-center justify-between gap-3 py-2;
+  }
+  .bbj-spoiler-toggle {
+    @apply inline-flex items-center gap-1 text-[11px] sm:text-xs font-osw uppercase tracking-wider
+      text-primary-500 hover:text-primary-600 dark:text-secondary-500 dark:hover:text-secondary-400
+      whitespace-nowrap transition-colors;
+  }
+  .bbj-spoiler-toggle-icon {
+    @apply inline-flex items-center justify-center w-4 h-4 text-base leading-none;
+  }
+  .bbj-spoiler-body {
+    @apply overflow-hidden transition-[max-height,opacity] duration-200 ease-out;
+    max-height: 160px;
+  }
+  .bbj-spoiler-bar.is-collapsed .bbj-spoiler-body {
+    @apply opacity-0;
+    max-height: 0;
+  }
+  /* Drag-to-scroll cursor on the scroll wrapper. */
+  [data-spoiler-bar] {
+    @apply cursor-grab select-none;
+  }
+  [data-spoiler-bar]:active { @apply cursor-grabbing; }
+
+  /* Card-banner-photo-name layout (matches bbj-app live design). The
+     .spoilerbar-{status} classes carry the colored backgrounds + borders. */
+  .bbj-spoiler-card {
+    @apply flex-none w-[52px] lg:w-14 no-underline rounded-md overflow-hidden
+      transition-transform hover:-translate-y-0.5;
+  }
+  .bbj-spoiler-banner {
+    @apply text-center text-[10px] leading-tight font-sans py-0.5 px-1
+      border-t-2 border-r-2 border-l-2 rounded-t-md truncate;
+  }
+  .bbj-spoiler-photo {
+    @apply relative block w-full h-12 lg:h-[80px] overflow-hidden
+      border-l-2 border-r-2 bg-stone-200 dark:bg-slate-700;
+  }
+  .bbj-spoiler-photo-fallback {
+    @apply absolute inset-0 flex items-center justify-center
+      font-osw uppercase text-base font-semibold text-stone-600 dark:text-slate-300;
+  }
+  .bbj-spoiler-namebar {
+    @apply text-center text-[10px] leading-tight font-sans py-0.5 px-1
+      border-l-2 border-r-2 border-b-2 rounded-b-md truncate;
+  }
+
+  /* Auth modal — shared chrome for login/register/link/forgot/reset views. */
+  .bbj-modal {
+    @apply fixed inset-0 z-[100] hidden items-center justify-center bg-black/50 p-4;
+  }
+  .bbj-modal.is-open {
+    @apply flex;
+  }
+  .bbj-modal-dialog {
+    @apply bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto;
+  }
+  .bbj-modal-header {
+    @apply flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700;
+  }
+  .bbj-modal-title {
+    @apply text-xl font-display text-primary-500 dark:text-primary-400;
+  }
+  .bbj-modal-close {
+    @apply p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded;
+  }
+  .bbj-modal-body {
+    @apply p-4;
+  }
+  .bbj-modal-view {
+    @apply space-y-4 hidden;
+  }
+  .bbj-modal-view.is-active {
+    @apply block;
+  }
+
+  .bbj-field-error {
+    @apply mt-1 text-sm text-red-500;
+  }
+  .bbj-form-error {
+    @apply p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm;
+  }
+  .bbj-divider {
+    @apply relative text-center;
+  }
+  .bbj-divider::before {
+    content: "";
+    @apply absolute left-0 right-0 top-1/2 border-t border-gray-200 dark:border-gray-700;
+  }
+  .bbj-divider > span {
+    @apply relative inline-block px-2 bg-white dark:bg-gray-800 text-sm text-gray-500;
+  }
+
+  /* Primary nav link — matches the Polished mockup: uppercase, block padding,
+     darker blue on hover/active, yellow bottom bar on active. */
+  .bbj-nav-link {
+    @apply relative inline-flex items-center px-4 py-3 font-osw uppercase tracking-wider
+      text-sm text-white hover:text-white hover:bg-primary-600 transition-colors
+      dark:text-white dark:hover:text-white;
+  }
+  .bbj-nav .current-menu-item > .bbj-nav-link,
+  .bbj-nav .current_page_item > .bbj-nav-link,
+  .bbj-nav .current-menu-ancestor > .bbj-nav-link,
+  .bbj-nav-link.is-active {
+    @apply bg-primary-600 text-white dark:text-white;
+  }
+  .bbj-nav .current-menu-item > .bbj-nav-link::after,
+  .bbj-nav .current_page_item > .bbj-nav-link::after,
+  .bbj-nav .current-menu-ancestor > .bbj-nav-link::after,
+  .bbj-nav-link.is-active::after {
+    content: "";
+    @apply absolute left-4 right-4 bottom-0 h-[3px] bg-secondary-500;
+  }
+
+  /* Watch Live Feeds pill (far-right red CTA with pulsing dot). */
+  .bbj-nav-watch {
+    @apply ml-auto inline-flex items-center gap-2 px-4 py-3 font-osw uppercase tracking-wider
+      text-sm text-white bg-accent-red hover:bg-accent-red/90 hover:text-white transition-colors
+      whitespace-nowrap dark:text-white dark:hover:text-white;
+  }
+  .bbj-nav-watch::before {
+    content: "";
+    @apply w-2 h-2 rounded-full bg-white animate-pulse;
+  }
+
+  /* Mobile nav — hamburger trigger and slide-down panel (below md). */
+  .bbj-mnav-toggle {
+    @apply inline-flex items-center gap-2 px-4 py-3 text-white
+      hover:bg-primary-600 transition-colors;
+  }
+  .bbj-mnav-burger {
+    @apply inline-flex flex-col justify-center w-5 h-5;
+  }
+  .bbj-mnav-burger > span {
+    @apply block h-0.5 w-full bg-current transition-transform duration-200;
+    margin: 2px 0;
+  }
+  [aria-expanded="true"] .bbj-mnav-burger > span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  [aria-expanded="true"] .bbj-mnav-burger > span:nth-child(2) {
+    @apply opacity-0;
+  }
+  [aria-expanded="true"] .bbj-mnav-burger > span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+
+  .bbj-mnav-panel {
+    @apply absolute left-0 right-0 top-full z-40 bg-primary-500 text-white
+      shadow-lg border-t border-primary-600 overflow-hidden
+      max-h-0 opacity-0 transition-[max-height,opacity] duration-200 ease-out;
+  }
+  .bbj-mnav-panel.is-open {
+    @apply max-h-[80vh] opacity-100 overflow-y-auto;
+  }
+  .bbj-mnav-panel--inline {
+    @apply static max-h-0 opacity-0;
+  }
+  .bbj-mnav-panel--inline.is-open {
+    @apply max-h-[70vh] opacity-100 overflow-y-auto;
+  }
+
+  .bbj-action-bar {
+    @apply flex items-center justify-between bg-primary-500 text-white text-xs px-3 py-2;
+  }
+  .bbj-action-link {
+    @apply inline-flex items-center gap-2 font-osw uppercase tracking-wider
+      text-secondary-500 hover:text-secondary-400 transition;
+  }
+  .bbj-live-pill {
+    @apply inline-flex items-center gap-1 bg-accent-red text-white
+      rounded px-1.5 py-0.5 text-[10px] font-bold no-underline;
+  }
+  .bbj-live-dot {
+    @apply inline-block w-1.5 h-1.5 rounded-full bg-white animate-pulse;
+  }
+
+  .bbj-search-modal {
+    @apply fixed inset-0 z-[110] bg-white dark:bg-gray-900
+      opacity-0 transition-opacity duration-150 ease-out;
+  }
+  .bbj-search-modal.is-open {
+    @apply opacity-100;
+  }
+  .bbj-search-modal-bar {
+    @apply flex items-center gap-2 px-3 py-3 border-b border-gray-200 dark:border-gray-700;
+  }
+  .bbj-search-modal-back {
+    @apply p-2 rounded hover:bg-gray-100 dark:hover:bg-gray-800
+      text-gray-700 dark:text-gray-200 transition;
+  }
+  .bbj-search-modal-form {
+    @apply flex-1;
+  }
+
+  .bbj-mnav {
+    @apply list-none m-0 p-0;
+  }
+  .bbj-mnav > li {
+    @apply border-b border-primary-600/50 last:border-b-0;
+  }
+  .bbj-mnav-link {
+    @apply block w-full px-4 py-4 font-osw uppercase tracking-wider
+      text-base text-white hover:text-white hover:bg-primary-600 transition-colors
+      dark:text-white dark:hover:text-white;
+  }
+  .bbj-mnav .current-menu-item > .bbj-mnav-link,
+  .bbj-mnav .current_page_item > .bbj-mnav-link,
+  .bbj-mnav .current-menu-ancestor > .bbj-mnav-link,
+  .bbj-mnav-link.is-active {
+    @apply bg-primary-600 text-white border-l-4 border-secondary-500;
+  }
+}
+
+@layer base {
+  a { @apply text-primary-500 transition hover:text-secondary-500
+        dark:text-primary-400 dark:hover:text-secondary-500; }
+}
+
+@keyframes bbj-ticker-slide {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}

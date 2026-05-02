@@ -52,6 +52,38 @@ node_modules/
 Thumbs.db
 .env
 
+# Database dumps (contain user data — NEVER commit to a public-facing repo)
+/*.sql
+/bbj_db_backup*.sql
+
+# Windows shell artifacts (`> nul` and the occasional weird path)
+/nul
+/C\357\200\272*
+
+# Stray binaries / downloads in repo root
+/*.pdf
+
+# Sibling Next.js project (has its own git)
+/bbj-next/
+
+# UpdraftPlus backup archives
+/wp-content/updraft/
+
+# Backup / legacy / scratch copies of files
+*.bak
+*.legacy.bak
+*.legacy.php
+
+# Claude Code per-machine state (keep .claude/project + .claude/commands tracked)
+/.claude/claude-design/
+/.claude/data/
+/.claude/roadmap/
+/.cp-images/
+/.superpowers/
+
+# Plugin-local Claude session state
+/wp-content/plugins/*/.claude/
+
 # WordPress core bootstrap/config in the repo root
 /index.php
 /wp-activate.php

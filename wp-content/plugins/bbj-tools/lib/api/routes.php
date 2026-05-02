@@ -7,21 +7,25 @@ add_action('rest_api_init', function () {
   register_rest_route('bbj/v1', '/create-player', array(
     'methods' => 'POST',
     'callback' => 'create_bigbrother_player',
+    'permission_callback' => '__return_true',
   ));
 
   register_rest_route('bbj/v1', '/get-players', array(
     'methods' => 'GET',
     'callback' => 'get_player_list',
+    'permission_callback' => '__return_true',
   ));
 
   register_rest_route('bbj/v1', '/get-seasons', array(
     'methods' => 'GET',
     'callback' => 'get_season_list',
+    'permission_callback' => '__return_true',
   ));
 
   register_rest_route('bbj/v1', '/create-season', array(
     'methods' => 'POST',
     'callback' => 'create_bigbrother_season',
+    'permission_callback' => '__return_true',
   ));
 
   // register_rest_route('bbj/v1', '/feed-update', array(
@@ -36,22 +40,26 @@ add_action('rest_api_init', function () {
   register_rest_route( 'bbj/v1', '/get-season/(?P<seasonId>\d+)', array(
     'methods' => 'GET',
     'callback' => 'get_season_lookup',
+    'permission_callback' => '__return_true',
   ) );
 
 
   register_rest_route( 'bbj/v1', '/get-player/(?P<playerId>\d+)', array(
     'methods' => 'GET',
     'callback' => 'get_player_lookup',
+    'permission_callback' => '__return_true',
   ) );
 
   register_rest_route( 'bbj/v1', 'add-player-to-season/', array(
     'methods' => 'POST',
     'callback' => 'add_player_to_season',
+    'permission_callback' => '__return_true',
   ) );
 
   register_rest_route( 'bbj/v1', 'remove-player-from-season', array(
     'methods' => 'POST',
     'callback' => 'remove_player_season',
+    'permission_callback' => '__return_true',
   ) );
 
   register_rest_route( 'bbj/v1', 'add_comment', [

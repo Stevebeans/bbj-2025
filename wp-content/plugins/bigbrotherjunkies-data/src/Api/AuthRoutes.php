@@ -4,7 +4,11 @@ namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Auth\GoogleOAuth;
 use BigBrotherJunkies\Data\Auth\Integrations\MailPoetSubscriber;
+use BigBrotherJunkies\Data\Auth\WpSessionBridge;
+use BigBrotherJunkies\Data\Comments\AvatarUploader;
+use BigBrotherJunkies\Data\Comments\RankCalculator;
 use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
 
 /**
  * REST API routes for authentication
@@ -13,10 +17,12 @@ use Firebase\JWT\JWT;
  * - Google OAuth sign-in
  * - Email/password registration
  * - Password reset
+ * - Token validation (for Next.js auth context)
  */
 class AuthRoutes
 {
     private const NAMESPACE = 'bbjd/v1';
+    private const NAMESPACE_V3 = 'bbj/v3';
 
     /**
      * Register the routes
@@ -24,6 +30,34 @@ class AuthRoutes
     public function register(): void
     {
         add_action('rest_api_init', [$this, 'registerRoutes']);
+
+        // Filter JWT auth plugin's token expiration based on remember_me parameter
+        add_filter('jwt_auth_expire', [$this, 'filterJwtExpiration'], 10, 2);
+    }
+
+    /**
+     * Filter JWT token expiration based on remember_me parameter
+     * Works with the jwt-authentication-for-wp-rest-api plugin
+     *
+     * @param int $expire Token expiration timestamp
+     * @param int $issuedAt Token issued at timestamp
+     * @return int Modified expiration timestamp
+     */
+    public function filterJwtExpiration(int $expire, int $issuedAt): int
+    {
+        // Check if this is a REST API request with remember_me parameter
+        $requestBody = file_get_contents('php://input');
+        $data = json_decode($requestBody, true);
+
+        // Default to remembered (14 days) for backwards compatibility
+        $rememberMe = $data['remember_me'] ?? true;
+
+        // If not remembered, use 1 day expiration; if remembered, use 14 days
+        if ($rememberMe) {
+            return $issuedAt + (DAY_IN_SECONDS * 14);
+        } else {
+            return $issuedAt + DAY_IN_SECONDS;
+        }
     }
 
     /**
@@ -41,6 +75,16 @@ class AuthRoutes
                     'required' => true,
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'remember_me' => [
+                    'required' => false,
+                    'type' => 'boolean',
+                    'default' => true,
+                ],
+                'wp_session' => [
+                    'required' => false,
+                    'type' => 'integer',
+                    'default' => 0,
                 ],
             ],
         ]);
@@ -64,6 +108,11 @@ class AuthRoutes
                     'required' => true,
                     'type' => 'string',
                 ],
+                'wp_session' => [
+                    'required' => false,
+                    'type' => 'integer',
+                    'default' => 0,
+                ],
             ],
         ]);
 
@@ -77,6 +126,34 @@ class AuthRoutes
                     'required' => true,
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_email',
+                ],
+            ],
+        ]);
+
+        // Password reset (set new password)
+        register_rest_route(self::NAMESPACE, '/auth/reset-password', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handleResetPassword'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'key' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'login' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'password' => [
+                    'required' => true,
+                    'type' => 'string',
+                ],
+                'wp_session' => [
+                    'required' => false,
+                    'type' => 'integer',
+                    'default' => 0,
                 ],
             ],
         ]);
@@ -108,6 +185,35 @@ class AuthRoutes
             ],
         ]);
 
+        // Username/password login → WordPress native session cookie.
+        // Intended for the bbj-v2 PHP theme. Next.js continues to use /jwt-auth/v1/token.
+        register_rest_route(self::NAMESPACE, '/auth/login', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handleLogin'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'username' => [
+                    'required' => true,
+                    'type' => 'string',
+                    'sanitize_callback' => 'sanitize_text_field',
+                ],
+                'password' => [
+                    'required' => true,
+                    'type' => 'string',
+                ],
+                'remember_me' => [
+                    'required' => false,
+                    'type' => 'boolean',
+                    'default' => true,
+                ],
+                'wp_session' => [
+                    'required' => false,
+                    'type' => 'integer',
+                    'default' => 1,
+                ],
+            ],
+        ]);
+
         // Link Google account to existing user (requires credentials)
         register_rest_route(self::NAMESPACE, '/auth/link-google', [
             'methods' => 'POST',
@@ -127,6 +233,16 @@ class AuthRoutes
                     'required' => true,
                     'type' => 'string',
                 ],
+                'remember_me' => [
+                    'required' => false,
+                    'type' => 'boolean',
+                    'default' => true,
+                ],
+                'wp_session' => [
+                    'required' => false,
+                    'type' => 'integer',
+                    'default' => 0,
+                ],
             ],
         ]);
 
@@ -141,8 +257,64 @@ class AuthRoutes
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                'remember_me' => [
+                    'required' => false,
+                    'type' => 'boolean',
+                    'default' => true,
+                ],
+                'wp_session' => [
+                    'required' => false,
+                    'type' => 'integer',
+                    'default' => 0,
+                ],
             ],
         ]);
+
+        // Get current user data from Bearer token (for refreshUser in Next.js)
+        register_rest_route(self::NAMESPACE, '/auth/me', [
+            'methods' => 'GET',
+            'callback' => [$this, 'handleGetMe'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Validate JWT token and return user data (for Next.js auth context)
+        // Uses bbj/v3 namespace for frontend compatibility
+        register_rest_route(self::NAMESPACE_V3, '/validate-token', [
+            'methods' => 'POST',
+            'callback' => [$this, 'handleValidateToken'],
+            'permission_callback' => '__return_true',
+            'args' => [
+                'token' => [
+                    'required' => true,
+                    'type' => 'string',
+                ],
+            ],
+        ]);
+
+        // Refresh WP nonce for comment submissions (logged-in only)
+        register_rest_route(self::NAMESPACE, '/auth/refresh-nonce', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'refreshNonce'],
+            'permission_callback' => [$this, 'checkUserLoggedIn'],
+        ]);
+    }
+
+    /**
+     * Return a fresh WP nonce for comment submissions.
+     *
+     * @return \WP_REST_Response JSON body: {nonce: string} — nonce for action 'bbj_comments'.
+     */
+    public function refreshNonce(): \WP_REST_Response
+    {
+        return new \WP_REST_Response(['nonce' => wp_create_nonce('bbj_comments')], 200);
+    }
+
+    /**
+     * Permission callback: allow only logged-in users.
+     */
+    public function checkUserLoggedIn(): bool
+    {
+        return is_user_logged_in();
     }
 
     /**
@@ -152,7 +324,12 @@ class AuthRoutes
      */
     public function handleGoogleAuth(\WP_REST_Request $request)
     {
+        if ($err = WpSessionBridge::verifyNonce($request)) {
+            return $err;
+        }
+
         $credential = $request->get_param('credential');
+        $rememberMe = $request->get_param('remember_me') ?? true;
 
         $googleOAuth = new GoogleOAuth();
 
@@ -193,8 +370,8 @@ class AuthRoutes
         $user = $result['user'];
         $accountLinked = $result['account_linked'] ?? false;
 
-        // Generate JWT token
-        $token = $this->generateJwtToken($user);
+        // Generate JWT token with remember_me preference
+        $token = $this->generateJwtToken($user, $rememberMe);
 
         if (is_wp_error($token)) {
             return $token;
@@ -205,6 +382,9 @@ class AuthRoutes
             $message = __('Your Google account has been linked to your existing BBJ account.', 'bigbrotherjunkies-data');
         }
 
+        // Opt-in WP-native session for PHP theme consumers.
+        WpSessionBridge::maybeSetAuthCookie((int) $user->ID, (bool) $rememberMe, $request);
+
         return new \WP_REST_Response([
             'success' => true,
             'message' => $message,
@@ -214,7 +394,8 @@ class AuthRoutes
                 'email' => $user->user_email,
                 'username' => $user->user_login,
                 'display_name' => $user->display_name,
-                'avatar' => get_avatar_url($user->ID),
+                'avatar' => AvatarUploader::getAvatarUrl($user->ID),
+                'roles' => array_values((array) $user->roles),
             ],
             'is_new_user' => false,
             'account_linked' => $accountLinked,
@@ -228,6 +409,10 @@ class AuthRoutes
      */
     public function handleRegister(\WP_REST_Request $request)
     {
+        if ($err = WpSessionBridge::verifyNonce($request)) {
+            return $err;
+        }
+
         // Verify reCAPTCHA if configured
         $recaptchaToken = $request->get_param('recaptcha_token');
         $recaptchaResult = $this->verifyRecaptcha($recaptchaToken);
@@ -324,14 +509,13 @@ class AuthRoutes
         // Send verification email
         $this->sendVerificationEmail($data['email'], $data['username'], $verificationToken);
 
-        // Handle newsletter subscription
+        // Handle post notifications subscription (double opt-in)
         if ($data['subscribe_newsletter']) {
             try {
-                $subscriber = new MailPoetSubscriber();
-                $subscriber->subscribe($data['email'], '', '');
+                $emailService = new \BigBrotherJunkies\Data\Email\EmailService();
+                $emailService->subscribe($data['email'], 'registration', ['post-notifications']);
             } catch (\Exception $e) {
-                // Log error but don't fail registration
-                error_log('BBJD Newsletter subscription failed: ' . $e->getMessage());
+                error_log('BBJD Email subscription failed: ' . $e->getMessage());
             }
         }
 
@@ -358,6 +542,7 @@ class AuthRoutes
         if (is_wp_error($token)) {
             // Registration succeeded but token generation failed
             // Still return success but without token
+            WpSessionBridge::maybeSetAuthCookie((int) $user->ID, true, $request);
             return new \WP_REST_Response([
                 'success' => true,
                 'message' => __('Registration successful! Please check your email to verify your account.', 'bigbrotherjunkies-data'),
@@ -366,11 +551,14 @@ class AuthRoutes
                     'email' => $user->user_email,
                     'username' => $user->user_login,
                     'display_name' => $user->display_name,
-                    'avatar' => get_avatar_url($user->ID),
+                    'avatar' => AvatarUploader::getAvatarUrl($user->ID),
+                    'roles' => array_values((array) $user->roles),
                 ],
                 'requires_verification' => true,
             ], 201);
         }
+
+        WpSessionBridge::maybeSetAuthCookie((int) $user->ID, true, $request);
 
         return new \WP_REST_Response([
             'success' => true,
@@ -381,7 +569,8 @@ class AuthRoutes
                 'email' => $user->user_email,
                 'username' => $user->user_login,
                 'display_name' => $user->display_name,
-                'avatar' => get_avatar_url($user->ID),
+                'avatar' => AvatarUploader::getAvatarUrl($user->ID),
+                'roles' => array_values((array) $user->roles),
             ],
             'requires_verification' => true,
         ], 201);
@@ -428,6 +617,63 @@ class AuthRoutes
     }
 
     /**
+     * Handle password reset (set new password)
+     *
+     * @return \WP_REST_Response|\WP_Error
+     */
+    public function handleResetPassword(\WP_REST_Request $request)
+    {
+        if ($err = WpSessionBridge::verifyNonce($request)) {
+            return $err;
+        }
+
+        $key = $request->get_param('key');
+        $login = $request->get_param('login');
+        $password = $request->get_param('password');
+
+        // Validate password length
+        if (strlen($password) < 8) {
+            return new \WP_Error(
+                'password_too_short',
+                __('Password must be at least 8 characters.', 'bigbrotherjunkies-data'),
+                ['status' => 400]
+            );
+        }
+
+        // Validate the reset key
+        $user = check_password_reset_key($key, $login);
+
+        if (is_wp_error($user)) {
+            $errorCode = $user->get_error_code();
+
+            // Provide user-friendly error messages
+            if ($errorCode === 'expired_key') {
+                return new \WP_Error(
+                    'expired_key',
+                    __('This password reset link has expired. Please request a new one.', 'bigbrotherjunkies-data'),
+                    ['status' => 400]
+                );
+            }
+
+            return new \WP_Error(
+                'invalid_key',
+                __('This password reset link is invalid. Please request a new one.', 'bigbrotherjunkies-data'),
+                ['status' => 400]
+            );
+        }
+
+        // Reset the password
+        reset_password($user, $password);
+
+        WpSessionBridge::maybeSetAuthCookie((int) $user->ID, true, $request);
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'message' => __('Your password has been reset successfully. You can now log in with your new password.', 'bigbrotherjunkies-data'),
+        ], 200);
+    }
+
+    /**
      * Check if email exists
      */
     public function handleCheckEmail(\WP_REST_Request $request): \WP_REST_Response
@@ -465,6 +711,90 @@ class AuthRoutes
             'exists' => username_exists($username) !== false,
             'message' => $message,
         ], 200);
+    }
+
+    /**
+     * Handle username/password login — WP-native session, no JWT.
+     * Rate-limited to 10 failed attempts per IP per 15 minutes.
+     *
+     * @return \WP_REST_Response|\WP_Error
+     */
+    public function handleLogin(\WP_REST_Request $request)
+    {
+        if ($err = WpSessionBridge::verifyNonce($request)) {
+            return $err;
+        }
+
+        // Rate limit by IP: 10 failed attempts per 15 minutes.
+        $ip = $this->clientIp();
+        $rlKey = 'bbj_login_fails_' . md5($ip);
+        $failCount = (int) get_transient($rlKey);
+        if ($failCount >= 10) {
+            return new \WP_Error(
+                'rate_limited',
+                __('Too many failed attempts. Please wait a few minutes and try again.', 'bigbrotherjunkies-data'),
+                ['status' => 429]
+            );
+        }
+
+        $username = $request->get_param('username');
+        $password = $request->get_param('password');
+        $remember = (bool) $request->get_param('remember_me');
+
+        if (!$username || !$password) {
+            return new \WP_Error('missing_credentials', __('Username and password are required.', 'bigbrotherjunkies-data'), ['status' => 400]);
+        }
+
+        $creds = [
+            'user_login'    => $username,
+            'user_password' => $password,
+            'remember'      => $remember,
+        ];
+        $user = wp_signon($creds, is_ssl());
+
+        if (is_wp_error($user)) {
+            set_transient($rlKey, $failCount + 1, 15 * MINUTE_IN_SECONDS);
+            return new \WP_Error(
+                'invalid_credentials',
+                __('Incorrect username or password.', 'bigbrotherjunkies-data'),
+                ['status' => 401]
+            );
+        }
+
+        // Clear the rate-limit counter on success.
+        delete_transient($rlKey);
+
+        WpSessionBridge::maybeSetAuthCookie((int) $user->ID, $remember, $request);
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'user' => [
+                'id' => $user->ID,
+                'email' => $user->user_email,
+                'username' => $user->user_login,
+                'display_name' => $user->display_name,
+                'avatar' => AvatarUploader::getAvatarUrl($user->ID),
+                'roles' => array_values((array) $user->roles),
+            ],
+        ], 200);
+    }
+
+    /**
+     * Best-effort client IP detection. Respects Cloudflare and common
+     * proxy headers, falls back to REMOTE_ADDR.
+     */
+    private function clientIp(): string
+    {
+        $headers = ['HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
+        foreach ($headers as $h) {
+            if (!empty($_SERVER[$h])) {
+                $ip = trim(explode(',', (string) $_SERVER[$h])[0]);
+                if (filter_var($ip, FILTER_VALIDATE_IP)) {
+                    return $ip;
+                }
+            }
+        }
+        return '0.0.0.0';
     }
 
     /**
@@ -624,9 +954,14 @@ class AuthRoutes
      */
     public function handleLinkGoogle(\WP_REST_Request $request)
     {
+        if ($err = WpSessionBridge::verifyNonce($request)) {
+            return $err;
+        }
+
         $credential = $request->get_param('credential');
         $username = $request->get_param('username');
         $password = $request->get_param('password');
+        $rememberMe = $request->get_param('remember_me') ?? true;
 
         $googleOAuth = new GoogleOAuth();
 
@@ -667,12 +1002,14 @@ class AuthRoutes
             }
         }
 
-        // Generate JWT token
-        $token = $this->generateJwtToken($user);
+        // Generate JWT token with remember_me preference
+        $token = $this->generateJwtToken($user, $rememberMe);
 
         if (is_wp_error($token)) {
             return $token;
         }
+
+        WpSessionBridge::maybeSetAuthCookie((int) $user->ID, (bool) $rememberMe, $request);
 
         return new \WP_REST_Response([
             'success' => true,
@@ -683,7 +1020,8 @@ class AuthRoutes
                 'email' => $user->user_email,
                 'username' => $user->user_login,
                 'display_name' => $user->display_name,
-                'avatar' => get_avatar_url($user->ID),
+                'avatar' => AvatarUploader::getAvatarUrl($user->ID),
+                'roles' => array_values((array) $user->roles),
             ],
         ], 200);
     }
@@ -695,7 +1033,12 @@ class AuthRoutes
      */
     public function handleCreateFromGoogle(\WP_REST_Request $request)
     {
+        if ($err = WpSessionBridge::verifyNonce($request)) {
+            return $err;
+        }
+
         $credential = $request->get_param('credential');
+        $rememberMe = $request->get_param('remember_me') ?? true;
 
         $googleOAuth = new GoogleOAuth();
 
@@ -744,12 +1087,14 @@ class AuthRoutes
             'status' => 'success',
         ]);
 
-        // Generate JWT token
-        $token = $this->generateJwtToken($user);
+        // Generate JWT token with remember_me preference
+        $token = $this->generateJwtToken($user, $rememberMe);
 
         if (is_wp_error($token)) {
             return $token;
         }
+
+        WpSessionBridge::maybeSetAuthCookie((int) $user->ID, (bool) $rememberMe, $request);
 
         return new \WP_REST_Response([
             'success' => true,
@@ -760,10 +1105,168 @@ class AuthRoutes
                 'email' => $user->user_email,
                 'username' => $user->user_login,
                 'display_name' => $user->display_name,
-                'avatar' => get_avatar_url($user->ID),
+                'avatar' => AvatarUploader::getAvatarUrl($user->ID),
+                'roles' => array_values((array) $user->roles),
             ],
             'is_new_user' => true,
         ], 201);
+    }
+
+    /**
+     * Get current user data from Bearer token
+     * Used by refreshUser() in the Next.js AuthContext
+     */
+    public function handleGetMe(\WP_REST_Request $request): array|\WP_Error
+    {
+        $authHeader = $request->get_header('Authorization');
+        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+            return new \WP_Error('no_token', 'Authorization header required.', ['status' => 401]);
+        }
+
+        $token = substr($authHeader, 7);
+        $secretKey = defined('JWT_AUTH_SECRET_KEY') ? JWT_AUTH_SECRET_KEY : false;
+
+        if (!$secretKey) {
+            return new \WP_Error('jwt_not_configured', 'JWT not configured.', ['status' => 500]);
+        }
+
+        try {
+            $algorithm = apply_filters('jwt_auth_algorithm', 'HS256');
+            $decoded = JWT::decode($token, new Key($secretKey, $algorithm));
+
+            if (!isset($decoded->data->user->id)) {
+                return new \WP_Error('jwt_invalid', 'Invalid token.', ['status' => 403]);
+            }
+
+            $userId = $decoded->data->user->id;
+            $user = get_user_by('ID', $userId);
+
+            if (!$user) {
+                return new \WP_Error('user_not_found', 'User not found.', ['status' => 404]);
+            }
+
+            $rank = RankCalculator::calculateRank($userId);
+
+            $adSettings = get_option('bbjd_ad_settings', []);
+            $supporterRoles = $adSettings['global_hidden_roles'] ?? [];
+            $isSupporter = !empty(array_intersect((array) $user->roles, $supporterRoles));
+
+            return [
+                'user_id' => $user->ID,
+                'user_email' => $user->user_email,
+                'user_login' => $user->user_login,
+                'user_display_name' => $user->display_name,
+                'user_avatar' => AvatarUploader::getAvatarUrl($user->ID, 96),
+                'user_roles' => $user->roles,
+                'is_supporter' => $isSupporter,
+                'rank' => $rank ? [
+                    'key' => $rank['key'],
+                    'name' => $rank['name'],
+                    'color' => $rank['color'],
+                    'bg_color' => $rank['bg_color'],
+                    'icon' => $rank['icon'] ?? null,
+                    'is_special' => $rank['is_special'],
+                ] : null,
+            ];
+        } catch (\Firebase\JWT\ExpiredException $e) {
+            return new \WP_Error('jwt_expired', 'Token expired.', ['status' => 401]);
+        } catch (\Exception $e) {
+            return new \WP_Error('jwt_invalid', 'Invalid token.', ['status' => 403]);
+        }
+    }
+
+    /**
+     * Validate JWT token and return user data
+     * Used by Next.js auth context to restore session on page load
+     *
+     * @return array|\WP_Error User data if valid, error if invalid
+     */
+    public function handleValidateToken(\WP_REST_Request $request)
+    {
+        $token = $request->get_param('token');
+
+        $secretKey = defined('JWT_AUTH_SECRET_KEY') ? JWT_AUTH_SECRET_KEY : false;
+
+        if (!$secretKey) {
+            return new \WP_Error(
+                'jwt_not_configured',
+                __('JWT authentication is not configured.', 'bigbrotherjunkies-data'),
+                ['status' => 500]
+            );
+        }
+
+        try {
+            $algorithm = apply_filters('jwt_auth_algorithm', 'HS256');
+            $decoded = JWT::decode($token, new Key($secretKey, $algorithm));
+
+            // Verify the issuer
+            if ($decoded->iss !== get_bloginfo('url')) {
+                return new \WP_Error(
+                    'jwt_invalid_iss',
+                    __('Token issuer mismatch.', 'bigbrotherjunkies-data'),
+                    ['status' => 403]
+                );
+            }
+
+            // Get user ID from token
+            if (!isset($decoded->data->user->id)) {
+                return new \WP_Error(
+                    'jwt_invalid_data',
+                    __('Invalid token data.', 'bigbrotherjunkies-data'),
+                    ['status' => 403]
+                );
+            }
+
+            $userId = $decoded->data->user->id;
+            $user = get_user_by('ID', $userId);
+
+            if (!$user) {
+                return new \WP_Error(
+                    'user_not_found',
+                    __('User not found.', 'bigbrotherjunkies-data'),
+                    ['status' => 404]
+                );
+            }
+
+            // Get user's rank
+            $rank = RankCalculator::calculateRank($userId);
+
+            // Check if user is a supporter based on supporter roles setting
+            $adSettings = get_option('bbjd_ad_settings', []);
+            $supporterRoles = $adSettings['global_hidden_roles'] ?? [];
+            $isSupporter = !empty(array_intersect((array) $user->roles, $supporterRoles));
+
+            // Return user data for auth context
+            return [
+                'user_id' => $user->ID,
+                'user_email' => $user->user_email,
+                'user_login' => $user->user_login,
+                'user_display_name' => $user->display_name,
+                'user_avatar' => AvatarUploader::getAvatarUrl($user->ID, 96),
+                'user_roles' => $user->roles,
+                'is_supporter' => $isSupporter,
+                'rank' => $rank ? [
+                    'key' => $rank['key'],
+                    'name' => $rank['name'],
+                    'color' => $rank['color'],
+                    'bg_color' => $rank['bg_color'],
+                    'icon' => $rank['icon'] ?? null,
+                    'is_special' => $rank['is_special'],
+                ] : null,
+            ];
+        } catch (\Firebase\JWT\ExpiredException $e) {
+            return new \WP_Error(
+                'jwt_expired',
+                __('Token has expired.', 'bigbrotherjunkies-data'),
+                ['status' => 401]
+            );
+        } catch (\Exception $e) {
+            return new \WP_Error(
+                'jwt_invalid',
+                __('Invalid token.', 'bigbrotherjunkies-data'),
+                ['status' => 403]
+            );
+        }
     }
 
     /**
@@ -791,9 +1294,11 @@ class AuthRoutes
     /**
      * Generate JWT token for user
      *
+     * @param \WP_User $user The user to generate token for
+     * @param bool $rememberMe Whether to use extended expiration (14 days vs 1 day)
      * @return string|\WP_Error
      */
-    private function generateJwtToken(\WP_User $user)
+    private function generateJwtToken(\WP_User $user, bool $rememberMe = true)
     {
         $secretKey = defined('JWT_AUTH_SECRET_KEY') ? JWT_AUTH_SECRET_KEY : false;
 
@@ -802,7 +1307,10 @@ class AuthRoutes
         }
 
         $issuedAt = time();
-        $expire = apply_filters('jwt_auth_expire', $issuedAt + (DAY_IN_SECONDS * 7), $issuedAt);
+
+        // Token expiration: 14 days if remembered, 1 day if not
+        $expireDays = $rememberMe ? 14 : 1;
+        $expire = apply_filters('jwt_auth_expire', $issuedAt + (DAY_IN_SECONDS * $expireDays), $issuedAt, $rememberMe);
 
         $tokenData = [
             'iss' => get_bloginfo('url'),
@@ -812,6 +1320,8 @@ class AuthRoutes
             'data' => [
                 'user' => [
                     'id' => $user->ID,
+                    'display_name' => $user->display_name,
+                    'roles' => $user->roles,
                 ],
             ],
         ];
@@ -854,8 +1364,8 @@ class AuthRoutes
      */
     private function sendPasswordResetEmail(\WP_User $user, string $resetKey): void
     {
-        // Use WordPress's built-in password reset URL format
-        $resetUrl = network_site_url("wp-login.php?action=rp&key=$resetKey&login=" . rawurlencode($user->user_login), 'login');
+        // Point to Next.js reset password page
+        $resetUrl = "https://bigbrotherjunkies.com/reset-password?key=" . urlencode($resetKey) . "&login=" . rawurlencode($user->user_login);
 
         $subject = sprintf(__('Password Reset - %s', 'bigbrotherjunkies-data'), get_bloginfo('name'));
 

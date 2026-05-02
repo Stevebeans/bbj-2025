@@ -1,0 +1,17 @@
+/*
+Theme Name: BBJ v2
+Theme URI: https://bigbrotherjunkies.com
+Author: Steve Beans
+Author URI: https://bigbrotherjunkies.com
+Description: Big Brother Junkies v2 — clean PHP theme consuming the bigbrotherjunkies-data REST API. Server-rendered, Tailwind-built, PageSpeed-focused.
+Version: 1.0.0
+Requires at least: 6.4
+Requires PHP: 8.0
+Tested up to: 6.6
+License: GPL-2.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-2.0.html
+Text Domain: bbj-v2-theme
+Tags: blog, community, one-column, two-columns, right-sidebar, custom-menu, custom-colors, custom-header, featured-images, responsive-layout, translation-ready
+*/
+
+/* Compiled Tailwind output is emitted to build/style.css and enqueued via inc/enqueue.php. */

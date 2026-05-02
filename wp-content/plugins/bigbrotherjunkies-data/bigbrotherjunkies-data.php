@@ -27,6 +27,11 @@ if (file_exists(BBJD_PATH . 'vendor/autoload.php')) {
     require_once BBJD_PATH . 'vendor/autoload.php';
 }
 
+// Load procedural wrappers that must live in the global namespace.
+// PSR-4 autoloading only registers classes; these function declarations
+// require an explicit include so they are available as permission_callback values.
+require_once BBJD_PATH . 'src/Auth/CookieOrJwtAuth.php';
+
 // Bootstrap the plugin
 add_action('plugins_loaded', function () {
     \BigBrotherJunkies\Data\Plugin::getInstance()->init();
