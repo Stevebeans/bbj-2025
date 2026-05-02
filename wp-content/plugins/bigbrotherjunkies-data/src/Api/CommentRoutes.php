@@ -7,6 +7,7 @@ use BigBrotherJunkies\Data\Comments\CommentSchema;
 use BigBrotherJunkies\Data\Comments\RankCalculator;
 use BigBrotherJunkies\Data\Comments\MediaUploader;
 use BigBrotherJunkies\Data\Comments\NotificationService;
+use BigBrotherJunkies\Data\Cache\CommentsReadCache;
 
 /**
  * Comment System API Routes
@@ -238,11 +239,26 @@ class CommentRoutes
     {
         global $wpdb;
 
-        $postId = $request->get_param('post_id');
-        $perPage = min($request->get_param('per_page'), 50);
-        $page = $request->get_param('page');
-        $sort = $request->get_param('sort');
+        $postId  = (int) $request->get_param('post_id');
+        $perPage = min((int) $request->get_param('per_page'), 50);
+        $page    = max(1, (int) $request->get_param('page'));
+        $sort    = in_array($request->get_param('sort'), ['newest', 'oldest', 'popular'], true)
+            ? $request->get_param('sort')
+            : 'newest';
         $offset = ($page - 1) * $perPage;
+
+        // Cache anonymous (logged-out) reads only.
+        // Per-user state (user_vote, user_reaction, can_edit, can_delete, can_pin,
+        // is_online) is deeply embedded in formatComment; caching logged-in responses
+        // would leak one user's state to another.
+        $isAnon = ! is_user_logged_in();
+        if ($isAnon) {
+            $cacheKey = CommentsReadCache::versionedKey($postId, $page, $sort);
+            $cached   = wp_cache_get($cacheKey, 'bbj_v2');
+            if ($cached !== false) {
+                return new \WP_REST_Response($cached, 200);
+            }
+        }
 
         // Get current user ID if logged in
         $currentUserId = get_current_user_id();
@@ -330,7 +346,7 @@ class CommentRoutes
             $formattedComments[] = $this->formatComment($comment, $userVotes, $currentUserId, 0, $canPin);
         }
 
-        return new \WP_REST_Response([
+        $payload = [
             'comments' => $formattedComments,
             'pagination' => [
                 'total' => $totalComments,
@@ -338,7 +354,14 @@ class CommentRoutes
                 'current_page' => $page,
                 'total_pages' => ceil($totalComments / $perPage),
             ],
-        ], 200);
+        ];
+
+        // Store in cache for anonymous readers.
+        if ($isAnon) {
+            wp_cache_set($cacheKey, $payload, 'bbj_v2', 60);
+        }
+
+        return new \WP_REST_Response($payload, 200);
     }
 
     /**

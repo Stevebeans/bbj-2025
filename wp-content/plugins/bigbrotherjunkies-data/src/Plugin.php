@@ -63,6 +63,7 @@ use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
 use BigBrotherJunkies\Data\Utils\Revalidation;
+use BigBrotherJunkies\Data\Cache\CommentsReadCache;
 
 /**
  * Main plugin class
@@ -140,6 +141,9 @@ class Plugin
                 Revalidation::revalidateTag('feed-updates');
             }
         }, 10, 3);
+
+        // Register comment cache invalidation hooks (anon reads only)
+        add_action('init', [CommentsReadCache::class, 'registerInvalidationHooks']);
 
         // Register custom taxonomies (update_type, etc.)
         $this->initTaxonomies();
