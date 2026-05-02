@@ -29,3 +29,4 @@ require_once BBJ_V2_THEME_PATH . '/inc/feed-updates-hub-data.php';
 require_once BBJ_V2_THEME_PATH . '/inc/weekly-tracker-data.php';
 require_once BBJ_V2_THEME_PATH . '/inc/weekly-tracker-installer.php';
 require_once BBJ_V2_THEME_PATH . '/inc/admin-shell.php';
+require_once BBJ_V2_THEME_PATH . '/inc/comments-island.php';
