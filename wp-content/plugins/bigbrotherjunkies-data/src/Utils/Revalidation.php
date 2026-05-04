@@ -48,6 +48,17 @@ class Revalidation
     }
 
     /**
+     * Trigger a full Next.js cache purge.
+     * Hits the /api/revalidate webhook with type=all, which calls
+     * revalidatePath('/', 'layout') — Next 15's nuclear option that
+     * busts the Data Cache, Full Route Cache, and Router Cache app-wide.
+     */
+    public static function revalidateAll(): bool
+    {
+        return self::trigger('all', '');
+    }
+
+    /**
      * Send revalidation request to Next.js
      */
     private static function trigger(string $type, string $slug): bool

@@ -9,6 +9,7 @@ use BigBrotherJunkies\Data\BugReports\BugReportSchema;
 use BigBrotherJunkies\Data\BugReports\BugReportMigrator;
 use BigBrotherJunkies\Data\Announcements\AnnouncementService;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
+use BigBrotherJunkies\Data\Utils\Revalidation;
 
 /**
  * Admin API Routes
@@ -44,6 +45,13 @@ class AdminRoutes
         register_rest_route($namespace, '/admin/my-permissions', [
             'methods' => 'GET',
             'callback' => [$this, 'getMyPermissions'],
+            'permission_callback' => [$this, 'checkAdminAccess'],
+        ]);
+
+        // Force a full Next.js cache purge (root layout + all data tags)
+        register_rest_route($namespace, '/admin/purge-cache', [
+            'methods' => 'POST',
+            'callback' => [$this, 'purgeCache'],
             'permission_callback' => [$this, 'checkAdminAccess'],
         ]);
 
@@ -429,6 +437,29 @@ class AdminRoutes
     private function getUserFeatures(): array
     {
         return PermissionChecker::getUserFeatures();
+    }
+
+    /**
+     * Force a full Next.js cache purge.
+     * Sends type=all to /api/revalidate, which invalidates the root layout
+     * and cascades through every page + every fetch tag in the app.
+     */
+    public function purgeCache(): \WP_REST_Response
+    {
+        $ok = Revalidation::revalidateAll();
+
+        if (!$ok) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'Revalidation request failed. Check REVALIDATION_SECRET and Next.js logs.',
+            ], 500);
+        }
+
+        return new \WP_REST_Response([
+            'success' => true,
+            'message' => 'Cache purge triggered. Pages will rebuild on next visit.',
+            'purged_at' => current_time('mysql'),
+        ], 200);
     }
 
     // ========================================
