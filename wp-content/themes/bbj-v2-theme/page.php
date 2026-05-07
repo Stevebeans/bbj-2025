@@ -46,6 +46,12 @@ while (have_posts()) : the_post(); ?>
                 <div class="bbj-post-body">
                     <?php the_content(); ?>
                 </div>
+
+                <?php if (comments_open() || get_comments_number()) : ?>
+                    <section class="mt-12 border-t border-gray-200 dark:border-gray-700 pt-8">
+                        <?php comments_template(); ?>
+                    </section>
+                <?php endif; ?>
             </div>
             <div class="lg:col-span-4">
                 <?php get_sidebar(); ?>
