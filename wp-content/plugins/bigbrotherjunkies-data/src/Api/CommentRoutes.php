@@ -259,103 +259,201 @@ class CommentRoutes
             }
         }
 
-        // Get current user ID if logged in
         $currentUserId = get_current_user_id();
-
-        // Check if current user can pin comments
         $canPin = $this->checkCanPin();
 
-        // Build order clause based on sort (pinned comments always first)
-        switch ($sort) {
-            case 'oldest':
-                $orderBy = 'is_pinned DESC, c.comment_date_gmt ASC';
-                break;
-            case 'popular':
-                $orderBy = 'is_pinned DESC, vote_score DESC, c.comment_date_gmt DESC';
-                break;
-            case 'newest':
-            default:
-                $orderBy = 'is_pinned DESC, c.comment_date_gmt DESC';
-                break;
-        }
+        $votesTable     = CommentSchema::table(CommentSchema::TABLE_VOTES);
+        $pinnedTable    = CommentSchema::table(CommentSchema::TABLE_PINNED);
+        $reactionsTable = CommentSchema::table(CommentSchema::TABLE_REACTIONS);
+        $mediaTable     = CommentSchema::table(CommentSchema::TABLE_MEDIA);
+        $sessionsTable  = CommentSchema::table(CommentSchema::TABLE_SESSIONS);
 
-        $votesTable = CommentSchema::table(CommentSchema::TABLE_VOTES);
-        $pinnedTable = CommentSchema::table(CommentSchema::TABLE_PINNED);
-
-        // Get top-level comments with vote counts and pin status
-        $comments = $wpdb->get_results($wpdb->prepare("
+        // ── ONE query: every approved comment on this post (top-level + all replies)
+        // joined with vote aggregates and pin status. We split + sort + paginate in PHP
+        // to avoid N+1 reply queries inside formatComment.
+        $allRows = $wpdb->get_results($wpdb->prepare("
             SELECT
-                c.comment_ID,
-                c.comment_post_ID,
-                c.comment_author,
-                c.comment_author_email,
-                c.comment_date,
-                c.comment_date_gmt,
-                c.comment_content,
-                c.comment_parent,
-                c.user_id,
-                COALESCE(SUM(CASE WHEN v.vote_type = 1 THEN 1 ELSE 0 END), 0) as upvotes,
+                c.comment_ID, c.comment_post_ID, c.comment_author, c.comment_author_email,
+                c.comment_date, c.comment_date_gmt, c.comment_content, c.comment_parent, c.user_id,
+                COALESCE(SUM(CASE WHEN v.vote_type = 1  THEN 1 ELSE 0 END), 0) as upvotes,
                 COALESCE(SUM(CASE WHEN v.vote_type = -1 THEN 1 ELSE 0 END), 0) as downvotes,
                 COALESCE(SUM(v.vote_type), 0) as vote_score,
                 CASE WHEN p.id IS NOT NULL THEN 1 ELSE 0 END as is_pinned,
                 p.pinned_at
             FROM {$wpdb->comments} c
-            LEFT JOIN {$votesTable} v ON c.comment_ID = v.comment_id
+            LEFT JOIN {$votesTable}  v ON c.comment_ID = v.comment_id
             LEFT JOIN {$pinnedTable} p ON c.comment_ID = p.comment_id
-            WHERE c.comment_post_ID = %d
-                AND c.comment_approved = '1'
-                AND c.comment_parent = 0
+            WHERE c.comment_post_ID = %d AND c.comment_approved = '1'
             GROUP BY c.comment_ID
-            ORDER BY {$orderBy}
-            LIMIT %d OFFSET %d
-        ", $postId, $perPage, $offset), ARRAY_A);
+        ", $postId), ARRAY_A);
 
-        // Get total count for pagination
-        $totalComments = (int) $wpdb->get_var($wpdb->prepare("
-            SELECT COUNT(*)
-            FROM {$wpdb->comments}
-            WHERE comment_post_ID = %d
-                AND comment_approved = '1'
-                AND comment_parent = 0
-        ", $postId));
-
-        // Get all comment IDs for fetching user votes
-        $commentIds = array_column($comments, 'comment_ID');
-
-        // Get current user's votes on these comments
-        $userVotes = [];
-        if ($currentUserId && !empty($commentIds)) {
-            $placeholders = implode(',', array_fill(0, count($commentIds), '%d'));
-            $params = array_merge([$currentUserId], $commentIds);
-
-            $votes = $wpdb->get_results($wpdb->prepare("
-                SELECT comment_id, vote_type
-                FROM {$votesTable}
-                WHERE user_id = %d AND comment_id IN ({$placeholders})
-            ", ...$params), ARRAY_A);
-
-            foreach ($votes as $vote) {
-                $userVotes[$vote['comment_id']] = (int) $vote['vote_type'];
+        // Split top-level vs replies; index replies by parent_id for O(1) attach.
+        $topLevel = [];
+        $repliesByParent = [];
+        foreach ($allRows as $row) {
+            if ((int) $row['comment_parent'] === 0) {
+                $topLevel[] = $row;
+            } else {
+                $repliesByParent[(int) $row['comment_parent']][] = $row;
             }
         }
 
-        // Format comments with user info and replies
+        // Sort top-level (pinned first, then by chosen criterion).
+        usort($topLevel, function ($a, $b) use ($sort) {
+            $pa = (int) ($a['is_pinned'] ?? 0);
+            $pb = (int) ($b['is_pinned'] ?? 0);
+            if ($pa !== $pb) return $pb - $pa;
+            switch ($sort) {
+                case 'oldest':
+                    return strcmp($a['comment_date_gmt'], $b['comment_date_gmt']);
+                case 'popular':
+                    $sa = (int) $a['vote_score'];
+                    $sb = (int) $b['vote_score'];
+                    if ($sa !== $sb) return $sb - $sa;
+                    return strcmp($b['comment_date_gmt'], $a['comment_date_gmt']);
+                case 'newest':
+                default:
+                    return strcmp($b['comment_date_gmt'], $a['comment_date_gmt']);
+            }
+        });
+
+        // Sort each parent's replies oldest-first (matches the old recursive query).
+        foreach ($repliesByParent as &$siblings) {
+            usort($siblings, fn($a, $b) => strcmp($a['comment_date_gmt'], $b['comment_date_gmt']));
+        }
+        unset($siblings);
+
+        $totalComments = count($topLevel);
+        $pagedTop = array_slice($topLevel, $offset, $perPage);
+
+        // Walk the paged subtree (depth-3 cap) to collect every visible comment_id and
+        // every author user_id we'll need state for.
+        $pagedIds = [];
+        $authorIds = [];
+        $collect = function (array $comment, int $depth) use (&$collect, &$pagedIds, &$authorIds, $repliesByParent) {
+            $id  = (int) $comment['comment_ID'];
+            $uid = (int) $comment['user_id'];
+            $pagedIds[] = $id;
+            if ($uid > 0) $authorIds[$uid] = true;
+            if ($depth < 3 && isset($repliesByParent[$id])) {
+                foreach ($repliesByParent[$id] as $child) {
+                    $collect($child, $depth + 1);
+                }
+            }
+        };
+        foreach ($pagedTop as $top) $collect($top, 0);
+        $authorIds = array_keys($authorIds);
+
+        // ── Batch lookups (one query each, indexed by comment_id or user_id).
+        $userVotes              = [];
+        $reactionsByComment     = [];
+        $userReactionByComment  = [];
+        $mediaByComment         = [];
+        $onlineByAuthor         = [];
+
+        if (!empty($pagedIds)) {
+            $idPh = implode(',', array_fill(0, count($pagedIds), '%d'));
+
+            // Reactions: per-comment counts grouped by reaction_type.
+            $rxRows = $wpdb->get_results($wpdb->prepare(
+                "SELECT comment_id, reaction_type, COUNT(*) AS cnt
+                 FROM {$reactionsTable}
+                 WHERE comment_id IN ({$idPh})
+                 GROUP BY comment_id, reaction_type",
+                ...$pagedIds
+            ), ARRAY_A);
+            foreach ($rxRows as $r) {
+                $reactionsByComment[(int) $r['comment_id']][$r['reaction_type']] = (int) $r['cnt'];
+            }
+
+            // Media: at most one row per comment.
+            $mediaRows = $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM {$mediaTable} WHERE comment_id IN ({$idPh})",
+                ...$pagedIds
+            ), ARRAY_A);
+            foreach ($mediaRows as $m) {
+                $mediaByComment[(int) $m['comment_id']] = [
+                    'id'       => (int) $m['id'],
+                    'url'      => $m['file_url'],
+                    'type'     => $m['media_type'],
+                    'width'    => $m['width']  ? (int) $m['width']  : null,
+                    'height'   => $m['height'] ? (int) $m['height'] : null,
+                    'giphy_id' => $m['giphy_id'],
+                ];
+            }
+
+            // Current user's votes + reactions (skip if logged-out).
+            if ($currentUserId > 0) {
+                $params = array_merge([$currentUserId], $pagedIds);
+                $voteRows = $wpdb->get_results($wpdb->prepare(
+                    "SELECT comment_id, vote_type FROM {$votesTable}
+                     WHERE user_id = %d AND comment_id IN ({$idPh})",
+                    ...$params
+                ), ARRAY_A);
+                foreach ($voteRows as $v) {
+                    $userVotes[(int) $v['comment_id']] = (int) $v['vote_type'];
+                }
+
+                $userRxRows = $wpdb->get_results($wpdb->prepare(
+                    "SELECT comment_id, reaction_type FROM {$reactionsTable}
+                     WHERE user_id = %d AND comment_id IN ({$idPh})",
+                    ...$params
+                ), ARRAY_A);
+                foreach ($userRxRows as $r) {
+                    $userReactionByComment[(int) $r['comment_id']] = $r['reaction_type'];
+                }
+            }
+        }
+
+        if (!empty($authorIds)) {
+            $authPh = implode(',', array_fill(0, count($authorIds), '%d'));
+            $online = $wpdb->get_col($wpdb->prepare(
+                "SELECT DISTINCT user_id FROM {$sessionsTable}
+                 WHERE user_id IN ({$authPh})
+                   AND last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE)",
+                ...$authorIds
+            ));
+            foreach ($online as $uid) {
+                $onlineByAuthor[(int) $uid] = true;
+            }
+        }
+
+        // Per-author rank + avatar (computed once per unique author rather than per comment).
+        $rankByAuthor   = [];
+        $avatarByAuthor = [];
+        foreach ($authorIds as $uid) {
+            $rankByAuthor[$uid]   = RankCalculator::calculateRank($uid);
+            $avatarByAuthor[$uid] = AvatarUploader::getAvatarUrl($uid, 64);
+        }
+
+        $ctx = [
+            'userVotes'             => $userVotes,
+            'reactionsByComment'    => $reactionsByComment,
+            'userReactionByComment' => $userReactionByComment,
+            'mediaByComment'        => $mediaByComment,
+            'onlineByAuthor'        => $onlineByAuthor,
+            'rankByAuthor'          => $rankByAuthor,
+            'avatarByAuthor'        => $avatarByAuthor,
+            'repliesByParent'       => $repliesByParent,
+            'currentUserId'         => $currentUserId,
+            'canPin'                => $canPin,
+        ];
+
         $formattedComments = [];
-        foreach ($comments as $comment) {
-            $formattedComments[] = $this->formatComment($comment, $userVotes, $currentUserId, 0, $canPin);
+        foreach ($pagedTop as $comment) {
+            $formattedComments[] = $this->formatComment($comment, $ctx, 0);
         }
 
         $payload = [
             'comments' => $formattedComments,
             'pagination' => [
-                'total' => $totalComments,
-                'per_page' => $perPage,
+                'total'        => $totalComments,
+                'per_page'     => $perPage,
                 'current_page' => $page,
-                'total_pages' => ceil($totalComments / $perPage),
+                'total_pages'  => (int) ceil($totalComments / $perPage),
             ],
         ];
 
-        // Store in cache for anonymous readers.
         if ($isAnon) {
             CommentsReadCache::set($postId, $page, $sort, $payload);
         }
@@ -366,90 +464,34 @@ class CommentRoutes
     /**
      * Format a comment with user info, rank, and replies
      */
-    private function formatComment(array $comment, array $userVotes, int $currentUserId, int $depth = 0, bool $canPin = false): array
+    private function formatComment(array $comment, array $ctx, int $depth = 0): array
     {
-        global $wpdb;
-
-        $userId = (int) $comment['user_id'];
+        $userId    = (int) $comment['user_id'];
         $commentId = (int) $comment['comment_ID'];
 
-        // Get user info and rank
-        $rank = null;
-        $avatar = get_avatar_url($comment['comment_author_email'], ['size' => 64]);
-        $isOnline = false;
+        // Pull pre-fetched per-author state from the context map (no per-comment queries).
+        $rank   = $userId > 0 ? ($ctx['rankByAuthor'][$userId]   ?? null) : null;
+        $avatar = $userId > 0
+            ? ($ctx['avatarByAuthor'][$userId] ?? get_avatar_url($comment['comment_author_email'], ['size' => 64]))
+            : get_avatar_url($comment['comment_author_email'], ['size' => 64]);
+        $isOnline = $userId > 0 && !empty($ctx['onlineByAuthor'][$userId]);
 
-        if ($userId > 0) {
-            $rank = RankCalculator::calculateRank($userId);
-            $avatar = AvatarUploader::getAvatarUrl($userId, 64);
-
-            // Check online status
-            $sessionsTable = CommentSchema::table(CommentSchema::TABLE_SESSIONS);
-            $isOnline = (bool) $wpdb->get_var($wpdb->prepare(
-                "SELECT 1 FROM {$sessionsTable} WHERE user_id = %d AND last_activity > DATE_SUB(NOW(), INTERVAL 5 MINUTE)",
-                $userId
-            ));
-        }
-
-        // Get replies (max depth of 3)
+        // Replies come from the parent-indexed map built in getComments.
         $replies = [];
-        if ($depth < 3) {
-            $votesTable = CommentSchema::table(CommentSchema::TABLE_VOTES);
-
-            $childComments = $wpdb->get_results($wpdb->prepare("
-                SELECT
-                    c.comment_ID,
-                    c.comment_post_ID,
-                    c.comment_author,
-                    c.comment_author_email,
-                    c.comment_date,
-                    c.comment_date_gmt,
-                    c.comment_content,
-                    c.comment_parent,
-                    c.user_id,
-                    COALESCE(SUM(CASE WHEN v.vote_type = 1 THEN 1 ELSE 0 END), 0) as upvotes,
-                    COALESCE(SUM(CASE WHEN v.vote_type = -1 THEN 1 ELSE 0 END), 0) as downvotes,
-                    COALESCE(SUM(v.vote_type), 0) as vote_score
-                FROM {$wpdb->comments} c
-                LEFT JOIN {$votesTable} v ON c.comment_ID = v.comment_id
-                WHERE c.comment_parent = %d AND c.comment_approved = '1'
-                GROUP BY c.comment_ID
-                ORDER BY c.comment_date_gmt ASC
-            ", $commentId), ARRAY_A);
-
-            foreach ($childComments as $child) {
-                $replies[] = $this->formatComment($child, $userVotes, $currentUserId, $depth + 1, $canPin);
+        if ($depth < 3 && !empty($ctx['repliesByParent'][$commentId])) {
+            foreach ($ctx['repliesByParent'][$commentId] as $child) {
+                $replies[] = $this->formatComment($child, $ctx, $depth + 1);
             }
         }
 
-        // Get media attached to this comment
-        $media = MediaUploader::getCommentMedia($commentId);
+        $reactions     = $ctx['reactionsByComment'][$commentId] ?? [];
+        $reactionTotal = array_sum($reactions);
+        $userReaction  = $ctx['userReactionByComment'][$commentId] ?? null;
+        $media         = $ctx['mediaByComment'][$commentId] ?? null;
+        $currentUserId = (int) ($ctx['currentUserId'] ?? 0);
+        $canPin        = (bool) ($ctx['canPin'] ?? false);
 
-        // Get reactions for this comment
-        $reactionsTable = CommentSchema::table(CommentSchema::TABLE_REACTIONS);
-        $reactionCounts = $wpdb->get_results($wpdb->prepare("
-            SELECT reaction_type, COUNT(*) as count
-            FROM {$reactionsTable}
-            WHERE comment_id = %d
-            GROUP BY reaction_type
-        ", $commentId), ARRAY_A);
-
-        $reactions = [];
-        $reactionTotal = 0;
-        foreach ($reactionCounts as $row) {
-            $reactions[$row['reaction_type']] = (int) $row['count'];
-            $reactionTotal += (int) $row['count'];
-        }
-
-        // Get current user's reaction
-        $userReaction = null;
-        if ($currentUserId > 0) {
-            $userReaction = $wpdb->get_var($wpdb->prepare("
-                SELECT reaction_type FROM {$reactionsTable}
-                WHERE comment_id = %d AND user_id = %d
-            ", $commentId, $currentUserId));
-        }
-
-        $formatted = [
+        return [
             'id' => $commentId,
             'post_id' => (int) $comment['comment_post_ID'],
             'parent_id' => (int) $comment['comment_parent'],
@@ -459,38 +501,36 @@ class CommentRoutes
                 'avatar' => $avatar,
                 'is_online' => $isOnline,
                 'rank' => $rank ? [
-                    'key' => $rank['key'],
-                    'name' => $rank['name'],
-                    'color' => $rank['color'],
-                    'bg_color' => $rank['bg_color'],
-                    'icon' => $rank['icon'] ?? null,
+                    'key'        => $rank['key'],
+                    'name'       => $rank['name'],
+                    'color'      => $rank['color'],
+                    'bg_color'   => $rank['bg_color'],
+                    'icon'       => $rank['icon'] ?? null,
                     'is_special' => $rank['is_special'],
                 ] : null,
             ],
-            'content' => $comment['comment_content'],
-            'date' => $comment['comment_date'],
+            'content'  => $comment['comment_content'],
+            'date'     => $comment['comment_date'],
             'date_gmt' => $comment['comment_date_gmt'],
             'time_ago' => human_time_diff(strtotime($comment['comment_date_gmt']), time()) . ' ago',
             'votes' => [
-                'up' => (int) $comment['upvotes'],
-                'down' => (int) $comment['downvotes'],
+                'up'    => (int) $comment['upvotes'],
+                'down'  => (int) $comment['downvotes'],
                 'score' => (int) $comment['vote_score'],
             ],
-            'user_vote' => $userVotes[$commentId] ?? null,
-            'can_edit' => $currentUserId > 0 && ($currentUserId === $userId || current_user_can('moderate_comments')),
-            'can_delete' => $currentUserId > 0 && ($currentUserId === $userId || current_user_can('moderate_comments')),
-            'can_pin' => $canPin,
-            'is_pinned' => (bool) ($comment['is_pinned'] ?? false),
-            'pinned_at' => $comment['pinned_at'] ?? null,
-            'depth' => $depth,
-            'replies' => $replies,
-            'media' => $media,
-            'reactions' => $reactions,
+            'user_vote'      => $ctx['userVotes'][$commentId] ?? null,
+            'can_edit'       => $currentUserId > 0 && ($currentUserId === $userId || current_user_can('moderate_comments')),
+            'can_delete'     => $currentUserId > 0 && ($currentUserId === $userId || current_user_can('moderate_comments')),
+            'can_pin'        => $canPin,
+            'is_pinned'      => (bool) ($comment['is_pinned'] ?? false),
+            'pinned_at'      => $comment['pinned_at'] ?? null,
+            'depth'          => $depth,
+            'replies'        => $replies,
+            'media'          => $media,
+            'reactions'      => $reactions,
             'reaction_total' => $reactionTotal,
-            'user_reaction' => $userReaction,
+            'user_reaction'  => $userReaction,
         ];
-
-        return $formatted;
     }
 
     /**
