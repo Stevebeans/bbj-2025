@@ -27,11 +27,14 @@ function bbj_v2_comments_island_enqueue(): void {
     if (!is_singular() || !comments_open()) return;
     if (bbj_v2_comments_plain_mode()) return;
 
+    $asset_path = get_template_directory() . '/build/comments/bootstrap.asset.php';
+    $asset = file_exists($asset_path) ? include $asset_path : ['dependencies' => [], 'version' => null];
+
     wp_enqueue_script(
         'bbj-comments-bootstrap',
         get_template_directory_uri() . '/build/comments/bootstrap.js',
-        [],
-        bbj_v2_asset_ver('/build/comments/bootstrap.js'),
+        $asset['dependencies'] ?? [],
+        $asset['version'] ?? bbj_v2_asset_ver('/build/comments/bootstrap.js'),
         true
     );
 

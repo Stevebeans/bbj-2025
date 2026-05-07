@@ -45,6 +45,18 @@ export const uploadMedia = (file) => {
 export const giphySearch = (q, limit = 20, offset = 0) =>
   bbjAuthFetch(`/comments/media/giphy/search?q=${encodeURIComponent(q)}&limit=${limit}&offset=${offset}`);
 
+export const giphyTrending = (limit = 20) =>
+  bbjAuthFetch(`/comments/media/giphy/trending?limit=${limit}`);
+
+export const giphyStore = (giphyId, url, width, height) =>
+  bbjAuthFetch('/comments/media/giphy', {
+    method: 'POST',
+    body: { giphy_id: giphyId, url, width, height },
+  });
+
+export const deleteMedia = (mediaId) =>
+  bbjAuthFetch(`/comments/media/${mediaId}`, { method: 'DELETE' });
+
 export const userSearch = (q, limit = 10) =>
   bbjAuthFetch(`/users/search?q=${encodeURIComponent(q)}&limit=${limit}`);
 
