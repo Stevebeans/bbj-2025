@@ -20,6 +20,7 @@ STAGING_BASE="/home/1620468.cloudwaysapps.com/ftgtnduhbt/public_html/wp-content/
 declare -A CLEANUP=(
     [bigbrotherjunkies-data]="src vendor assets build"
     [bbj-v2]="includes assets build src"
+    [bbj-tools]="lib includes build dist new-feed-updates-block"
 )
 
 # Plugins to deploy when no slug arg is passed.
