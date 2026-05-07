@@ -5,8 +5,10 @@ import { ToastHost } from './hooks/useToast.js';
 
 export default function mount(root, data) {
   const postId = parseInt(root.dataset.postId, 10) || (data && data.postId) || 0;
-  const skeleton = root.querySelector('.bbj-comments-skeleton');
-  if (skeleton) skeleton.remove();
+
+  // Wipe the entire SSR placeholder (heading + skeleton + noscript fallback)
+  // so the React heading is the single source of truth for the count.
+  root.innerHTML = '';
 
   const target = document.createElement('div');
   root.appendChild(target);
