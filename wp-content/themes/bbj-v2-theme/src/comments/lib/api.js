@@ -53,3 +53,9 @@ export const userRank = (userId) =>
 
 export const userProfile = (userId) =>
   bbjAuthFetch(`/users/${userId}/profile`);
+
+export const followUser = (userId) =>
+  bbjAuthFetch(`/users/${userId}/follow`, { method: 'POST' });
+
+export const unfollowUser = (userId) =>
+  bbjAuthFetch(`/users/${userId}/follow`, { method: 'DELETE' });
