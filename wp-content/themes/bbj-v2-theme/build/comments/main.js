@@ -1,0 +1,1 @@
+"use strict";(globalThis.webpackChunkbbj_v2_theme=globalThis.webpackChunkbbj_v2_theme||[]).push([[792],{50(e,t,b){function s(e){e.innerHTML='<div class="text-sm text-gray-500">[bbj-comments] island booted</div>'}b.d(t,{default:()=>s})}}]);
