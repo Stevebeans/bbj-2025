@@ -8,8 +8,8 @@
 set -e
 
 LOCAL_THEME="/c/xampp/htdocs/bbj/wp-content/themes/bbj-v2-theme"
-PROD_PATH="/home/1358704.cloudwaysapps.com/duesaptjae/public_html/wp-content/themes/bbj-v2-theme"
-STAGING_PATH="/home/1358704.cloudwaysapps.com/ftgtnduhbt/public_html/wp-content/themes/bbj-v2-theme"
+PROD_PATH="/home/1620468.cloudwaysapps.com/duesaptjae/public_html/wp-content/themes/bbj-v2-theme"
+STAGING_PATH="/home/1620468.cloudwaysapps.com/ftgtnduhbt/public_html/wp-content/themes/bbj-v2-theme"
 
 TARGET="bbj-prod"
 REMOTE_PATH="$PROD_PATH"
