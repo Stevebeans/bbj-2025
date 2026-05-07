@@ -4,12 +4,22 @@
   "description": "BBJ V2 WordPress Theme",
   "scripts": {
     "dev": "tailwindcss -i ./src/css/style.css -o ./build/style.css --watch",
-    "build": "tailwindcss -i ./src/css/style.css -o ./build/style.css --minify"
+    "build": "tailwindcss -i ./src/css/style.css -o ./build/style.css --minify",
+    "comments:build": "wp-scripts build --config webpack.comments.config.js",
+    "comments:dev":   "wp-scripts start --config webpack.comments.config.js"
   },
   "devDependencies": {
     "@tailwindcss/typography": "^0.5.10",
+    "@wordpress/scripts": "^28.0.0",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-icons": "^5.5.0"
   }
 }
