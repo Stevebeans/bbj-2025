@@ -62,6 +62,7 @@ use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
+use BigBrotherJunkies\Data\LiveThread\LiveThreadCron;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadMigrator;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 use BigBrotherJunkies\Data\Utils\Revalidation;
@@ -149,6 +150,9 @@ class Plugin
         // Register live-thread post meta + run one-time legacy migration
         $this->registerLiveThreadMeta();
         add_action('init', [LiveThreadMigrator::class, 'maybeRun'], 20);
+        add_filter('cron_schedules', [LiveThreadCron::class, 'registerInterval']);
+        add_action(LiveThreadCron::HOOK, [LiveThreadCron::class, 'run']);
+        LiveThreadCron::schedule();
 
         // Initialize REST API routes
         $this->initApiRoutes();
