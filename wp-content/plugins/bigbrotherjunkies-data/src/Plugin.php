@@ -59,6 +59,7 @@ use BigBrotherJunkies\Data\Api\AIRoutes;
 use BigBrotherJunkies\Data\Api\AdSettingsRoutes;
 use BigBrotherJunkies\Data\Api\NewsAggregatorRoutes;
 use BigBrotherJunkies\Data\Api\EditorRoutes;
+use BigBrotherJunkies\Data\Api\LiveThreadRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
@@ -489,6 +490,10 @@ class Plugin
         // Blog editor routes (post CRUD, media, categories, review)
         $editorRoutes = new EditorRoutes();
         $editorRoutes->register();
+
+        // Live thread routes (current, take-over, close, updates-since)
+        $liveThreadRoutes = new LiveThreadRoutes();
+        $liveThreadRoutes->register();
     }
 
     /**
