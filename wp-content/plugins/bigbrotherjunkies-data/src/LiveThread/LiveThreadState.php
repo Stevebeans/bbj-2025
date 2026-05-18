@@ -43,7 +43,7 @@ class LiveThreadState
         $now   = time();
 
         if ($start > 0 && $now < $start) {
-            return 'closed'; // scheduled but window hasn't started yet — treat as closed to be safe
+            return 'none'; // window not yet open — treat as not-yet-live (closed implies "was live")
         }
 
         if ($end > 0 && $now > $end) {
@@ -125,16 +125,26 @@ class LiveThreadState
      */
     public static function closeThread(?int $postId = null): void
     {
+        global $wpdb;
+
         $activeId = (int) get_option(self::OPTION_ACTIVE, 0);
         $targetId = $postId ?? $activeId;
         if ($targetId <= 0) {
             return;
         }
 
-        update_post_meta($targetId, self::META_CLOSED_AT, time());
+        $wpdb->query('START TRANSACTION');
+        try {
+            update_post_meta($targetId, self::META_CLOSED_AT, time());
 
-        if ($activeId === $targetId) {
-            update_option(self::OPTION_ACTIVE, 0, false);
+            if ($activeId === $targetId) {
+                update_option(self::OPTION_ACTIVE, 0, false);
+            }
+
+            $wpdb->query('COMMIT');
+        } catch (\Throwable $e) {
+            $wpdb->query('ROLLBACK');
+            throw $e;
         }
 
         Revalidation::revalidateTag('live-thread-active');
