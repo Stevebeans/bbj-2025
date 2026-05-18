@@ -5,7 +5,9 @@ namespace BigBrotherJunkies\Data\Api;
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
 use BigBrotherJunkies\Data\FeedUpdates\BlueskyClient;
 use BigBrotherJunkies\Data\FeedUpdates\FacebookClient;
+use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
+use BigBrotherJunkies\Data\Utils\Revalidation;
 
 /**
  * Feed Update API Routes
@@ -233,6 +235,18 @@ class FeedUpdateRoutes
 
         // Clear caches
         do_action('breeze_clear_all_cache');
+
+        // Attach to active live thread (if any)
+        $updateTime = current_time('timestamp', true); // UTC, matches post_date_gmt
+        $threadId = LiveThreadState::findThreadForUpdate($updateTime);
+        if ($threadId > 0) {
+            update_post_meta($postId, '_bbjd_thread_post_id', $threadId);
+            Revalidation::revalidateTag("live-thread-{$threadId}");
+            $thread = get_post($threadId);
+            if ($thread) {
+                Revalidation::revalidatePost($thread->post_name);
+            }
+        }
 
         // Get the created post for response
         $post = get_post($postId);
