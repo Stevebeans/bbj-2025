@@ -62,6 +62,8 @@ use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
+use BigBrotherJunkies\Data\LiveThread\LiveThreadMigrator;
+use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 use BigBrotherJunkies\Data\Utils\Revalidation;
 
 /**
@@ -143,6 +145,10 @@ class Plugin
 
         // Register custom taxonomies (update_type, etc.)
         $this->initTaxonomies();
+
+        // Register live-thread post meta + run one-time legacy migration
+        $this->registerLiveThreadMeta();
+        add_action('init', [LiveThreadMigrator::class, 'maybeRun'], 20);
 
         // Initialize REST API routes
         $this->initApiRoutes();
@@ -732,5 +738,39 @@ class Plugin
         // The functions are defined in ThemeIntegration.php and auto-loaded
         // They become globally available once the file is included via autoloader
         require_once BBJD_PATH . 'src/Hooks/ThemeIntegration.php';
+    }
+
+    /**
+     * Register live-thread post meta so it shows up in REST responses when needed.
+     */
+    private function registerLiveThreadMeta(): void
+    {
+        $singleInt = [
+            'single'        => true,
+            'type'          => 'integer',
+            'show_in_rest'  => true,
+            'auth_callback' => function () { return current_user_can('edit_posts'); },
+        ];
+        $singleBool = [
+            'single'        => true,
+            'type'          => 'boolean',
+            'show_in_rest'  => true,
+            'auth_callback' => function () { return current_user_can('edit_posts'); },
+        ];
+        $singleString = [
+            'single'        => true,
+            'type'          => 'string',
+            'show_in_rest'  => true,
+            'auth_callback' => function () { return current_user_can('edit_posts'); },
+        ];
+
+        register_post_meta('post', LiveThreadState::META_LIVE_UPDATES, $singleBool);
+        register_post_meta('post', LiveThreadState::META_LIVE_START, $singleInt);
+        register_post_meta('post', LiveThreadState::META_LIVE_END, $singleInt);
+        register_post_meta('post', LiveThreadState::META_CLOSED_AT, $singleInt);
+        register_post_meta('post', LiveThreadState::META_CLOSING_SUMMARY, $singleString);
+
+        // Per-feed-update meta — only render-only for v1, but the field must exist.
+        register_post_meta('bbj_feed_update', '_bbjd_breaking', $singleBool);
     }
 }
