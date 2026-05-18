@@ -252,6 +252,76 @@ class Plugin
                     'context' => ['view'],
                 ],
             ]);
+
+            // Live thread fields — derived state + raw meta for the Next.js post page.
+            // getState() is cheap (all meta is in the WP object cache after get_post).
+            register_rest_field('post', 'live_updates', [
+                'get_callback' => function ($post) {
+                    $wpPost = get_post($post['id']);
+                    return $wpPost ? LiveThreadState::getState($wpPost) !== 'none' : false;
+                },
+                'schema' => [
+                    'description' => 'True when this post is or was a live-update thread',
+                    'type' => 'boolean',
+                    'context' => ['view'],
+                ],
+            ]);
+
+            register_rest_field('post', 'live_state', [
+                'get_callback' => function ($post) {
+                    $wpPost = get_post($post['id']);
+                    return $wpPost ? LiveThreadState::getState($wpPost) : 'none';
+                },
+                'schema' => [
+                    'description' => 'Live thread state: none | live | closed',
+                    'type' => 'string',
+                    'context' => ['view'],
+                ],
+            ]);
+
+            register_rest_field('post', 'live_start', [
+                'get_callback' => function ($post) {
+                    return (int) get_post_meta($post['id'], LiveThreadState::META_LIVE_START, true);
+                },
+                'schema' => [
+                    'description' => 'Unix timestamp when the live window opened (0 = unset)',
+                    'type' => 'integer',
+                    'context' => ['view'],
+                ],
+            ]);
+
+            register_rest_field('post', 'live_end', [
+                'get_callback' => function ($post) {
+                    return (int) get_post_meta($post['id'], LiveThreadState::META_LIVE_END, true);
+                },
+                'schema' => [
+                    'description' => 'Unix timestamp when the live window closes (0 = no hard end)',
+                    'type' => 'integer',
+                    'context' => ['view'],
+                ],
+            ]);
+
+            register_rest_field('post', 'closed_at', [
+                'get_callback' => function ($post) {
+                    return (int) get_post_meta($post['id'], LiveThreadState::META_CLOSED_AT, true);
+                },
+                'schema' => [
+                    'description' => 'Unix timestamp when the thread was manually closed (0 = still open)',
+                    'type' => 'integer',
+                    'context' => ['view'],
+                ],
+            ]);
+
+            register_rest_field('post', 'closing_summary', [
+                'get_callback' => function ($post) {
+                    return (string) get_post_meta($post['id'], LiveThreadState::META_CLOSING_SUMMARY, true);
+                },
+                'schema' => [
+                    'description' => 'Optional closing summary shown after the thread ends',
+                    'type' => 'string',
+                    'context' => ['view'],
+                ],
+            ]);
         });
     }
 

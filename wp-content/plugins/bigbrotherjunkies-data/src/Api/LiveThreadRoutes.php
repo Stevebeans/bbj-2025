@@ -73,6 +73,12 @@ class LiveThreadRoutes
                 ],
             ],
         ]);
+
+        register_rest_route($ns, '/live-thread/(?P<id>\d+)/updates', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'getAllUpdatesForThread'],
+            'permission_callback' => '__return_true',
+        ]);
     }
 
     /**
@@ -181,6 +187,53 @@ class LiveThreadRoutes
 
         $response->header('Cache-Control', 'no-store, no-cache, must-revalidate');
         return $response;
+    }
+
+    /**
+     * GET /bbjd/v1/live-thread/{id}/updates
+     * Public. Returns ALL feed updates for a thread's time window, ordered
+     * oldest-first. Used by the server-rendered <LiveUpdateTimeline /> so it
+     * can render the full initial list without a client round-trip.
+     *
+     * Timestamps live in post_date_gmt (same as getUpdatesSince); we use
+     * date_query with 'inclusive' => true so updates at exactly $start are included.
+     */
+    public function getAllUpdatesForThread(WP_REST_Request $req)
+    {
+        $threadId = (int) $req->get_param('id');
+        $thread = get_post($threadId);
+        if (!$thread) {
+            return new WP_Error('invalid_thread', 'Thread not found.', ['status' => 404]);
+        }
+
+        $start = (int) get_post_meta($threadId, LiveThreadState::META_LIVE_START, true);
+        $end   = (int) get_post_meta($threadId, LiveThreadState::META_LIVE_END, true);
+
+        // date_query uses post_date_gmt; 'inclusive' => true gives us >= $start.
+        $dateQuery = [
+            'after'     => gmdate('Y-m-d H:i:s', max($start - 1, 0)), // subtract 1s so inclusive=true catches $start exactly
+            'inclusive' => true,
+        ];
+        if ($end > 0) {
+            $dateQuery['before']    = gmdate('Y-m-d H:i:s', $end);
+            $dateQuery['inclusive'] = true;
+        }
+
+        $updates = get_posts([
+            'post_type'      => 'live-feed-updates',
+            'post_status'    => 'publish',
+            'posts_per_page' => -1,
+            'orderby'        => 'date',
+            'order'          => 'ASC',
+            'date_query'     => [$dateQuery],
+        ]);
+
+        return new WP_REST_Response([
+            'updates'      => array_map([$this, 'serializeFeedUpdate'], $updates),
+            'thread_state' => LiveThreadState::getState($thread),
+            'live_start'   => $start,
+            'live_end'     => $end,
+        ], 200);
     }
 
     /**
