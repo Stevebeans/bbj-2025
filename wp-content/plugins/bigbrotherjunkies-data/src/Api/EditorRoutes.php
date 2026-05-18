@@ -226,6 +226,17 @@ class EditorRoutes
             update_post_meta($postId, '_bbj_crop_data', wp_json_encode($params['crop_data']));
         }
 
+        // Live-thread meta (Task 18)
+        if (isset($params['live_updates'])) {
+            update_post_meta($postId, '_bbjd_live_updates', !empty($params['live_updates']) ? 1 : 0);
+        }
+        if (isset($params['live_start'])) {
+            update_post_meta($postId, '_bbjd_live_start', (int) $params['live_start']);
+        }
+        if (isset($params['live_end'])) {
+            update_post_meta($postId, '_bbjd_live_end', (int) $params['live_end']);
+        }
+
         $post = get_post($postId);
 
         return new \WP_REST_Response([
@@ -288,6 +299,9 @@ class EditorRoutes
             'meta_description' => get_post_meta($postId, '_bbj_meta_description', true) ?: '',
             'review_note' => $reviewNote ?: '',
             'crop_data' => json_decode(get_post_meta($postId, '_bbj_crop_data', true) ?: '{}', true),
+            'live_updates' => (int) get_post_meta($postId, '_bbjd_live_updates', true) === 1,
+            'live_start' => (int) get_post_meta($postId, '_bbjd_live_start', true),
+            'live_end' => (int) get_post_meta($postId, '_bbjd_live_end', true),
         ]);
     }
 
@@ -356,6 +370,17 @@ class EditorRoutes
             } else {
                 update_post_meta($postId, '_bbj_crop_data', wp_json_encode($params['crop_data']));
             }
+        }
+
+        // Live-thread meta (Task 18)
+        if (isset($params['live_updates'])) {
+            update_post_meta($postId, '_bbjd_live_updates', !empty($params['live_updates']) ? 1 : 0);
+        }
+        if (isset($params['live_start'])) {
+            update_post_meta($postId, '_bbjd_live_start', (int) $params['live_start']);
+        }
+        if (isset($params['live_end'])) {
+            update_post_meta($postId, '_bbjd_live_end', (int) $params['live_end']);
         }
 
         $freshPost = get_post($postId);
