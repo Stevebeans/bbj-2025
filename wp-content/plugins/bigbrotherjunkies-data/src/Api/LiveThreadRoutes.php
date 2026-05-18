@@ -95,7 +95,7 @@ class LiveThreadRoutes
         $start = (int) get_post_meta($post->ID, LiveThreadState::META_LIVE_START, true);
         return new WP_REST_Response([
             'post_id'    => $post->ID,
-            'title'      => get_the_title($post),
+            'title'      => html_entity_decode(get_the_title($post), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             'slug'       => $post->post_name,
             'started_at' => $start,
         ], 200);
