@@ -12,8 +12,8 @@
 set -e
 
 PLUGINS_DIR="/c/xampp/htdocs/bbj/wp-content/plugins"
-PROD_BASE="/home/1358704.cloudwaysapps.com/duesaptjae/public_html/wp-content/plugins"
-STAGING_BASE="/home/1358704.cloudwaysapps.com/ftgtnduhbt/public_html/wp-content/plugins"
+PROD_BASE="/home/1620468.cloudwaysapps.com/duesaptjae/public_html/wp-content/plugins"
+STAGING_BASE="/home/1620468.cloudwaysapps.com/ftgtnduhbt/public_html/wp-content/plugins"
 
 # Per-plugin cleanup: top-level paths nuked on the server before fresh extract.
 # Keep these tight — anything not listed here will linger if you delete it locally.
