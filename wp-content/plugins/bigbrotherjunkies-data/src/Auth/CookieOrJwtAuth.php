@@ -22,14 +22,9 @@ namespace BigBrotherJunkies\Data\Auth {
                 self::$lastPath = 'cookie';
                 return true;
             }
-            if (function_exists('bbjd_jwt_present_and_valid')) {
-                if (bbjd_jwt_present_and_valid()) {
-                    self::$lastPath = 'jwt';
-                    return true;
-                }
-            } elseif (defined('WP_DEBUG') && WP_DEBUG) {
-                // @todo Remove once bbjd_jwt_present_and_valid() is implemented (comments sprint).
-                error_log('[bbjd] CookieOrJwtAuth: bbjd_jwt_present_and_valid is not defined; JWT path is disabled.');
+            if (function_exists('bbjd_jwt_present_and_valid') && bbjd_jwt_present_and_valid()) {
+                self::$lastPath = 'jwt';
+                return true;
             }
             self::$lastPath = 'none';
             return false;
