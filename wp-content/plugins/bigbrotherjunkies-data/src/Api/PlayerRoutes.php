@@ -925,6 +925,7 @@ class PlayerRoutes
                 'result' => $result,
                 'status' => $status,
                 'evicted_date' => $evictedDate ? $evictedDate->format('Y-m-d') : null,
+                'weekly_timeline' => \BigBrotherJunkies\Data\Weekly\WeeklyData::getPlayerTimeline($playerId, $seasonId),
             ];
         }
 
