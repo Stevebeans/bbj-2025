@@ -35,7 +35,7 @@ class WeeklyDataTest extends TestCase
         $ru = WeeklyData::buildTimelineCells([], [], 2, 0, 5, 0);
         $this->assertSame(['label' => 'RU', 'class' => 'runnerup'], $ru['finale']);
 
-        $afp = WeeklyData::buildTimelineCells([], [], 0, 777, 777, 0);
+        $afp = WeeklyData::buildTimelineCells([], [], null, 777, 777, 0);
         $this->assertSame(['label' => '★ AFP', 'class' => 'afp'], $afp['finale']);
     }
 
