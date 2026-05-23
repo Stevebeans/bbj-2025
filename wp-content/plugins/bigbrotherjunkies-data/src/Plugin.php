@@ -48,6 +48,7 @@ use BigBrotherJunkies\Data\Hooks\HeaderFooterCode;
 use BigBrotherJunkies\Data\Comments\CommentMigrator;
 use BigBrotherJunkies\Data\Email\EmailMigrator;
 use BigBrotherJunkies\Data\Email\EmailSender;
+use BigBrotherJunkies\Data\Weekly\WeeklyMigrator;
 use BigBrotherJunkies\Data\Comments\MediaRoutes;
 use BigBrotherJunkies\Data\Api\AvatarRoutes;
 use BigBrotherJunkies\Data\Api\SettingsRoutes;
@@ -166,6 +167,9 @@ class Plugin
 
         // Initialize Email System (tables, migration)
         $this->initEmail();
+
+        // Initialize weekly-tracking tables (idempotent)
+        $this->initWeekly();
 
         // Load admin functionality
         if (is_admin()) {
@@ -793,6 +797,16 @@ class Plugin
         $emailRoutes->init();
 
         add_action('bbj_send_post_notification', [$emailSender, 'sendPostNotification']);
+    }
+
+    /**
+     * Initialize weekly-tracking tables (idempotent).
+     */
+    private function initWeekly(): void
+    {
+        if (WeeklyMigrator::needsMigration()) {
+            WeeklyMigrator::migrate();
+        }
     }
 
     /**
