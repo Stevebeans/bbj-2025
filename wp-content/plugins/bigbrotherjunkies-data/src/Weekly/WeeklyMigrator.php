@@ -20,7 +20,7 @@ class WeeklyMigrator
         $results = [];
         foreach (WeeklySchema::getAllSchemas() as $tableName => $schema) {
             dbDelta($schema);
-            $results[$tableName] = true;
+            $results[$tableName] = self::tableExists($tableName);
         }
 
         self::seedDefaultCompTypes();
@@ -32,7 +32,7 @@ class WeeklyMigrator
     private static function seedDefaultCompTypes(): void
     {
         global $wpdb;
-        $table = $wpdb->prefix . WeeklySchema::TABLE_COMP_TYPES;
+        $table = WeeklySchema::table(WeeklySchema::TABLE_COMP_TYPES);
         $defaults = [
             ['slug' => 'hoh',  'name' => 'HOH',           'sort_order' => 10],
             ['slug' => 'pov',  'name' => 'Power of Veto',  'sort_order' => 20],
@@ -47,5 +47,15 @@ class WeeklyMigrator
                 $wpdb->insert($table, $d);
             }
         }
+    }
+
+    private static function tableExists(string $tableName): bool
+    {
+        global $wpdb;
+        $fullTableName = WeeklySchema::table($tableName);
+        $result = $wpdb->get_var(
+            $wpdb->prepare("SHOW TABLES LIKE %s", $fullTableName)
+        );
+        return $result === $fullTableName;
     }
 }

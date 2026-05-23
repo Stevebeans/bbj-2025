@@ -14,7 +14,7 @@ class WeeklySchema
     public const TABLE_WEEKS_PLAYERS = 'bbj_weeks_players';
     public const TABLE_WEEK_COMPS    = 'bbj_week_comps';
 
-    private static function table(string $name): string
+    public static function table(string $name): string
     {
         global $wpdb;
         return $wpdb->prefix . $name;
