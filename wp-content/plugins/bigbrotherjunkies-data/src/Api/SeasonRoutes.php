@@ -280,6 +280,7 @@ class SeasonRoutes
             'count' => count($formattedPlayers),
             'category_id' => $categoryId,
             'article_count' => $articleCount,
+            'weeks' => \BigBrotherJunkies\Data\Weekly\WeeklyData::getSeasonWeeks((int) $post->ID),
         ], 200);
     }
 
