@@ -208,8 +208,14 @@ class WeeklyData
 
     /**
      * Per-season list of weeks for the season-page breakdown.
-     * Returns: [{ week_num, start_date, end_date, summary, hoh:[names], pov:[names],
-     *            noms:[names], evicted:[names] }]  (ordered by week_num)
+     * Returns: [{ week_num, start_date, end_date, summary,
+     *            hoh:[names], pov:[names], noms:[names], evicted:[names],
+     *            faces:{ hoh:[face], pov:[face], noms:[face], evicted:[face] } }]
+     * where face = { id, name, slug, photo }. (ordered by week_num)
+     *
+     * `faces` is sourced from the SAME junction rows as getPlayerTimeline()
+     * (bbj_week_comps for hoh/pov, bbj_weeks_players for nom/evicted), so the
+     * season power-map and player timelines can never disagree.
      */
     public static function getSeasonWeeks(int $seasonId): array
     {
@@ -218,6 +224,7 @@ class WeeklyData
         $wplayers = $wpdb->prefix . WeeklySchema::TABLE_WEEKS_PLAYERS;
         $wcomps   = $wpdb->prefix . WeeklySchema::TABLE_WEEK_COMPS;
         $ctypes   = $wpdb->prefix . WeeklySchema::TABLE_COMP_TYPES;
+        $players  = $wpdb->prefix . 'bbj_players';
         $posts    = $wpdb->posts;
 
         $weekRows = $wpdb->get_results($wpdb->prepare(
@@ -230,37 +237,71 @@ class WeeklyData
             return [];
         }
 
+        // Build a player "face" {id,name,slug,photo} from a query row.
+        $toFace = static function (array $r): array {
+            $pic   = (int) ($r['profile_picture'] ?? 0);
+            $photo = $pic ? (wp_get_attachment_image_url($pic, 'thumbnail') ?: '') : '';
+            return [
+                'id'    => (int) $r['player_id'],
+                'name'  => (string) $r['name'],
+                'slug'  => (string) ($r['player_slug'] ?? ''),
+                'photo' => $photo,
+            ];
+        };
+
         $out = [];
         foreach ($weekRows as $w) {
             $weekId = (int) $w['id'];
 
+            // HoH / Veto winners — comp junction (same source as player timelines).
             $comps = $wpdb->get_results($wpdb->prepare(
-                "SELECT ct.slug, p.post_title AS name
+                "SELECT ct.slug AS comp_slug, p.post_title AS name,
+                        wc.player_id, p.post_name AS player_slug, bp.profile_picture
                    FROM {$wcomps} wc
                    INNER JOIN {$ctypes} ct ON ct.id = wc.comp_type_id
-                   INNER JOIN {$posts} p  ON p.ID = wc.player_id
+                   INNER JOIN {$posts}  p  ON p.ID  = wc.player_id
+                   LEFT JOIN  {$players} bp ON (bp.post_id = wc.player_id
+                                                OR (bp.id = wc.player_id AND bp.post_id = 0))
                   WHERE wc.week_id = %d",
                 $weekId
             ), ARRAY_A) ?: [];
-            $hoh = [];
-            $pov = [];
+
+            $hoh = $pov = [];
+            $hohFaces = $povFaces = [];
             foreach ($comps as $c) {
-                if ($c['slug'] === 'hoh') $hoh[] = $c['name'];
-                elseif ($c['slug'] === 'pov') $pov[] = $c['name'];
+                if ($c['comp_slug'] === 'hoh') {
+                    $hoh[]      = $c['name'];
+                    $hohFaces[] = $toFace($c);
+                } elseif ($c['comp_slug'] === 'pov') {
+                    $pov[]      = $c['name'];
+                    $povFaces[] = $toFace($c);
+                }
+                // other slugs (e.g. 'blockbuster', 'misc') intentionally ignored — Phase 1
             }
 
+            // Noms / Evicted — per-player status rows.
             $statusRows = $wpdb->get_results($wpdb->prepare(
-                "SELECT p.post_title AS name, wp.nom, wp.evicted
+                "SELECT p.post_title AS name, wp.nom, wp.evicted,
+                        wp.player_id, p.post_name AS player_slug, bp.profile_picture
                    FROM {$wplayers} wp
-                   INNER JOIN {$posts} p ON p.ID = wp.player_id
+                   INNER JOIN {$posts}  p  ON p.ID = wp.player_id
+                   LEFT JOIN  {$players} bp ON (bp.post_id = wp.player_id
+                                                OR (bp.id = wp.player_id AND bp.post_id = 0))
                   WHERE wp.week_id = %d",
                 $weekId
             ), ARRAY_A) ?: [];
-            $noms = [];
-            $evicted = [];
+
+            $noms = $evicted = [];
+            $nomFaces = $evictedFaces = [];
             foreach ($statusRows as $s) {
-                if ((int) $s['nom'] === 1)     $noms[] = $s['name'];
-                if ((int) $s['evicted'] === 1) $evicted[] = $s['name'];
+                if ((int) $s['nom'] === 1) {
+                    $noms[]     = $s['name'];
+                    $nomFaces[] = $toFace($s);
+                }
+                if ((int) $s['evicted'] === 1) {
+                    $evicted[]      = $s['name'];
+                    $evictedFaces[] = $toFace($s);
+                }
             }
 
             $out[] = [
@@ -272,6 +313,12 @@ class WeeklyData
                 'pov'        => $pov,
                 'noms'       => $noms,
                 'evicted'    => $evicted,
+                'faces'      => [
+                    'hoh'     => $hohFaces,
+                    'pov'     => $povFaces,
+                    'noms'    => $nomFaces,
+                    'evicted' => $evictedFaces,
+                ],
             ];
         }
 
