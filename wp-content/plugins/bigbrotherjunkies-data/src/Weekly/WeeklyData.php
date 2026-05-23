@@ -103,4 +103,76 @@ class WeeklyData
 
         return self::buildTimelineCells($weekRows, $compRows, $finishPlace, $afpId, $playerId, $maxWeek);
     }
+
+    /**
+     * Per-season list of weeks for the season-page breakdown.
+     * Returns: [{ week_num, start_date, end_date, summary, hoh:[names], pov:[names],
+     *            noms:[names], evicted:[names] }]  (ordered by week_num)
+     */
+    public static function getSeasonWeeks(int $seasonId): array
+    {
+        global $wpdb;
+        $weeks    = $wpdb->prefix . WeeklySchema::TABLE_WEEKS;
+        $wplayers = $wpdb->prefix . WeeklySchema::TABLE_WEEKS_PLAYERS;
+        $wcomps   = $wpdb->prefix . WeeklySchema::TABLE_WEEK_COMPS;
+        $ctypes   = $wpdb->prefix . WeeklySchema::TABLE_COMP_TYPES;
+        $posts    = $wpdb->posts;
+
+        $weekRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, week_num, start_date, end_date, summary
+               FROM {$weeks} WHERE season_id = %d ORDER BY week_num ASC",
+            $seasonId
+        ), ARRAY_A) ?: [];
+
+        if (empty($weekRows)) {
+            return [];
+        }
+
+        $out = [];
+        foreach ($weekRows as $w) {
+            $weekId = (int) $w['id'];
+
+            $comps = $wpdb->get_results($wpdb->prepare(
+                "SELECT ct.slug, p.post_title AS name
+                   FROM {$wcomps} wc
+                   INNER JOIN {$ctypes} ct ON ct.id = wc.comp_type_id
+                   INNER JOIN {$posts} p  ON p.ID = wc.player_id
+                  WHERE wc.week_id = %d",
+                $weekId
+            ), ARRAY_A) ?: [];
+            $hoh = [];
+            $pov = [];
+            foreach ($comps as $c) {
+                if ($c['slug'] === 'hoh') $hoh[] = $c['name'];
+                elseif ($c['slug'] === 'pov') $pov[] = $c['name'];
+            }
+
+            $statusRows = $wpdb->get_results($wpdb->prepare(
+                "SELECT p.post_title AS name, wp.nom, wp.evicted
+                   FROM {$wplayers} wp
+                   INNER JOIN {$posts} p ON p.ID = wp.player_id
+                  WHERE wp.week_id = %d",
+                $weekId
+            ), ARRAY_A) ?: [];
+            $noms = [];
+            $evicted = [];
+            foreach ($statusRows as $s) {
+                if ((int) $s['nom'] === 1)     $noms[] = $s['name'];
+                if ((int) $s['evicted'] === 1) $evicted[] = $s['name'];
+            }
+
+            $out[] = [
+                'week_num'   => (int) $w['week_num'],
+                'start_date' => $w['start_date'],
+                'end_date'   => $w['end_date'],
+                'summary'    => $w['summary'],
+                'hoh'        => $hoh,
+                'pov'        => $pov,
+                'noms'       => $noms,
+                'evicted'    => $evicted,
+            ];
+        }
+
+        return $out;
+    }
 }
