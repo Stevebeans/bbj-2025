@@ -19,11 +19,16 @@ class WeeklyDataTest extends TestCase
             ['week_num' => 3, 'slug' => 'pov'],
         ];
 
-        $result = WeeklyData::buildTimelineCells($weekRows, $compRows, 1, 0, 999, 3);
+        $voteRows = [
+            ['week_num' => 2, 'votes' => 5],
+            ['week_num' => 3, 'votes' => 0],
+        ];
+        $result = WeeklyData::buildTimelineCells($weekRows, $compRows, 1, 0, 999, 3, $voteRows);
 
         $this->assertSame([1], $result['cells']['hoh']);
         $this->assertSame([3], $result['cells']['pov']);
         $this->assertSame([2], $result['cells']['nom']);
+        $this->assertSame([2 => 5], $result['votes']); // week 2 had 5 votes; week 3's 0 is omitted
         $this->assertSame(3, $result['max_week']);
         $this->assertTrue($result['tracked']);
         $this->assertTrue($result['has_activity']);

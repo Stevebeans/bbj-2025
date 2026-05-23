@@ -10,7 +10,8 @@ class WeeklyData
         ?int $finishPlace,
         int $afpId,
         int $playerId,
-        int $maxWeek
+        int $maxWeek,
+        array $voteRows = []
     ): array {
         $cells = ['hoh' => [], 'pov' => [], 'nom' => []];
 
@@ -25,6 +26,15 @@ class WeeklyData
             if (in_array('hoh', $slugs, true)) $cells['hoh'][] = $wn;
             if (in_array('pov', $slugs, true)) $cells['pov'][] = $wn;
             if ((int) ($w['nom'] ?? 0) === 1)  $cells['nom'][] = $wn;
+        }
+
+        // Eviction votes received per week (omit weeks with 0 votes against this player).
+        $votes = [];
+        foreach ($voteRows as $vr) {
+            $count = (int) ($vr['votes'] ?? 0);
+            if ($count > 0) {
+                $votes[(int) $vr['week_num']] = $count;
+            }
         }
 
         $finale = null;
@@ -44,6 +54,7 @@ class WeeklyData
             'tracked'      => $tracked,
             'max_week'     => $maxWeek,
             'cells'        => $cells,
+            'votes'        => $votes,
             'finale'       => $finale,
             'has_activity' => $hasActivity,
         ];
@@ -90,6 +101,16 @@ class WeeklyData
             $playerId, $seasonId
         ), ARRAY_A) ?: [];
 
+        // Eviction votes received per week: count of houseguests who voted to evict this player.
+        $voteRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT w.week_num, COUNT(*) AS votes
+               FROM {$wplayers} vp
+               INNER JOIN {$weeks} w ON w.id = vp.week_id
+              WHERE w.season_id = %d AND vp.voted_for = %d
+              GROUP BY w.week_num",
+            $seasonId, $playerId
+        ), ARRAY_A) ?: [];
+
         $finishPlace = $wpdb->get_var($wpdb->prepare(
             "SELECT finish_place FROM {$pseason} WHERE bbj_player = %d AND bbj_season = %d",
             $playerId, $seasonId
@@ -101,7 +122,7 @@ class WeeklyData
             $seasonId
         ));
 
-        return self::buildTimelineCells($weekRows, $compRows, $finishPlace, $afpId, $playerId, $maxWeek);
+        return self::buildTimelineCells($weekRows, $compRows, $finishPlace, $afpId, $playerId, $maxWeek, $voteRows);
     }
 
     /**
