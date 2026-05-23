@@ -105,6 +105,87 @@ class WeeklyData
     }
 
     /**
+     * Pure: tally per-player totals from comp + nom rows.
+     * @return array<int,array{hoh:int,pov:int,misc:int,nom:int}>
+     */
+    public static function countTotalsFromRows(array $compRows, array $nomRows): array
+    {
+        $totals = [];
+        $ensure = function (&$totals, $pid) {
+            if (!isset($totals[$pid])) {
+                $totals[$pid] = ['hoh' => 0, 'pov' => 0, 'misc' => 0, 'nom' => 0];
+            }
+        };
+        foreach ($compRows as $c) {
+            $pid = (int) $c['player_id'];
+            $ensure($totals, $pid);
+            $slug = $c['slug'];
+            if (isset($totals[$pid][$slug])) {
+                $totals[$pid][$slug]++;
+            } else {
+                $totals[$pid]['misc']++; // any non-hoh/pov comp counts as misc
+            }
+        }
+        foreach ($nomRows as $n) {
+            $pid = (int) $n['player_id'];
+            $ensure($totals, $pid);
+            $totals[$pid]['nom'] = (int) $n['noms'];
+        }
+        return $totals;
+    }
+
+    /**
+     * Recompute and write bbj_total_hoh/pov/misc/nom for every player in a season,
+     * from the weekly tables. RUN MANUALLY only for fully-tracked seasons.
+     * @return int number of player rows updated
+     */
+    public static function recomputeSeasonTotals(int $seasonId): int
+    {
+        global $wpdb;
+        $weeks    = $wpdb->prefix . WeeklySchema::TABLE_WEEKS;
+        $wplayers = $wpdb->prefix . WeeklySchema::TABLE_WEEKS_PLAYERS;
+        $wcomps   = $wpdb->prefix . WeeklySchema::TABLE_WEEK_COMPS;
+        $ctypes   = $wpdb->prefix . WeeklySchema::TABLE_COMP_TYPES;
+        $pseason  = $wpdb->prefix . 'bbj_v2_player_season';
+
+        $compRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT wc.player_id, ct.slug
+               FROM {$wcomps} wc
+               INNER JOIN {$weeks} w   ON w.id  = wc.week_id
+               INNER JOIN {$ctypes} ct ON ct.id = wc.comp_type_id
+              WHERE w.season_id = %d",
+            $seasonId
+        ), ARRAY_A) ?: [];
+
+        $nomRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT wp.player_id,
+                    SUM(wp.nom) AS noms,
+                    SUM(wp.evicted) AS evicted
+               FROM {$wplayers} wp
+              WHERE wp.season_id = %d
+              GROUP BY wp.player_id",
+            $seasonId
+        ), ARRAY_A) ?: [];
+
+        $totals = self::countTotalsFromRows($compRows, $nomRows);
+
+        $updated = 0;
+        foreach ($totals as $playerId => $t) {
+            $updated += (int) $wpdb->update(
+                $pseason,
+                [
+                    'bbj_total_hoh'  => $t['hoh'],
+                    'bbj_total_pov'  => $t['pov'],
+                    'bbj_total_misc' => $t['misc'],
+                    'bbj_total_nom'  => $t['nom'],
+                ],
+                ['bbj_player' => $playerId, 'bbj_season' => $seasonId]
+            );
+        }
+        return $updated;
+    }
+
+    /**
      * Per-season list of weeks for the season-page breakdown.
      * Returns: [{ week_num, start_date, end_date, summary, hoh:[names], pov:[names],
      *            noms:[names], evicted:[names] }]  (ordered by week_num)

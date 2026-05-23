@@ -46,4 +46,25 @@ class WeeklyDataTest extends TestCase
         $this->assertFalse($result['has_activity']);
         $this->assertNull($result['finale']);
     }
+
+    public function test_count_totals_from_rows(): void
+    {
+        $compRows = [
+            ['player_id' => 10, 'slug' => 'hoh'],
+            ['player_id' => 10, 'slug' => 'pov'],
+            ['player_id' => 10, 'slug' => 'hoh'],
+            ['player_id' => 20, 'slug' => 'misc'],
+        ];
+        $nomRows = [
+            ['player_id' => 10, 'noms' => 2, 'evicted' => 0],
+            ['player_id' => 20, 'noms' => 1, 'evicted' => 1],
+        ];
+        $totals = WeeklyData::countTotalsFromRows($compRows, $nomRows);
+
+        $this->assertSame(2, $totals[10]['hoh']);
+        $this->assertSame(1, $totals[10]['pov']);
+        $this->assertSame(2, $totals[10]['nom']);
+        $this->assertSame(1, $totals[20]['misc']);
+        $this->assertSame(1, $totals[20]['nom']);
+    }
 }
