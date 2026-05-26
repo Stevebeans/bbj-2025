@@ -53,7 +53,19 @@ class HomeRoutes
                     'type' => 'string',
                     'sanitize_callback' => 'sanitize_text_field',
                 ],
+                'mode' => [
+                    'default' => '',
+                    'type' => 'string',
+                    'enum' => ['', 'feed', 'show'],
+                ],
             ],
+        ]);
+
+        // Feed Updates Hub — single cached payload for the editorial hub page
+        register_rest_route('bbjd/v1', '/feed-updates/hub', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getFeedHub'],
+            'permission_callback' => '__return_true',
         ]);
 
         // Houseboard endpoint (HoH, PoV, Nominees, Have Nots)
@@ -155,6 +167,7 @@ class HomeRoutes
         $sort = $request->get_param('sort') ?? 'newest';
         $dateRange = $request->get_param('date_range') ?? 'all';
         $search = $request->get_param('search') ?? '';
+        $mode = $request->get_param('mode') ?? '';
 
         // Build query args
         $args = [
@@ -231,9 +244,16 @@ class HomeRoutes
             $args['s'] = $search;
         }
 
-        // For rating sort, we need found_rows for proper pagination
-        // For other sorts, we can skip it for performance
-        $args['no_found_rows'] = !in_array($sort, ['highest', 'lowest']);
+        // Feed vs Show distinction (the only category we keep)
+        if ($mode === 'feed' || $mode === 'show') {
+            $args['meta_query'] = [[
+                'key'   => '_feed_update_mode',
+                'value' => $mode,
+            ]];
+        }
+
+        // Need found_rows for accurate load-more pagination.
+        $args['no_found_rows'] = false;
 
         $query = new \WP_Query($args);
 
@@ -313,9 +333,13 @@ class HomeRoutes
 
         wp_reset_postdata();
 
+        $total = (int) $query->found_posts;
         return [
-            'updates' => $updates,
-            'total' => count($updates),
+            'updates'   => $updates,
+            'total'     => $total,
+            'per_page'  => $perPage,
+            'offset'    => $offset,
+            'has_more'  => ($offset + count($updates)) < $total,
         ];
     }
 
@@ -476,6 +500,120 @@ class HomeRoutes
                 'is_active' => $isActive,
             ],
             'players' => $players,
+        ];
+    }
+
+    /**
+     * Feed Updates Hub payload: season meta + counts + featured + page-1 thread + hot posts.
+     * Mirrors bbj-v2-theme/inc/feed-updates-hub-data.php (minus category/location).
+     */
+    public function getFeedHub(): array
+    {
+        global $wpdb;
+
+        $currentSeasonId = (int) get_option('bbj_v2_current_season');
+        $seasonInfo = ($currentSeasonId > 0 && function_exists('bbj_v2_get_season_by_id'))
+            ? bbj_v2_get_season_by_id($currentSeasonId)
+            : [];
+
+        $name      = (string) ($seasonInfo['full_name'] ?? '');
+        $startDate = (string) ($seasonInfo['start_date'] ?? '');
+        $endDate   = (string) ($seasonInfo['end_date'] ?? '');
+
+        // Abbreviation (BB27 / CBB3) from meta or title
+        $abbr = (string) ($seasonInfo['abbreviation'] ?? '');
+        if ($abbr === '' && preg_match('/Big Brother\s+(\d+)/i', $name, $m)) {
+            $abbr = 'BB' . $m[1];
+        } elseif ($abbr === '' && preg_match('/Celebrity Big Brother\s+(\d+)/i', $name, $m)) {
+            $abbr = 'CBB' . $m[1];
+        }
+
+        // Day / week of season + active flag
+        $tz  = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
+        $now = new \DateTime('now', $tz);
+        $day = $week = 0;
+        $isActive = false;
+        if ($startDate && $startDate !== '0000-00-00') {
+            try {
+                $start = new \DateTime($startDate, $tz);
+                if ($now >= $start) {
+                    $day  = max(1, (int) $start->diff($now)->days + 1);
+                    $week = max(1, (int) ceil($day / 7));
+                }
+                $end = ($endDate && $endDate !== '0000-00-00') ? new \DateTime($endDate, $tz) : null;
+                $isActive = $now >= $start && (!$end || $now <= $end);
+            } catch (\Exception $e) { /* leave 0 */ }
+        }
+
+        // Counts
+        $today = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->posts}
+              WHERE post_type='live-feed-updates' AND post_status='publish'
+                AND DATE(post_date)=CURDATE()"
+        );
+        $weekCount = (int) $wpdb->get_var(
+            "SELECT COUNT(*) FROM {$wpdb->posts}
+              WHERE post_type='live-feed-updates' AND post_status='publish'
+                AND post_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+        );
+        $seasonCount = 0;
+        if ($startDate && $startDate !== '0000-00-00') {
+            $seasonCount = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$wpdb->posts}
+                  WHERE post_type='live-feed-updates' AND post_status='publish'
+                    AND post_date >= %s",
+                $startDate . ' 00:00:00'
+            ));
+        } else {
+            $seasonCount = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->posts}
+                  WHERE post_type='live-feed-updates' AND post_status='publish'"
+            );
+        }
+
+        // Page-1 thread (reuse the list endpoint logic for identical row shape)
+        $listReq = new \WP_REST_Request('GET', '/bbjd/v1/feed-updates');
+        $listReq->set_param('per_page', 20);
+        $listReq->set_param('offset', 0);
+        $listReq->set_param('sort', 'newest');
+        $thread = $this->getFeedUpdates($listReq);
+
+        $featured = $thread['updates'][0] ?? null;
+
+        // Hot This Week — top blog posts by comment count over 7 days
+        $hotRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT ID, post_title, post_name, comment_count, post_date
+               FROM {$wpdb->posts}
+              WHERE post_type='post' AND post_status='publish'
+                AND post_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+              ORDER BY comment_count DESC, post_date DESC
+              LIMIT %d",
+            4
+        ), ARRAY_A);
+        $hotPosts = array_map(function ($r) {
+            return [
+                'id'            => (int) $r['ID'],
+                'title'         => html_entity_decode((string) $r['post_title'], ENT_QUOTES, 'UTF-8'),
+                'slug'          => (string) $r['post_name'],
+                'comment_count' => (int) $r['comment_count'],
+                'time_ago'      => human_time_diff(strtotime($r['post_date']), current_time('timestamp')) . ' ago',
+            ];
+        }, $hotRows ?: []);
+
+        return [
+            'season' => [
+                'name'       => $name ?: 'Big Brother',
+                'abbr'       => $abbr ?: 'BBJ',
+                'day'        => $day,
+                'week'       => $week,
+                'start_date' => $startDate,
+                'end_date'   => $endDate,
+                'is_active'  => $isActive,
+            ],
+            'counts'    => ['today' => $today, 'week' => $weekCount, 'season' => $seasonCount],
+            'featured'  => $featured,
+            'thread'    => $thread,
+            'hot_posts' => $hotPosts,
         ];
     }
 
