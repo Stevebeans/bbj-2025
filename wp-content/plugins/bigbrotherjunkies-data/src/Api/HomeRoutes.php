@@ -537,7 +537,9 @@ class HomeRoutes
             $abbr = 'CBB' . $m[1];
         }
 
-        // Day / week of season + active flag
+        // Day / week of season + active flag. Day/week are LIVE counters — only
+        // meaningful while the season is running, so leave them 0 once it has ended
+        // (otherwise a long-finished season shows a nonsensical "Day 323 / Week 47").
         $tz  = function_exists('wp_timezone') ? wp_timezone() : new \DateTimeZone('UTC');
         $now = new \DateTime('now', $tz);
         $day = $week = 0;
@@ -545,12 +547,12 @@ class HomeRoutes
         if ($startDate && $startDate !== '0000-00-00') {
             try {
                 $start = new \DateTime($startDate, $tz);
-                if ($now >= $start) {
+                $end = ($endDate && $endDate !== '0000-00-00') ? new \DateTime($endDate, $tz) : null;
+                $isActive = $now >= $start && (!$end || $now <= $end);
+                if ($isActive) {
                     $day  = max(1, (int) $start->diff($now)->days + 1);
                     $week = max(1, (int) ceil($day / 7));
                 }
-                $end = ($endDate && $endDate !== '0000-00-00') ? new \DateTime($endDate, $tz) : null;
-                $isActive = $now >= $start && (!$end || $now <= $end);
             } catch (\Exception $e) { /* leave 0 */ }
         }
 
