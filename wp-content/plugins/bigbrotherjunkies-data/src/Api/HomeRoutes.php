@@ -244,12 +244,21 @@ class HomeRoutes
             $args['s'] = $search;
         }
 
-        // Feed vs Show distinction (the only category we keep)
-        if ($mode === 'feed' || $mode === 'show') {
+        // Feed vs Show distinction (the only category we keep).
+        // Untagged legacy updates have no _feed_update_mode meta but display as
+        // "feed" (the formatter defaults to 'feed'), so the feed filter must also
+        // match NOT EXISTS — otherwise the Feed tab hides most updates.
+        if ($mode === 'show') {
             $args['meta_query'] = [[
                 'key'   => '_feed_update_mode',
-                'value' => $mode,
+                'value' => 'show',
             ]];
+        } elseif ($mode === 'feed') {
+            $args['meta_query'] = [
+                'relation' => 'OR',
+                ['key' => '_feed_update_mode', 'value' => 'feed'],
+                ['key' => '_feed_update_mode', 'compare' => 'NOT EXISTS'],
+            ];
         }
 
         // Need found_rows for accurate load-more pagination.
