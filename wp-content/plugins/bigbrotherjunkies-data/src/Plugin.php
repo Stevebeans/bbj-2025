@@ -171,6 +171,11 @@ class Plugin
         // Initialize weekly-tracking tables (idempotent)
         $this->initWeekly();
 
+        // Register WP-CLI commands
+        if (defined('WP_CLI') && \WP_CLI) {
+            \WP_CLI::add_command('bbj weekly-import', \BigBrotherJunkies\Data\Weekly\WeeklyImportCommand::class);
+        }
+
         // Load admin functionality
         if (is_admin()) {
             $this->initAdmin();
@@ -346,8 +351,13 @@ class Plugin
         $notificationCleanup = new NotificationCleanup();
         $notificationCleanup->init();
 
-        $contentEngineCron = new ContentEngineCron();
-        $contentEngineCron->init();
+        // Content Engine (FB auto-poster + news aggregator) is not in use, and its
+        // tables (wp_bbj_content_queue / wp_bbj_news_feed) don't exist on prod, so
+        // its every-minute / every-30-min crons flooded debug.log with "table doesn't
+        // exist" errors. Disabled until the feature is actually used again.
+        // Re-enable by uncommenting + redeploying, then the tables self-create.
+        // $contentEngineCron = new ContentEngineCron();
+        // $contentEngineCron->init();
     }
 
     /**
