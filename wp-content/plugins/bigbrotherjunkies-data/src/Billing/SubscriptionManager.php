@@ -81,6 +81,10 @@ class SubscriptionManager
             // Assign role to user
             $this->assignSupporterRole($insertData['user_id'], $insertData['plan_type']);
 
+            // Send the premium welcome/receipt email (idempotent per subscription row).
+            $row = array_merge($insertData, ['id' => $subscriptionId]);
+            \BigBrotherJunkies\Data\Email\WelcomeEmailService::sendPremium((int) $insertData['user_id'], $row);
+
             return $subscriptionId;
         }
 
