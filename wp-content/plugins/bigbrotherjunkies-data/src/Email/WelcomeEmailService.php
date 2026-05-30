@@ -65,7 +65,8 @@ class WelcomeEmailService
      */
     public static function tagsFor(\WP_User $user, ?array $sub = null): array
     {
-        $frontend = rtrim(get_option('bbjd_email_settings')['frontend_url'] ?? 'https://bigbrotherjunkies.com', '/');
+        $settings = get_option('bbjd_email_settings', []);
+        $frontend = rtrim($settings['frontend_url'] ?? 'https://bigbrotherjunkies.com', '/');
         $first = get_user_meta($user->ID, 'first_name', true);
         $first = $first !== '' ? $first : $user->display_name;
 
@@ -102,7 +103,12 @@ class WelcomeEmailService
         return preg_replace('/\{\{[a-z_]+\}\}/', '', $out);
     }
 
-    /** Wrap body HTML in the fixed branded BBJ shell. */
+    /**
+     * Wrap body HTML in the fixed branded BBJ shell.
+     * NOTE: the footer's {{unsubscribe_url}} is intentionally resolved by the
+     * caller's render() pass (it IS in the tagsFor() map), so wrap() must always
+     * be followed by render($html, tagsFor(...)).
+     */
     public static function wrap(string $bodyHtml): string
     {
         $year = date_i18n('Y');
@@ -146,16 +152,15 @@ class WelcomeEmailService
     {
         $u = get_user_by('ID', $userId);
         if (!$u) { return; }
-        // Idempotency guard: never send twice for the same subscription row.
+        // Idempotency guard: claim the send slot BEFORE dispatching so concurrent
+        // webhook retries can't both pass the check and double-send.
         if (!empty($sub['id'])) {
             $flagKey = 'bbjd_premium_email_sent_' . (int) $sub['id'];
             if (get_option($flagKey)) { return; }
+            update_option($flagKey, 1, false);
         }
         $t = self::getTemplates()['premium'];
         self::dispatch($u->user_email, $t['subject'], $t['body_html'], self::tagsFor($u, $sub), 'premium');
-        if (!empty($sub['id'])) {
-            update_option('bbjd_premium_email_sent_' . (int) $sub['id'], 1, false);
-        }
     }
 
     /** Render a preview (subject + wrapped HTML) for the admin "send test" path. */
@@ -181,6 +186,9 @@ class WelcomeEmailService
     /** Core send: render body in shell, resolve tags, send via Resend. Best-effort. */
     private static function dispatch(string $to, string $subject, string $bodyHtml, array $tags, string $category): void
     {
+        // These are transactional emails (confirmation / welcome / premium receipt)
+        // and intentionally do NOT honor the bulk-newsletter `pause_sending` switch —
+        // pausing the newsletter must not break signup confirmation or premium receipts.
         try {
             $client = new ResendClient();
             if (!$client->isConfigured()) {

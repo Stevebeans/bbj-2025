@@ -59,7 +59,9 @@ class WelcomeEmailRoutes
         if (strpos($conf, '{{confirm_url}}') === false) {
             return new \WP_REST_Response(['success' => false, 'message' => 'Confirmation email must include {{confirm_url}}.'], 400);
         }
-        $clean = WelcomeEmailService::defaults();
+        // Start from currently-saved templates (already merged over defaults) so a
+        // partial POST never clobbers fields the request didn't include.
+        $clean = WelcomeEmailService::getTemplates();
         foreach (['confirmation', 'welcome', 'premium'] as $k) {
             if (isset($body[$k]['subject'])) {
                 $clean[$k]['subject'] = sanitize_text_field($body[$k]['subject']);
