@@ -29,6 +29,7 @@ use BigBrotherJunkies\Data\Api\SessionRoutes;
 use BigBrotherJunkies\Data\Api\UserProfileRoutes;
 use BigBrotherJunkies\Data\Api\AdminRoutes;
 use BigBrotherJunkies\Data\Api\AuthRoutes;
+use BigBrotherJunkies\Data\Api\WelcomeEmailRoutes;
 use BigBrotherJunkies\Data\Api\PlayerRoutes;
 use BigBrotherJunkies\Data\Api\SeasonRoutes;
 use BigBrotherJunkies\Data\Api\ContactRoutes;
@@ -494,6 +495,10 @@ class Plugin
         // Auth routes (login, register, password reset)
         $this->authRoutes = new AuthRoutes();
         $this->authRoutes->register();
+
+        // Welcome / transactional email routes (admin templates + account confirm)
+        $welcomeEmailRoutes = new WelcomeEmailRoutes();
+        $welcomeEmailRoutes->register();
 
         // Comment media routes (uploads, giphy)
         $mediaRoutes = new MediaRoutes();

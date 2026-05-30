@@ -506,18 +506,14 @@ class AuthRoutes
         update_user_meta($userId, 'bbjd_verification_token', $verificationToken);
         update_user_meta($userId, 'bbjd_verification_expires', time() + (24 * HOUR_IN_SECONDS));
 
-        // Send verification email
-        $this->sendVerificationEmail($data['email'], $data['username'], $verificationToken);
+        // Store newsletter opt-in intent; the actual subscribe happens after the
+        // user confirms their email (double opt-in) — see WelcomeEmailRoutes::confirmAccount().
+        update_user_meta($userId, 'bbjd_pending_newsletter_optin', (bool) $data['subscribe_newsletter']);
 
-        // Handle post notifications subscription (double opt-in)
-        if ($data['subscribe_newsletter']) {
-            try {
-                $emailService = new \BigBrotherJunkies\Data\Email\EmailService();
-                $emailService->subscribe($data['email'], 'registration', ['post-notifications']);
-            } catch (\Exception $e) {
-                error_log('BBJD Email subscription failed: ' . $e->getMessage());
-            }
-        }
+        // Send the account confirmation email (double opt-in)
+        $frontend = rtrim(get_option('bbjd_email_settings', [])['frontend_url'] ?? 'https://bigbrotherjunkies.com', '/');
+        $confirmUrl = $frontend . '/register/confirm?token=' . urlencode($verificationToken);
+        \BigBrotherJunkies\Data\Email\WelcomeEmailService::sendConfirmation($userId, $confirmUrl);
 
         // Fire action for other plugins/integrations
         do_action('bbjd_user_registered', $userId, $data);
@@ -940,6 +936,16 @@ class AuthRoutes
         if (!empty($googleUser['picture'])) {
             update_user_meta($userId, 'bbjd_google_picture', $googleUser['picture']);
         }
+
+        // Google accounts are pre-verified — auto-subscribe (implied opt-in) and send the welcome email
+        update_user_meta($userId, 'bbjd_email_verified', true);
+        try {
+            (new \BigBrotherJunkies\Data\Email\EmailService())
+                ->subscribe($googleUser['email'], 'registration', ['post-notifications'], $userId);
+        } catch (\Throwable $e) {
+            error_log('[BBJ WelcomeEmail] google newsletter subscribe failed: ' . $e->getMessage());
+        }
+        \BigBrotherJunkies\Data\Email\WelcomeEmailService::sendWelcome($userId, true);
 
         return [
             'user' => get_user_by('ID', $userId),
