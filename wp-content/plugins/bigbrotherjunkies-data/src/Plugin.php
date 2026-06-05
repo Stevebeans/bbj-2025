@@ -39,6 +39,8 @@ use BigBrotherJunkies\Data\Api\NotificationRoutes;
 use BigBrotherJunkies\Data\Api\SubscriptionRoutes;
 use BigBrotherJunkies\Data\Api\FeedUpdateRoutes;
 use BigBrotherJunkies\Data\Api\BillingRoutes;
+use BigBrotherJunkies\Data\Api\BeanRoutes;
+use BigBrotherJunkies\Data\Bean\BeanMigrator;
 use BigBrotherJunkies\Data\Api\BugReportRoutes;
 use BigBrotherJunkies\Data\Api\AnalyticsRoutes;
 use BigBrotherJunkies\Data\Api\EmailRoutes;
@@ -171,6 +173,18 @@ class Plugin
 
         // Initialize weekly-tracking tables (idempotent)
         $this->initWeekly();
+
+        // Initialize Ask the Bean usage-metering table (idempotent)
+        if (BeanMigrator::needsMigration()) {
+            BeanMigrator::migrate();
+        }
+
+        // Run billing schema migrations (adds the Full Bean `tier` column, registers
+        // the full_bean role, seeds ad hidden-roles). Version-gated + idempotent.
+        if (\BigBrotherJunkies\Data\Billing\BillingMigrator::needsMigration()) {
+            \BigBrotherJunkies\Data\Billing\BillingMigrator::migrate();
+        }
+        \BigBrotherJunkies\Data\Push\PushMigrator::migrate();
 
         // Register WP-CLI commands
         if (defined('WP_CLI') && \WP_CLI) {
@@ -547,6 +561,10 @@ class Plugin
         // Billing routes (subscriptions, checkout, webhooks)
         $billingRoutes = new BillingRoutes();
         $billingRoutes->register();
+
+        // Ask the Bean tier + usage metering
+        $beanRoutes = new BeanRoutes();
+        $beanRoutes->register();
 
         // Bug report routes (submit, list, manage)
         $bugReportRoutes = new BugReportRoutes();
