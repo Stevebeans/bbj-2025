@@ -6,7 +6,8 @@
     "require": {
         "php": "^7.4 || ^8.0",
         "firebase/php-jwt": "^6.0",
-        "google/analytics-data": "^0.23.2"
+        "google/analytics-data": "^0.23.2",
+        "minishlink/web-push": "^9.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^9.5",
