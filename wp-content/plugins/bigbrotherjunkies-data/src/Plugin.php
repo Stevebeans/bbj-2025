@@ -17,6 +17,7 @@ use BigBrotherJunkies\Data\Admin\Pages\EmailSettingsPage;
 use BigBrotherJunkies\Data\Admin\Pages\EmailListsPage;
 use BigBrotherJunkies\Data\Admin\Pages\EmailStatsPage;
 use BigBrotherJunkies\Data\Admin\Pages\EmailsPage;
+use BigBrotherJunkies\Data\Admin\Pages\PushPage;
 use BigBrotherJunkies\Data\Ads\AdManager;
 use BigBrotherJunkies\Data\Ads\ContentInserter;
 use BigBrotherJunkies\Data\Api\AdRoutes;
@@ -641,6 +642,7 @@ class Plugin
             'email_lists' => new EmailListsPage(),
             'email_stats' => new EmailStatsPage(),
             'emails' => new EmailsPage(),
+            'push' => new PushPage(),
         ];
 
         // Register admin menus
@@ -765,6 +767,16 @@ class Plugin
             'manage_options',
             SubscriptionsPage::MENU_SLUG,
             [$this->adminPages['subscriptions'], 'render']
+        );
+
+        // Push Notifications (submenu under BBJ Data)
+        add_submenu_page(
+            'bbjd-dashboard',
+            __('Push Notifications', 'bigbrotherjunkies-data'),
+            __('Push', 'bigbrotherjunkies-data'),
+            'manage_options',
+            PushPage::MENU_SLUG,
+            [$this->adminPages['push'], 'render']
         );
 
         // BBJ Mailing menu — Lists is the default page
