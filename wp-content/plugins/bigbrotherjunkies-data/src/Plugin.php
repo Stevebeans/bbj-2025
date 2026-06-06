@@ -40,6 +40,7 @@ use BigBrotherJunkies\Data\Api\SubscriptionRoutes;
 use BigBrotherJunkies\Data\Api\FeedUpdateRoutes;
 use BigBrotherJunkies\Data\Api\BillingRoutes;
 use BigBrotherJunkies\Data\Api\BeanRoutes;
+use BigBrotherJunkies\Data\Api\PushRoutes;
 use BigBrotherJunkies\Data\Bean\BeanMigrator;
 use BigBrotherJunkies\Data\Api\BugReportRoutes;
 use BigBrotherJunkies\Data\Api\AnalyticsRoutes;
@@ -565,6 +566,10 @@ class Plugin
         // Ask the Bean tier + usage metering
         $beanRoutes = new BeanRoutes();
         $beanRoutes->register();
+
+        // Web push subscription routes (key, subscribe, unsubscribe)
+        $pushRoutes = new PushRoutes();
+        $pushRoutes->register();
 
         // Bug report routes (submit, list, manage)
         $bugReportRoutes = new BugReportRoutes();
