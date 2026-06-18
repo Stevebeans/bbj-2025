@@ -36,8 +36,23 @@ class EmailSender
             return;
         }
 
-        // Schedule async send via WP Cron
-        wp_schedule_single_event(time(), 'bbj_send_post_notification', [$post->ID]);
+        // Schedule async send.
+        //
+        // Use Action Scheduler rather than wp_schedule_single_event: WP-Cron stores
+        // jobs in the autoloaded `cron` option, which on this host (Redis object
+        // cache) suffers the "alloptions" lost-update race — concurrent option
+        // writes silently clobber the freshly-scheduled job before the external
+        // cron can run it, so the notification never sends and nothing is logged.
+        // Action Scheduler persists jobs in its own DB tables and runs them via its
+        // own async/queue runner, immune to that race. Falls back to WP-Cron only
+        // if Action Scheduler is somehow unavailable.
+        if (function_exists('as_enqueue_async_action') && function_exists('as_has_scheduled_action')) {
+            if (!as_has_scheduled_action('bbj_send_post_notification', [$post->ID], 'bbj-email')) {
+                as_enqueue_async_action('bbj_send_post_notification', [$post->ID], 'bbj-email');
+            }
+        } else {
+            wp_schedule_single_event(time(), 'bbj_send_post_notification', [$post->ID]);
+        }
     }
 
     /**
