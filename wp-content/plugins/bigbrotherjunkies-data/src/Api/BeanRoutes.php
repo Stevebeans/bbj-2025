@@ -2,6 +2,7 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\Bean\BeanMemory;
 use BigBrotherJunkies\Data\Bean\BeanUsage;
 
 /**
@@ -31,6 +32,24 @@ class BeanRoutes
             'callback'            => [$this, 'consume'],
             'permission_callback' => [$this, 'loggedIn'],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/bean/memory', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'memoryGet'],
+                'permission_callback' => [$this, 'loggedIn'],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'memorySet'],
+                'permission_callback' => [$this, 'loggedIn'],
+            ],
+            [
+                'methods'             => 'DELETE',
+                'callback'            => [$this, 'memoryClear'],
+                'permission_callback' => [$this, 'loggedIn'],
+            ],
+        ]);
     }
 
     public function loggedIn(): bool
@@ -48,5 +67,31 @@ class BeanRoutes
         $userId = get_current_user_id();
         BeanUsage::increment($userId);
         return new \WP_REST_Response(BeanUsage::snapshot($userId), 200);
+    }
+
+    public function memoryGet(): \WP_REST_Response
+    {
+        $userId = get_current_user_id();
+        $tier = BeanUsage::tierForUser($userId);
+        $summary = $tier['memory'] ? BeanMemory::get($userId) : '';
+        return new \WP_REST_Response(['summary' => $summary], 200);
+    }
+
+    public function memorySet(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $userId = get_current_user_id();
+        $tier = BeanUsage::tierForUser($userId);
+        if (!$tier['memory']) {
+            return new \WP_REST_Response(['ok' => false], 403);
+        }
+        $summary = sanitize_textarea_field((string) $request->get_param('summary'));
+        BeanMemory::set($userId, $summary);
+        return new \WP_REST_Response(['ok' => true], 200);
+    }
+
+    public function memoryClear(): \WP_REST_Response
+    {
+        BeanMemory::clear(get_current_user_id());
+        return new \WP_REST_Response(['ok' => true], 200);
     }
 }
