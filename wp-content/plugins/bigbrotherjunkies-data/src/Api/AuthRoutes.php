@@ -52,9 +52,10 @@ class AuthRoutes
         // Default to remembered (14 days) for backwards compatibility
         $rememberMe = $data['remember_me'] ?? true;
 
-        // If not remembered, use 1 day expiration; if remembered, use 14 days
+        // If not remembered, use 1 day expiration; if remembered, use 30 days
+        // (matches the 30-day client cookie max-age in src/lib/auth/cookies.js)
         if ($rememberMe) {
-            return $issuedAt + (DAY_IN_SECONDS * 14);
+            return $issuedAt + (DAY_IN_SECONDS * 30);
         } else {
             return $issuedAt + DAY_IN_SECONDS;
         }
@@ -297,6 +298,12 @@ class AuthRoutes
             'callback'            => [$this, 'refreshNonce'],
             'permission_callback' => [$this, 'checkUserLoggedIn'],
         ]);
+
+        register_rest_route(self::NAMESPACE, '/auth/refresh', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'handleRefreshToken'],
+            'permission_callback' => [$this, 'checkUserLoggedIn'],
+        ]);
     }
 
     /**
@@ -307,6 +314,33 @@ class AuthRoutes
     public function refreshNonce(): \WP_REST_Response
     {
         return new \WP_REST_Response(['nonce' => wp_create_nonce('bbj_comments')], 200);
+    }
+
+    /**
+     * Re-mint a JWT for the currently-authenticated user (sliding refresh).
+     * Requires a still-valid Bearer token (enforced by checkUserLoggedIn /
+     * the jwt-auth plugin's determine_current_user). The client calls this
+     * before the token crosses its expiry so active users never get logged out.
+     */
+    public function handleRefreshToken(\WP_REST_Request $request)
+    {
+        $user = wp_get_current_user();
+        if (!$user || !$user->ID) {
+            return new \WP_Error(
+                'not_logged_in',
+                __('Not authenticated.', 'bigbrotherjunkies-data'),
+                ['status' => 401]
+            );
+        }
+
+        $remember = (bool) ($request->get_param('remember_me') ?? true);
+
+        $token = $this->generateJwtToken($user, $remember);
+        if (is_wp_error($token)) {
+            return $token;
+        }
+
+        return new \WP_REST_Response(['token' => $token], 200);
     }
 
     /**
@@ -1314,8 +1348,9 @@ class AuthRoutes
 
         $issuedAt = time();
 
-        // Token expiration: 14 days if remembered, 1 day if not
-        $expireDays = $rememberMe ? 14 : 1;
+        // Token expiration: 30 days if remembered, 1 day if not
+        // (matches the 30-day client cookie max-age in src/lib/auth/cookies.js)
+        $expireDays = $rememberMe ? 30 : 1;
         $expire = apply_filters('jwt_auth_expire', $issuedAt + (DAY_IN_SECONDS * $expireDays), $issuedAt, $rememberMe);
 
         $tokenData = [
