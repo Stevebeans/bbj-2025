@@ -8,7 +8,10 @@ namespace BigBrotherJunkies\Data\Billing;
 class BillingMigrator
 {
     public const DB_VERSION_OPTION = 'bbj_billing_db_version';
-    public const CURRENT_VERSION = '1.0.0';
+    public const CURRENT_VERSION = '1.1.0';
+
+    /** The Full Bean role slug ($14.99 tier: Sonnet, unlimited, memory, ad-free). */
+    public const FULL_BEAN_ROLE = 'full_bean';
 
     /**
      * Run migrations if needed
@@ -24,9 +27,38 @@ class BillingMigrator
             $results[$tableName] = self::tableExists($tableName);
         }
 
+        // Register the Full Bean role + make it ad-free (idempotent).
+        self::ensureFullBeanRole();
+
         update_option(self::DB_VERSION_OPTION, self::CURRENT_VERSION);
 
         return $results;
+    }
+
+    /**
+     * Register the `full_bean` role (subscriber-level caps) and ensure it is in
+     * the ad system's global hidden-roles list so Full Bean subscribers are
+     * ad-free. Both steps are idempotent and safe to run repeatedly.
+     */
+    public static function ensureFullBeanRole(): void
+    {
+        // Register the role if it doesn't exist yet. add_role() is a no-op when
+        // the role already exists. Base it on subscriber capabilities.
+        if (!get_role(self::FULL_BEAN_ROLE)) {
+            $subscriber = get_role('subscriber');
+            $caps = $subscriber ? $subscriber->capabilities : ['read' => true];
+            add_role(self::FULL_BEAN_ROLE, 'Full Bean', $caps);
+        }
+
+        // Add full_bean to the ad system's global hidden roles (ad-free perk).
+        $option = \BigBrotherJunkies\Data\Ads\AdManager::SETTINGS_OPTION;
+        $settings = get_option($option, []);
+        $hidden = (array) ($settings['global_hidden_roles'] ?? []);
+        if (!in_array(self::FULL_BEAN_ROLE, $hidden, true)) {
+            $hidden[] = self::FULL_BEAN_ROLE;
+            $settings['global_hidden_roles'] = $hidden;
+            update_option($option, $settings);
+        }
     }
 
     /**

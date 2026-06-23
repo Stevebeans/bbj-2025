@@ -32,6 +32,17 @@ class Revalidation
     }
 
     /**
+     * Trigger revalidation for a comment change. Refreshes the cached, server-
+     * rendered comment counts (homepage hero count + "Recent Comments" widget)
+     * and the post page. Comment lists are fetched client-side, but counts are
+     * baked into cached HTML, so a new comment needs this to update promptly.
+     */
+    public static function revalidateComment(string $slug): bool
+    {
+        return self::trigger('comment', $slug);
+    }
+
+    /**
      * Trigger revalidation for the spoiler bar
      */
     public static function revalidateSpoilerBar(): bool

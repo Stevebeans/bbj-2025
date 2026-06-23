@@ -80,11 +80,13 @@ class WeeklySchema
             voted_for BIGINT(20) NOT NULL DEFAULT 0,
             saved_by_player_id BIGINT(20) DEFAULT NULL,
             vote_to_win TINYINT(1) NOT NULL DEFAULT 0,
+            vote_to_win_for BIGINT(20) DEFAULT NULL,
             active TINYINT(1) NOT NULL DEFAULT 1,
             PRIMARY KEY (id),
             KEY idx_week (week_id),
             KEY idx_player (player_id),
-            KEY idx_season (season_id)
+            KEY idx_season (season_id),
+            KEY idx_vote_to_win_for (vote_to_win_for)
         ) " . self::charset() . ";";
     }
 

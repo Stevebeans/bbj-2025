@@ -79,7 +79,11 @@ class SubscriptionManager
             $subscriptionId = $wpdb->insert_id;
 
             // Assign role to user
-            $this->assignSupporterRole($insertData['user_id'], $insertData['plan_type']);
+            $this->assignSupporterRole(
+                $insertData['user_id'],
+                $insertData['plan_type'],
+                $insertData['tier'] ?? 'supporter'
+            );
 
             // Send the premium welcome/receipt email (idempotent per subscription row).
             $row = array_merge($insertData, ['id' => $subscriptionId]);
@@ -119,7 +123,11 @@ class SubscriptionManager
 
             if ($subscription) {
                 if (in_array($status, ['active', 'lifetime'])) {
-                    $this->assignSupporterRole($subscription['user_id'], $subscription['plan_type']);
+                    $this->assignSupporterRole(
+                        $subscription['user_id'],
+                        $subscription['plan_type'],
+                        $subscription['tier'] ?? 'supporter'
+                    );
                 } elseif (in_array($status, ['expired', 'canceled'])) {
                     // Only remove role if subscription actually ended (not cancel_at_period_end)
                     if ($status === 'expired' || !($additionalData['cancel_at_period_end'] ?? false)) {
@@ -353,21 +361,30 @@ class SubscriptionManager
     }
 
     /**
-     * Assign supporter role to user
+     * Assign supporter role to user.
+     *
+     * @param string $tier 'supporter' (default) or 'full_bean' — Full Bean is the
+     *                      $14.99 tier (Sonnet, unlimited, memory) and is ad-free
+     *                      via the `full_bean` role in global hidden roles.
      */
-    private function assignSupporterRole(int $userId, string $planType): void
+    private function assignSupporterRole(int $userId, string $planType, string $tier = 'supporter'): void
     {
         $user = get_user_by('ID', $userId);
         if (!$user) {
             return;
         }
 
-        $role = $planType === 'lifetime' ? 'lifetime' : 'supporter';
+        if ($tier === 'full_bean') {
+            $role = 'full_bean';
+        } else {
+            $role = $planType === 'lifetime' ? 'lifetime' : 'supporter';
+        }
 
-        // Remove existing roles that get replaced by supporter/lifetime
+        // Remove existing tier roles that get replaced by the new one
         $user->remove_role('subscriber');
         $user->remove_role('supporter');
         $user->remove_role('lifetime');
+        $user->remove_role('full_bean');
 
         // Add the new role
         $user->add_role($role);
@@ -399,6 +416,7 @@ class SubscriptionManager
 
         $user->remove_role('supporter');
         $user->remove_role('lifetime');
+        $user->remove_role('full_bean');
 
         // Restore subscriber role so user still has a role
         if (empty($user->roles)) {
@@ -511,6 +529,8 @@ class SubscriptionManager
                 SUM(CASE WHEN status = 'canceled' THEN 1 ELSE 0 END) as canceled,
                 SUM(CASE WHEN plan_type = 'monthly' AND status = 'active' THEN 1 ELSE 0 END) as monthly,
                 SUM(CASE WHEN plan_type = 'annual' AND status = 'active' THEN 1 ELSE 0 END) as annual,
+                SUM(CASE WHEN tier = 'full_bean' AND status IN ('active', 'lifetime') THEN 1 ELSE 0 END) as full_bean,
+                SUM(CASE WHEN tier = 'supporter' AND status IN ('active', 'lifetime') THEN 1 ELSE 0 END) as supporter_tier,
                 SUM(CASE WHEN processor = 'stripe' THEN 1 ELSE 0 END) as stripe_total,
                 SUM(CASE WHEN processor = 'paypal' THEN 1 ELSE 0 END) as paypal_total
              FROM {$table}",
@@ -524,6 +544,8 @@ class SubscriptionManager
             'canceled' => 0,
             'monthly' => 0,
             'annual' => 0,
+            'full_bean' => 0,
+            'supporter_tier' => 0,
             'stripe_total' => 0,
             'paypal_total' => 0,
         ];

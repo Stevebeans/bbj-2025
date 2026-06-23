@@ -5,7 +5,7 @@ namespace BigBrotherJunkies\Data\Weekly;
 class WeeklyMigrator
 {
     public const DB_VERSION_OPTION = 'bbj_weekly_db_version';
-    public const CURRENT_VERSION = '1.0.0';
+    public const CURRENT_VERSION = '1.1.0';
 
     public static function needsMigration(): bool
     {

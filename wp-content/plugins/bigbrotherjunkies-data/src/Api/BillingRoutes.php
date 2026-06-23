@@ -125,6 +125,7 @@ class BillingRoutes
                     'interval' => 'month',
                     'description' => 'Cancel anytime',
                     'badge' => 'Supporter',
+                    'tier' => 'supporter',
                     'popular' => false,
                 ],
                 [
@@ -135,6 +136,7 @@ class BillingRoutes
                     'interval' => 'year',
                     'description' => 'Save over 58%',
                     'badge' => 'Supporter',
+                    'tier' => 'supporter',
                     'popular' => true,
                 ],
                 [
@@ -145,6 +147,29 @@ class BillingRoutes
                     'interval' => null,
                     'description' => 'One-time, never expires',
                     'badge' => 'Lifetime',
+                    'tier' => 'supporter',
+                    'popular' => false,
+                ],
+                [
+                    'id' => 'full_bean_monthly',
+                    'name' => 'Full Bean Monthly',
+                    'price' => '$14.99',
+                    'price_cents' => 1499,
+                    'interval' => 'month',
+                    'description' => 'Everything in Supporter + the smartest Bean (unlimited chats & memory)',
+                    'badge' => 'Full Bean',
+                    'tier' => 'full_bean',
+                    'popular' => false,
+                ],
+                [
+                    'id' => 'full_bean_annual',
+                    'name' => 'Full Bean Annual',
+                    'price' => '$119',
+                    'price_cents' => 11900,
+                    'interval' => 'year',
+                    'description' => 'A full year of the smartest Bean, ad-free. Best value.',
+                    'badge' => 'Full Bean',
+                    'tier' => 'full_bean',
                     'popular' => false,
                 ],
             ],
@@ -213,7 +238,7 @@ class BillingRoutes
         $successUrl = $params['success_url'] ?? home_url('/checkout/success');
         $cancelUrl = $params['cancel_url'] ?? home_url('/checkout/cancel');
 
-        if (!$planType || !in_array($planType, ['monthly', 'annual', 'lifetime'])) {
+        if (!$planType || !in_array($planType, ['monthly', 'annual', 'lifetime', 'full_bean_monthly', 'full_bean_annual'])) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'Invalid plan type',
@@ -370,7 +395,7 @@ class BillingRoutes
         $returnUrl = $params['return_url'] ?? home_url('/checkout/success?processor=paypal');
         $cancelUrl = $params['cancel_url'] ?? home_url('/checkout/cancel');
 
-        if (!$planType || !in_array($planType, ['monthly', 'annual'])) {
+        if (!$planType || !in_array($planType, ['monthly', 'annual', 'full_bean_monthly', 'full_bean_annual'])) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'Invalid plan type for subscription',

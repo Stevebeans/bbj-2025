@@ -68,6 +68,14 @@ class HomeRoutes
             'permission_callback' => '__return_true',
         ]);
 
+        // Feed Updates sitemap — lean slug + modified for ALL updates (no cap),
+        // for the Next.js /sitemap.xml. One indexed query, no fat post objects.
+        register_rest_route('bbjd/v1', '/feed-updates/sitemap', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getFeedUpdatesSitemap'],
+            'permission_callback' => '__return_true',
+        ]);
+
         // Houseboard endpoint (HoH, PoV, Nominees, Have Nots)
         register_rest_route('bbjd/v1', '/houseboard', [
             'methods' => 'GET',
@@ -153,6 +161,42 @@ class HomeRoutes
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Lean feed-update sitemap feed: every published update's slug + modified
+     * date in a single indexed query. No per_page cap, no fat post payloads —
+     * built for the Next.js sitemap, which needs all ~14k URLs.
+     */
+    public function getFeedUpdatesSitemap(\WP_REST_Request $request): array
+    {
+        global $wpdb;
+
+        $rows = $wpdb->get_results(
+            "SELECT post_name AS slug, post_modified_gmt AS modified
+             FROM {$wpdb->posts}
+             WHERE post_type = 'live-feed-updates'
+               AND post_status = 'publish'
+               AND post_name <> ''
+             ORDER BY post_modified_gmt DESC",
+            ARRAY_A
+        );
+
+        $updates = array_map(static function ($r) {
+            return [
+                'slug' => $r['slug'],
+                // post_modified_gmt is UTC w/o offset → emit ISO 8601 with offset.
+                'modified' => !empty($r['modified']) && $r['modified'] !== '0000-00-00 00:00:00'
+                    ? gmdate('c', strtotime($r['modified'] . ' UTC'))
+                    : null,
+            ];
+        }, $rows ?: []);
+
+        return [
+            'success' => true,
+            'count' => count($updates),
+            'updates' => $updates,
+        ];
     }
 
     /**

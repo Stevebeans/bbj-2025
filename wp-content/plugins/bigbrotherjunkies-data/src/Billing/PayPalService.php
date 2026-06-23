@@ -24,6 +24,8 @@ class PayPalService
             'interval' => 'MONTH',
             'interval_count' => 1,
             'role' => 'supporter',
+            'tier' => 'supporter',
+            'plan_type' => 'monthly', // ENUM-safe value stored in DB
         ],
         'annual' => [
             'name' => 'BBJ Season Pass',
@@ -31,12 +33,34 @@ class PayPalService
             'interval' => 'YEAR',
             'interval_count' => 1,
             'role' => 'supporter',
+            'tier' => 'supporter',
+            'plan_type' => 'annual',
         ],
         'lifetime' => [
             'name' => 'BBJ Lifetime',
             'amount' => '99.00',
             'interval' => null, // One-time
             'role' => 'lifetime',
+            'tier' => 'supporter',
+            'plan_type' => 'lifetime',
+        ],
+        'full_bean_monthly' => [
+            'name' => 'Full Bean Monthly',
+            'amount' => '14.99',
+            'interval' => 'MONTH',
+            'interval_count' => 1,
+            'role' => 'full_bean',
+            'tier' => 'full_bean',
+            'plan_type' => 'monthly',
+        ],
+        'full_bean_annual' => [
+            'name' => 'Full Bean Annual',
+            'amount' => '119.00',
+            'interval' => 'YEAR',
+            'interval_count' => 1,
+            'role' => 'full_bean',
+            'tier' => 'full_bean',
+            'plan_type' => 'annual',
         ],
     ];
 

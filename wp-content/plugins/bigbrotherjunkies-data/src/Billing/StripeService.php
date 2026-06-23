@@ -24,6 +24,8 @@ class StripeService
             'interval' => 'month',
             'interval_count' => 1,
             'role' => 'supporter',
+            'tier' => 'supporter',
+            'plan_type' => 'monthly', // ENUM-safe value stored in DB
         ],
         'annual' => [
             'name' => 'BBJ Season Pass',
@@ -31,12 +33,34 @@ class StripeService
             'interval' => 'year',
             'interval_count' => 1,
             'role' => 'supporter',
+            'tier' => 'supporter',
+            'plan_type' => 'annual',
         ],
         'lifetime' => [
             'name' => 'BBJ Lifetime',
             'amount' => 9900, // $99.00 in cents
             'interval' => null, // One-time
             'role' => 'lifetime',
+            'tier' => 'supporter',
+            'plan_type' => 'lifetime',
+        ],
+        'full_bean_monthly' => [
+            'name' => 'Full Bean Monthly',
+            'amount' => 1499, // $14.99 in cents
+            'interval' => 'month',
+            'interval_count' => 1,
+            'role' => 'full_bean',
+            'tier' => 'full_bean',
+            'plan_type' => 'monthly',
+        ],
+        'full_bean_annual' => [
+            'name' => 'Full Bean Annual',
+            'amount' => 11900, // $119.00 in cents
+            'interval' => 'year',
+            'interval_count' => 1,
+            'role' => 'full_bean',
+            'tier' => 'full_bean',
+            'plan_type' => 'annual',
         ],
     ];
 
@@ -58,6 +82,8 @@ class StripeService
             'monthly' => $settings['stripe_price_monthly'] ?? '',
             'annual' => $settings['stripe_price_annual'] ?? '',
             'lifetime' => $settings['stripe_price_lifetime'] ?? '',
+            'full_bean_monthly' => $settings['stripe_price_full_bean_monthly'] ?? '',
+            'full_bean_annual' => $settings['stripe_price_full_bean_annual'] ?? '',
         ];
     }
 
@@ -90,6 +116,7 @@ class StripeService
                 'amount_display' => '$' . number_format($plan['amount'] / 100, 2),
                 'interval' => $plan['interval'],
                 'is_recurring' => $plan['interval'] !== null,
+                'tier' => $plan['tier'] ?? 'supporter',
             ];
         }, array_keys(self::PLANS), self::PLANS);
     }
@@ -218,6 +245,8 @@ class StripeService
             'monthly' => 'Ad-free browsing, supporter badge, and premium features. Cancel anytime.',
             'annual' => 'Full season of premium access. Over 58% savings vs monthly!',
             'lifetime' => 'Premium access forever. One payment, never expires.',
+            'full_bean_monthly' => 'Everything in Supporter, plus the smartest Bean (unlimited chats, longer memory). Cancel anytime.',
+            'full_bean_annual' => 'A full year of the smartest Bean and ad-free browsing. Best value.',
         ];
 
         return $descriptions[$planType] ?? '';

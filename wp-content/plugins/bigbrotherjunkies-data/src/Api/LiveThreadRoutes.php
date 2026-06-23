@@ -27,7 +27,7 @@ use WP_Error;
 class LiveThreadRoutes
 {
     /** WP roles that grant supporter-tier access to premium polling */
-    private const SUPPORTER_ROLES = ['supporter', 'lifetime'];
+    private const SUPPORTER_ROLES = ['supporter', 'lifetime', 'full_bean'];
 
     public function register(): void
     {

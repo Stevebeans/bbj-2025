@@ -151,6 +151,35 @@ class Plugin
             }
         }, 10, 3);
 
+        // Revalidate Next.js cache when comments change so the server-rendered
+        // comment counts stay fresh: homepage hero count + "Recent Comments"
+        // widget, and the post page. (The on-page comment LIST is fetched
+        // client-side and is already live; only the cached COUNTS go stale.)
+        $revalidateCommentByPost = function ($postId) {
+            $post = get_post((int) $postId);
+            if ($post && $post->post_type === 'post' && !empty($post->post_name)) {
+                Revalidation::revalidateComment($post->post_name);
+            }
+        };
+
+        // New comment inserted. React comments auto-approve for logged-in users;
+        // this also covers native/WPDiscuz inserts. Only fire when it's actually
+        // approved (held-for-moderation comments don't change the visible count).
+        add_action('wp_insert_comment', function ($id, $comment) use ($revalidateCommentByPost) {
+            if ((int) $comment->comment_approved === 1) {
+                $revalidateCommentByPost($comment->comment_post_ID);
+            }
+        }, 10, 2);
+
+        // Moderation changes that move a comment in/out of the approved count
+        // (approve a held comment, unapprove/spam/trash an existing one).
+        add_action('transition_comment_status', function ($new_status, $old_status, $comment) use ($revalidateCommentByPost) {
+            if ($new_status === $old_status) return;
+            if ($new_status === 'approved' || $old_status === 'approved') {
+                $revalidateCommentByPost($comment->comment_post_ID);
+            }
+        }, 10, 3);
+
         // Register custom taxonomies (update_type, etc.)
         $this->initTaxonomies();
 

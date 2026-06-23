@@ -250,7 +250,9 @@ class UserProfileRoutes
 
         // Determine supporter type
         $supporterType = null;
-        if (in_array('lifetime', $userRoles, true)) {
+        if (in_array('full_bean', $userRoles, true)) {
+            $supporterType = 'full_bean';
+        } elseif (in_array('lifetime', $userRoles, true)) {
             $supporterType = 'lifetime';
         } elseif ($isSupporter && !in_array('administrator', $userRoles, true) && !in_array('editor', $userRoles, true)) {
             $supporterType = 'supporter';

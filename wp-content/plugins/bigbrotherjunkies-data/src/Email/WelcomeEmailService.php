@@ -33,11 +33,26 @@ class WelcomeEmailService
                 . '<a href="{{settings_url}}">your settings</a> or the link at the bottom of any email.</p>',
             'premium' => [
                 'subject' => 'Thank you for supporting Big Brother Junkies!',
-                'body_html' => '<p>Hi {{first_name}},</p><p>Thank you for becoming a {{plan_name}} supporter — '
-                    . 'your support keeps BBJ independent and ad-free for you.</p>'
-                    . '<p><strong>Plan:</strong> {{plan_name}} ({{amount}})<br>'
-                    . '<strong>Next billing:</strong> {{next_billing_date}}</p>'
-                    . '<p>Manage or cancel anytime from <a href="{{manage_subscription_url}}">your subscription settings</a>.</p>',
+                'body_html' => '<p>Hi {{first_name}},</p>'
+                    . '<p>I want to say a genuine <strong>thank you</strong>. Big Brother Junkies has always been a '
+                    . 'labor of love, and supporters like you are the only reason it can stay independent, ad-free, '
+                    . 'and run by actual fans instead of a corporation. It truly means the world to me.</p>'
+                    . '<p>As a <strong>{{plan_name}}</strong>, here\'s everything you now have access to:</p>'
+                    . '<ul style="padding-left:20px;margin:16px 0;">'
+                    . '<li style="margin-bottom:8px;"><strong>Ad-free everywhere</strong> — browse the entire site with zero ads getting in the way.</li>'
+                    . '<li style="margin-bottom:8px;"><strong>Interactive Player Map</strong> — heatmaps, state stats, nearest-player finder, and season timelines.</li>'
+                    . '<li style="margin-bottom:8px;"><strong>Player Comparisons</strong> — head-to-head stat breakdowns, HoH/PoV charts, and performance analysis.</li>'
+                    . '<li style="margin-bottom:8px;"><strong>Priority push notifications</strong> — breaking feed-update alerts before anyone else.</li>'
+                    . '<li style="margin-bottom:8px;"><strong>Exclusive supporter badge</strong> — a little something next to your name so everyone knows you\'ve got our back.</li>'
+                    . '<li style="margin-bottom:8px;"><strong>Independent BB coverage</strong> — you\'re directly keeping quality Big Brother content alive and corporate-free.</li>'
+                    . '</ul>'
+                    . '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0;">'
+                    . '<tr><td style="background:#f8fafc;border-left:3px solid #FFBF0F;padding:12px 16px;font-size:14px;color:#1e293b;">'
+                    . '<strong>Your plan:</strong> {{plan_name}} ({{amount}})<br>'
+                    . '<strong>Next billing:</strong> {{next_billing_date}}</td></tr></table>'
+                    . '<p>You can manage or cancel anytime from <a href="{{manage_subscription_url}}" style="color:#35546e;">your subscription settings</a>.</p>'
+                    . '<p>Seriously — thank you for being part of this. Now go enjoy that ad-free experience.</p>'
+                    . '<p style="margin-bottom:0;">— Steve<br><span style="color:#64748b;">Big Brother Junkies</span></p>',
             ],
         ];
     }
@@ -105,20 +120,32 @@ class WelcomeEmailService
 
     /**
      * Wrap body HTML in the fixed branded BBJ shell.
-     * NOTE: the footer's {{unsubscribe_url}} is intentionally resolved by the
-     * caller's render() pass (it IS in the tagsFor() map), so wrap() must always
-     * be followed by render($html, tagsFor(...)).
+     *
+     * Header = white bar with the site wordmark logo (matches the site header,
+     * which is also white — the logo's dark-blue "Junkies" text needs a light bg).
+     * Footer carries both {{settings_url}} (manage account/notifications) and
+     * {{unsubscribe_url}}.
+     *
+     * NOTE: the footer's {{settings_url}}/{{unsubscribe_url}} are intentionally
+     * resolved by the caller's render() pass (both ARE in the tagsFor() map), so
+     * wrap() must always be followed by render($html, tagsFor(...)).
      */
     public static function wrap(string $bodyHtml): string
     {
         $year = date_i18n('Y');
+        // WP-hosted, stable absolute URL (same asset the site header uses).
+        // Native 395x37; displayed at 260px wide. width/height attrs keep Outlook honest.
+        $logo = 'https://bigbrotherjunkies.com/wp-content/themes/BBJ/images/bbjlogo2020.png';
         return '<!DOCTYPE html><html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;">'
             . '<div style="max-width:600px;margin:0 auto;background:#ffffff;">'
-            . '<div style="background:#35546e;padding:20px;text-align:center;">'
-            . '<a href="https://bigbrotherjunkies.com" style="color:#FFBF0F;font-size:22px;font-weight:bold;text-decoration:none;">Big Brother Junkies</a></div>'
+            . '<div style="background:#ffffff;padding:20px 24px;text-align:center;border-bottom:1px solid #e2e8f0;">'
+            . '<a href="https://bigbrotherjunkies.com" style="text-decoration:none;">'
+            . '<img src="' . $logo . '" alt="Big Brother Junkies" width="260" height="24" '
+            . 'style="display:inline-block;border:0;outline:none;width:260px;height:auto;max-width:100%;"></a></div>'
             . '<div style="padding:24px;color:#1e293b;font-size:15px;line-height:1.6;">' . $bodyHtml . '</div>'
-            . '<div style="padding:16px 24px;background:#f8fafc;color:#64748b;font-size:12px;text-align:center;">'
-            . '&copy; ' . $year . ' Big Brother Junkies &middot; '
+            . '<div style="padding:16px 24px;background:#f8fafc;color:#64748b;font-size:12px;text-align:center;line-height:1.7;">'
+            . '&copy; ' . $year . ' Big Brother Junkies<br>'
+            . '<a href="{{settings_url}}" style="color:#64748b;">Manage account &amp; notifications</a> &middot; '
             . '<a href="{{unsubscribe_url}}" style="color:#64748b;">Unsubscribe</a></div>'
             . '</div></body></html>';
     }

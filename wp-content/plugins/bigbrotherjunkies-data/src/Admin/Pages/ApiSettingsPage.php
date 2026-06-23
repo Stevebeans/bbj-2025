@@ -52,10 +52,14 @@ class ApiSettingsPage
             'stripe_price_monthly' => '',
             'stripe_price_annual' => '',
             'stripe_price_lifetime' => '',
+            'stripe_price_full_bean_monthly' => '',
+            'stripe_price_full_bean_annual' => '',
 
             // PayPal Plan IDs (for recurring subscriptions)
             'paypal_plan_monthly' => '',
             'paypal_plan_annual' => '',
+            'paypal_plan_full_bean_monthly' => '',
+            'paypal_plan_full_bean_annual' => '',
 
             // Google Analytics
             'ga4_property_id' => '',
@@ -106,10 +110,14 @@ class ApiSettingsPage
             'stripe_price_monthly' => sanitize_text_field($_POST['stripe_price_monthly'] ?? ''),
             'stripe_price_annual' => sanitize_text_field($_POST['stripe_price_annual'] ?? ''),
             'stripe_price_lifetime' => sanitize_text_field($_POST['stripe_price_lifetime'] ?? ''),
+            'stripe_price_full_bean_monthly' => sanitize_text_field($_POST['stripe_price_full_bean_monthly'] ?? ''),
+            'stripe_price_full_bean_annual' => sanitize_text_field($_POST['stripe_price_full_bean_annual'] ?? ''),
 
             // PayPal Plan IDs
             'paypal_plan_monthly' => sanitize_text_field($_POST['paypal_plan_monthly'] ?? ''),
             'paypal_plan_annual' => sanitize_text_field($_POST['paypal_plan_annual'] ?? ''),
+            'paypal_plan_full_bean_monthly' => sanitize_text_field($_POST['paypal_plan_full_bean_monthly'] ?? ''),
+            'paypal_plan_full_bean_annual' => sanitize_text_field($_POST['paypal_plan_full_bean_annual'] ?? ''),
 
             // Google Analytics
             'ga4_property_id' => sanitize_text_field($_POST['ga4_property_id'] ?? ''),
@@ -288,6 +296,30 @@ class ApiSettingsPage
                             </div>
                         </div>
 
+                        <div class="bbjd-grid bbjd-grid-cols-1 md:bbjd-grid-cols-3 bbjd-gap-4 bbjd-mt-4">
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">
+                                    Full Bean Monthly ($14.99/mo)
+                                </label>
+                                <input type="text"
+                                       name="stripe_price_full_bean_monthly"
+                                       value="<?php echo esc_attr($settings['stripe_price_full_bean_monthly']); ?>"
+                                       placeholder="price_..."
+                                       class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-text-sm bbjd-font-mono">
+                            </div>
+
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">
+                                    Full Bean Annual ($119/yr)
+                                </label>
+                                <input type="text"
+                                       name="stripe_price_full_bean_annual"
+                                       value="<?php echo esc_attr($settings['stripe_price_full_bean_annual']); ?>"
+                                       placeholder="price_..."
+                                       class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-text-sm bbjd-font-mono">
+                            </div>
+                        </div>
+
                         <p class="bbjd-text-xs bbjd-text-gray-500 bbjd-mt-3">
                             Note: Without these, plan switching won't work. New signups still use inline price_data.
                         </p>
@@ -414,6 +446,28 @@ class ApiSettingsPage
                                 <input type="text"
                                        name="paypal_plan_annual"
                                        value="<?php echo esc_attr($settings['paypal_plan_annual']); ?>"
+                                       placeholder="P-..."
+                                       class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-text-sm bbjd-font-mono">
+                            </div>
+
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">
+                                    Full Bean Monthly Plan ID ($14.99/mo)
+                                </label>
+                                <input type="text"
+                                       name="paypal_plan_full_bean_monthly"
+                                       value="<?php echo esc_attr($settings['paypal_plan_full_bean_monthly']); ?>"
+                                       placeholder="P-..."
+                                       class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-text-sm bbjd-font-mono">
+                            </div>
+
+                            <div>
+                                <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">
+                                    Full Bean Annual Plan ID ($119/yr)
+                                </label>
+                                <input type="text"
+                                       name="paypal_plan_full_bean_annual"
+                                       value="<?php echo esc_attr($settings['paypal_plan_full_bean_annual']); ?>"
                                        placeholder="P-..."
                                        class="bbjd-w-full bbjd-px-3 bbjd-py-2 bbjd-border bbjd-border-gray-300 bbjd-rounded-md bbjd-text-sm bbjd-font-mono">
                             </div>

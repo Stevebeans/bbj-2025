@@ -6,14 +6,19 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+    'Symfony\\Polyfill\\Php82\\' => array($vendorDir . '/symfony/polyfill-php82'),
+    'SpomkyLabs\\Pki\\' => array($vendorDir . '/spomky-labs/pki-framework/src'),
     'Ramsey\\Uuid\\' => array($vendorDir . '/ramsey/uuid/src'),
     'Ramsey\\Collection\\' => array($vendorDir . '/ramsey/collection/src'),
     'Psr\\Log\\' => array($vendorDir . '/psr/log/src'),
     'Psr\\Http\\Message\\' => array($vendorDir . '/psr/http-factory/src', $vendorDir . '/psr/http-message/src'),
     'Psr\\Http\\Client\\' => array($vendorDir . '/psr/http-client/src'),
+    'Psr\\Clock\\' => array($vendorDir . '/psr/clock/src'),
     'Psr\\Cache\\' => array($vendorDir . '/psr/cache/src'),
     'PhpParser\\' => array($vendorDir . '/nikic/php-parser/lib/PhpParser'),
     'Mockery\\' => array($vendorDir . '/mockery/mockery/library/Mockery'),
+    'Minishlink\\WebPush\\' => array($vendorDir . '/minishlink/web-push/src'),
+    'Jose\\Component\\' => array($vendorDir . '/web-token/jwt-library'),
     'GuzzleHttp\\Psr7\\' => array($vendorDir . '/guzzlehttp/psr7/src'),
     'GuzzleHttp\\Promise\\' => array($vendorDir . '/guzzlehttp/promises/src'),
     'GuzzleHttp\\' => array($vendorDir . '/guzzlehttp/guzzle/src'),
@@ -47,4 +52,5 @@ return array(
     'Brain\\Monkey\\' => array($vendorDir . '/brain/monkey/src'),
     'BigBrotherJunkies\\Data\\Tests\\' => array($baseDir . '/tests'),
     'BigBrotherJunkies\\Data\\' => array($baseDir . '/src'),
+    'Base64Url\\' => array($vendorDir . '/spomky-labs/base64url/src'),
 );

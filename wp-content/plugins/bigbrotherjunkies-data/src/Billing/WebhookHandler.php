@@ -86,7 +86,8 @@ class WebhookHandler
         $subscriptionData = [
             'user_id' => $userId,
             'stripe_customer_id' => $session['customer'],
-            'plan_type' => $planType,
+            'plan_type' => $planConfig['plan_type'] ?? $planType, // ENUM-safe
+            'tier' => $planConfig['tier'] ?? 'supporter',
             'processor' => 'stripe',
             'amount_cents' => $planConfig['amount'],
             'currency' => 'USD',
@@ -319,7 +320,8 @@ class WebhookHandler
             'user_id' => $userId,
             'paypal_subscription_id' => $subscription['id'],
             'paypal_payer_id' => $subscription['subscriber']['payer_id'] ?? null,
-            'plan_type' => $planType,
+            'plan_type' => $planConfig['plan_type'] ?? $planType, // ENUM-safe
+            'tier' => $planConfig['tier'] ?? 'supporter',
             'processor' => 'paypal',
             'status' => 'active',
             'amount_cents' => (int) (floatval($planConfig['amount']) * 100),
