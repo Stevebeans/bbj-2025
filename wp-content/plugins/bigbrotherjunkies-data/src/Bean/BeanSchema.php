@@ -8,6 +8,7 @@ namespace BigBrotherJunkies\Data\Bean;
 class BeanSchema
 {
     public const TABLE_USAGE = 'bbj_bean_usage';
+    public const TABLE_MEMORY = 'bbj_bean_memory';
 
     public static function table(string $name): string
     {
@@ -38,6 +39,22 @@ class BeanSchema
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY uniq_user_day (user_id, usage_date)
+        ) {$charset};";
+    }
+
+    /**
+     * Per-user evolving memory note (Full Bean cross-session memory). One row per user.
+     */
+    public static function getMemoryTableSchema(): string
+    {
+        $table = self::table(self::TABLE_MEMORY);
+        $charset = self::getCharset();
+
+        return "CREATE TABLE {$table} (
+            user_id BIGINT(20) UNSIGNED NOT NULL,
+            summary TEXT NULL,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY (user_id)
         ) {$charset};";
     }
 }

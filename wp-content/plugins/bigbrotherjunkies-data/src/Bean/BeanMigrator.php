@@ -7,7 +7,7 @@ namespace BigBrotherJunkies\Data\Bean;
  */
 class BeanMigrator
 {
-    private const VERSION = '1.0.0';
+    private const VERSION = '1.1.0';
     private const OPTION = 'bbj_bean_db_version';
 
     public static function needsMigration(): bool
@@ -19,6 +19,7 @@ class BeanMigrator
     {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
         dbDelta(BeanSchema::getUsageTableSchema());
+        dbDelta(BeanSchema::getMemoryTableSchema());
         update_option(self::OPTION, self::VERSION);
     }
 }
