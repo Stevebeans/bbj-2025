@@ -90,6 +90,13 @@ class SeasonRoutes
         // ADMIN ENDPOINTS
         // ========================================
 
+        // Admin: list seasons (incl. trashed) for the admin dashboard
+        register_rest_route(self::NAMESPACE, '/admin/seasons', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getAdminSeasons'],
+            'permission_callback' => [$this, 'checkSeasonManagementAccess'],
+        ]);
+
         // Update season
         register_rest_route(self::NAMESPACE, '/admin/seasons/(?P<id>\d+)', [
             'methods' => 'POST',
@@ -325,6 +332,55 @@ class SeasonRoutes
     // ========================================
     // ADMIN ENDPOINT CALLBACKS
     // ========================================
+
+    /**
+     * Get all seasons for admin dashboard (incl. trashed, with optional search)
+     */
+    public function getAdminSeasons(WP_REST_Request $request): WP_REST_Response
+    {
+        global $wpdb;
+
+        $seasonsTable = defined('BBJ_V2_TABLE_SEASONS') ? BBJ_V2_TABLE_SEASONS : $wpdb->prefix . 'bbj_seasons';
+        $postsTable   = $wpdb->prefix . 'posts';
+
+        $search = trim((string) $request->get_param('search'));
+        $status = $request->get_param('status') === 'trash' ? 'trash' : 'publish';
+
+        $where = ["p.post_type = 'bigbrother-seasons'", "p.post_status = %s"];
+        $args  = [$status];
+
+        if ($search !== '') {
+            $like    = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = "(s.full_name LIKE %s OR s.abbreviation LIKE %s)";
+            array_push($args, $like, $like);
+        }
+
+        $whereClause = implode(' AND ', $where);
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT s.id, s.full_name, s.season_number, s.abbreviation, s.start_date, s.end_date, p.post_name AS slug, p.post_status
+             FROM {$seasonsTable} s
+             INNER JOIN {$postsTable} p ON s.id = p.ID
+             WHERE {$whereClause}
+             ORDER BY CAST(s.season_number AS UNSIGNED) DESC, s.full_name DESC",
+            $args
+        ), ARRAY_A);
+
+        $seasons = array_map(static function ($r) {
+            return [
+                'id'            => (int) $r['id'],
+                'slug'          => $r['slug'],
+                'full_name'     => $r['full_name'],
+                'season_number' => $r['season_number'],
+                'abbreviation'  => $r['abbreviation'],
+                'start_date'    => $r['start_date'],
+                'end_date'      => $r['end_date'],
+                'status'        => $r['post_status'],
+            ];
+        }, $rows);
+
+        return new WP_REST_Response(['success' => true, 'seasons' => $seasons], 200);
+    }
 
     /**
      * Update season
