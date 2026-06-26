@@ -133,6 +133,13 @@ class PlayerRoutes
         // ADMIN ENDPOINTS
         // ========================================
 
+        // Admin: list players (incl. trashed) for the admin dashboard
+        register_rest_route(self::NAMESPACE, '/admin/players', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getAdminPlayers'],
+            'permission_callback' => [$this, 'checkPlayerManagementAccess'],
+        ]);
+
         // Update player
         register_rest_route(self::NAMESPACE, '/admin/players/(?P<id>\d+)', [
             'methods' => 'POST',
@@ -568,6 +575,126 @@ class PlayerRoutes
             'page' => $page,
             'per_page' => $perPage,
             'total_pages' => ceil($totalCount / $perPage),
+        ], 200);
+    }
+
+    /**
+     * Get paginated, searchable, season-filterable player list for the admin dashboard
+     * Includes trashed players via status param. Lean query (no heavy stats subqueries).
+     */
+    public function getAdminPlayers(WP_REST_Request $request): WP_REST_Response
+    {
+        global $wpdb;
+
+        $playersTable = $wpdb->prefix . 'bbj_players';
+        $postsTable   = $wpdb->prefix . 'posts';
+        $linkTable    = $wpdb->prefix . 'bbj_v2_player_season';
+        $seasonsTable = $wpdb->prefix . 'bbj_seasons';
+
+        $search   = trim((string) $request->get_param('search'));
+        $seasonId = absint($request->get_param('season'));
+        $status   = $request->get_param('status') === 'trash' ? 'trash' : 'publish';
+        $page     = max(1, absint($request->get_param('page')) ?: 1);
+        $perPage  = min(100, max(1, absint($request->get_param('per_page')) ?: 25));
+        $offset   = ($page - 1) * $perPage;
+
+        $where  = ["p.post_type = 'bigbrother-players'", "p.post_status = %s"];
+        $args   = [$status];
+
+        if ($search !== '') {
+            $like    = '%' . $wpdb->esc_like($search) . '%';
+            $where[] = "(pl.first_name LIKE %s OR pl.last_name LIKE %s OR pl.official_nickname LIKE %s OR CONCAT(pl.first_name, ' ', pl.last_name) LIKE %s)";
+            array_push($args, $like, $like, $like, $like);
+        }
+
+        $whereClause = implode(' AND ', $where);
+        // Season filtering needs a junction join whose %d arg must precede the WHERE args,
+        // so the two cases below build separate prepared statements rather than sharing one.
+
+        // Count
+        if ($seasonId) {
+            $total = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(DISTINCT pl.id) FROM {$playersTable} pl
+                 INNER JOIN {$postsTable} p ON pl.id = p.ID
+                 INNER JOIN {$linkTable} fl ON fl.bbj_player = pl.id AND fl.bbj_season = %d
+                 WHERE {$whereClause}",
+                array_merge([$seasonId], $args)
+            ));
+            $rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT DISTINCT pl.id, pl.first_name, pl.last_name, pl.official_nickname, pl.profile_picture, p.post_name AS slug, p.post_status
+                 FROM {$playersTable} pl
+                 INNER JOIN {$postsTable} p ON pl.id = p.ID
+                 INNER JOIN {$linkTable} fl ON fl.bbj_player = pl.id AND fl.bbj_season = %d
+                 WHERE {$whereClause}
+                 ORDER BY pl.last_name ASC, pl.first_name ASC
+                 LIMIT %d OFFSET %d",
+                array_merge([$seasonId], $args, [$perPage, $offset])
+            ), ARRAY_A);
+        } else {
+            $total = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(DISTINCT pl.id) FROM {$playersTable} pl
+                 INNER JOIN {$postsTable} p ON pl.id = p.ID
+                 WHERE {$whereClause}",
+                $args
+            ));
+            $rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT pl.id, pl.first_name, pl.last_name, pl.official_nickname, pl.profile_picture, p.post_name AS slug, p.post_status
+                 FROM {$playersTable} pl
+                 INNER JOIN {$postsTable} p ON pl.id = p.ID
+                 WHERE {$whereClause}
+                 ORDER BY pl.last_name ASC, pl.first_name ASC
+                 LIMIT %d OFFSET %d",
+                array_merge($args, [$perPage, $offset])
+            ), ARRAY_A);
+        }
+
+        // Season memberships for this page's players (one query, grouped in PHP)
+        $ids = array_map(static fn($r) => (int) $r['id'], $rows);
+        $seasonsByPlayer = [];
+        if ($ids) {
+            $placeholders = implode(',', array_fill(0, count($ids), '%d'));
+            $links = $wpdb->get_results($wpdb->prepare(
+                "SELECT l.bbj_player AS player_id, s.id AS season_id, s.abbreviation, s.full_name
+                 FROM {$linkTable} l
+                 INNER JOIN {$seasonsTable} s ON s.id = l.bbj_season
+                 WHERE l.bbj_player IN ({$placeholders})
+                 ORDER BY s.season_number ASC",
+                $ids
+            ), ARRAY_A);
+            foreach ($links as $l) {
+                $seasonsByPlayer[(int) $l['player_id']][] = [
+                    'id'           => (int) $l['season_id'],
+                    'abbreviation' => $l['abbreviation'],
+                    'name'         => $l['full_name'],
+                ];
+            }
+        }
+
+        $players = array_map(function ($r) use ($seasonsByPlayer) {
+            $name  = trim($r['first_name'] . ' ' . $r['last_name']);
+            $photo = $r['profile_picture']
+                ? wp_get_attachment_image_url((int) $r['profile_picture'], 'thumbnail')
+                : null;
+            return [
+                'id'       => (int) $r['id'],
+                'slug'     => $r['slug'],
+                'name'     => $name !== '' ? $name : '(no name)',
+                'nickname' => $r['official_nickname'] ?? '',
+                'photo'    => $photo ?: null,
+                'status'   => $r['post_status'],
+                'seasons'  => $seasonsByPlayer[(int) $r['id']] ?? [],
+            ];
+        }, $rows);
+
+        return new WP_REST_Response([
+            'success'    => true,
+            'players'    => $players,
+            'pagination' => [
+                'current_page' => $page,
+                'per_page'     => $perPage,
+                'total'        => $total,
+                'total_pages'  => (int) ceil($total / $perPage),
+            ],
         ], 200);
     }
 
