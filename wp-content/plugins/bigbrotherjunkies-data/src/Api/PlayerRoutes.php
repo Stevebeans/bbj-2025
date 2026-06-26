@@ -1588,7 +1588,10 @@ class PlayerRoutes
         }
 
         if ($post->post_status !== $status) {
-            wp_update_post(['ID' => $playerId, 'post_status' => $status]);
+            $result = wp_update_post(['ID' => $playerId, 'post_status' => $status], true);
+            if (is_wp_error($result) || $result === 0) {
+                return new WP_REST_Response(['success' => false, 'message' => 'Failed to update player status.'], 500);
+            }
             Revalidation::revalidatePlayer($post->post_name);
         }
 

@@ -230,6 +230,10 @@ class SeasonRoutes
             ? bbj_v2_get_seasons($orderBy, $order)
             : [];
 
+        $seasons = array_values(array_filter($seasons, static function ($s) {
+            return isset($s['id']) && get_post_status((int) $s['id']) === 'publish';
+        }));
+
         $formattedSeasons = array_map([$this, 'formatSeasonBasic'], $seasons);
 
         return new WP_REST_Response([
@@ -967,7 +971,10 @@ class SeasonRoutes
         }
 
         if ($post->post_status !== $status) {
-            wp_update_post(['ID' => $seasonId, 'post_status' => $status]);
+            $result = wp_update_post(['ID' => $seasonId, 'post_status' => $status], true);
+            if (is_wp_error($result) || $result === 0) {
+                return new WP_REST_Response(['success' => false, 'message' => 'Failed to update season status.'], 500);
+            }
             Revalidation::revalidateSeason($post->post_name);
         }
 
