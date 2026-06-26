@@ -133,6 +133,13 @@ class PlayerRoutes
         // ADMIN ENDPOINTS
         // ========================================
 
+        // Admin: create a new player (quick-add)
+        register_rest_route(self::NAMESPACE, '/admin/players', [
+            'methods' => 'POST',
+            'callback' => [$this, 'createPlayer'],
+            'permission_callback' => [$this, 'checkPlayerManagementAccess'],
+        ]);
+
         // Admin: list players (incl. trashed) for the admin dashboard
         register_rest_route(self::NAMESPACE, '/admin/players', [
             'methods' => 'GET',
@@ -1448,6 +1455,88 @@ class PlayerRoutes
                 'name' => trim(($updatedPlayer['first_name'] ?? '') . ' ' . ($updatedPlayer['last_name'] ?? '')),
             ],
         ], 200);
+    }
+
+    /**
+     * Create a new player (quick-add: name + optional gender + optional season link)
+     */
+    public function createPlayer(WP_REST_Request $request): WP_REST_Response
+    {
+        global $wpdb;
+
+        $params    = $request->get_json_params() ?: [];
+        $firstName = sanitize_text_field($params['first_name'] ?? '');
+        $lastName  = sanitize_text_field($params['last_name'] ?? '');
+        $gender    = sanitize_text_field($params['gender'] ?? '');
+        $seasonId  = absint($params['season_id'] ?? 0);
+
+        if ($firstName === '' || $lastName === '') {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'First name and last name are required.',
+            ], 400);
+        }
+
+        $postId = wp_insert_post([
+            'post_title'   => trim("$firstName $lastName"),
+            'post_type'    => 'bigbrother-players',
+            'post_status'  => 'publish',
+            'post_content' => '',
+        ], true);
+
+        if (is_wp_error($postId)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Failed to create player post: ' . $postId->get_error_message(),
+            ], 500);
+        }
+
+        $inserted = $wpdb->insert(
+            $wpdb->prefix . 'bbj_players',
+            [
+                'id'                => $postId,
+                'post_id'           => $postId,
+                'first_name'        => $firstName,
+                'last_name'         => $lastName,
+                'official_nickname' => '',
+                'player_gender'     => $gender,
+            ],
+            ['%d', '%d', '%s', '%s', '%s', '%s']
+        );
+
+        if ($inserted === false) {
+            // Roll back the orphan post so we don't leave a post with no data row
+            wp_delete_post($postId, true);
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Failed to create player data row.',
+            ], 500);
+        }
+
+        if ($seasonId) {
+            $wpdb->insert(
+                $wpdb->prefix . 'bbj_v2_player_season',
+                ['bbj_player' => $postId, 'bbj_season' => $seasonId],
+                ['%d', '%d']
+            );
+        }
+
+        $post = get_post($postId);
+        if ($post) {
+            Revalidation::revalidatePlayer($post->post_name);
+        }
+        if ($seasonId) {
+            $seasonPost = get_post($seasonId);
+            if ($seasonPost) {
+                Revalidation::revalidateSeason($seasonPost->post_name);
+            }
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'id'      => (int) $postId,
+            'slug'    => $post ? $post->post_name : '',
+        ], 201);
     }
 
     // ========================================
