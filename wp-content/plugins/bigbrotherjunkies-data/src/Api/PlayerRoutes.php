@@ -1513,29 +1513,31 @@ class PlayerRoutes
             ], 500);
         }
 
-        if ($seasonId) {
-            $wpdb->insert(
-                $wpdb->prefix . 'bbj_v2_player_season',
-                ['bbj_player' => $postId, 'bbj_season' => $seasonId],
-                ['%d', '%d']
-            );
-        }
-
         $post = get_post($postId);
+        $seasonLinked = false;
         if ($post) {
             Revalidation::revalidatePlayer($post->post_name);
         }
         if ($seasonId) {
             $seasonPost = get_post($seasonId);
-            if ($seasonPost) {
-                Revalidation::revalidateSeason($seasonPost->post_name);
+            if ($seasonPost && $seasonPost->post_type === 'bigbrother-seasons') {
+                $linked = $wpdb->insert(
+                    $wpdb->prefix . 'bbj_v2_player_season',
+                    ['bbj_player' => $postId, 'bbj_season' => $seasonId],
+                    ['%d', '%d']
+                );
+                if ($linked !== false) {
+                    $seasonLinked = true;
+                    Revalidation::revalidateSeason($seasonPost->post_name);
+                }
             }
         }
 
         return new WP_REST_Response([
-            'success' => true,
-            'id'      => (int) $postId,
-            'slug'    => $post ? $post->post_name : '',
+            'success'       => true,
+            'id'            => (int) $postId,
+            'slug'          => $post ? $post->post_name : '',
+            'season_linked' => $seasonLinked,
         ], 201);
     }
 
