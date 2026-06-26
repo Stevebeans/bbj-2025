@@ -160,6 +160,22 @@ class PlayerRoutes
                 ],
             ],
         ]);
+
+        // Admin: trash a player (soft delete)
+        register_rest_route(self::NAMESPACE, '/admin/players/(?P<id>\d+)/trash', [
+            'methods' => 'POST',
+            'callback' => [$this, 'trashPlayer'],
+            'permission_callback' => [$this, 'checkPlayerManagementAccess'],
+            'args' => ['id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
+        ]);
+
+        // Admin: restore a trashed player
+        register_rest_route(self::NAMESPACE, '/admin/players/(?P<id>\d+)/restore', [
+            'methods' => 'POST',
+            'callback' => [$this, 'restorePlayer'],
+            'permission_callback' => [$this, 'checkPlayerManagementAccess'],
+            'args' => ['id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
+        ]);
     }
 
     /**
@@ -1539,6 +1555,44 @@ class PlayerRoutes
             'slug'          => $post ? $post->post_name : '',
             'season_linked' => $seasonLinked,
         ], 201);
+    }
+
+    // ========================================
+    // TRASH / RESTORE
+    // ========================================
+
+    /**
+     * Soft-delete a player (post_status → trash)
+     */
+    public function trashPlayer(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->setPlayerStatus((int) $request->get_param('id'), 'trash');
+    }
+
+    /**
+     * Restore a trashed player (post_status → publish)
+     */
+    public function restorePlayer(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->setPlayerStatus((int) $request->get_param('id'), 'publish');
+    }
+
+    /**
+     * Set post_status on a bigbrother-players post. Idempotent.
+     */
+    private function setPlayerStatus(int $playerId, string $status): WP_REST_Response
+    {
+        $post = get_post($playerId);
+        if (!$post || $post->post_type !== 'bigbrother-players') {
+            return new WP_REST_Response(['success' => false, 'message' => 'Player not found.'], 404);
+        }
+
+        if ($post->post_status !== $status) {
+            wp_update_post(['ID' => $playerId, 'post_status' => $status]);
+            Revalidation::revalidatePlayer($post->post_name);
+        }
+
+        return new WP_REST_Response(['success' => true, 'id' => $playerId, 'status' => $status], 200);
     }
 
     // ========================================
