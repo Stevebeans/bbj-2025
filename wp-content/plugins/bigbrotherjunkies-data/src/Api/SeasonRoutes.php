@@ -196,6 +196,22 @@ class SeasonRoutes
                 ],
             ],
         ]);
+
+        // Admin: trash a season (soft delete)
+        register_rest_route(self::NAMESPACE, '/admin/seasons/(?P<id>\d+)/trash', [
+            'methods' => 'POST',
+            'callback' => [$this, 'trashSeason'],
+            'permission_callback' => [$this, 'checkSeasonManagementAccess'],
+            'args' => ['id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
+        ]);
+
+        // Admin: restore a trashed season
+        register_rest_route(self::NAMESPACE, '/admin/seasons/(?P<id>\d+)/restore', [
+            'methods' => 'POST',
+            'callback' => [$this, 'restoreSeason'],
+            'permission_callback' => [$this, 'checkSeasonManagementAccess'],
+            'args' => ['id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
+        ]);
     }
 
     // ========================================
@@ -922,6 +938,40 @@ class SeasonRoutes
             'success' => true,
             'message' => 'Cache purged successfully (Redis + Varnish + Next.js)',
         ], 200);
+    }
+
+    /**
+     * Trash a season (soft delete — sets post_status to 'trash')
+     */
+    public function trashSeason(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->setSeasonStatus((int) $request->get_param('id'), 'trash');
+    }
+
+    /**
+     * Restore a trashed season (sets post_status back to 'publish')
+     */
+    public function restoreSeason(WP_REST_Request $request): WP_REST_Response
+    {
+        return $this->setSeasonStatus((int) $request->get_param('id'), 'publish');
+    }
+
+    /**
+     * Shared helper: update a season's post_status and revalidate
+     */
+    private function setSeasonStatus(int $seasonId, string $status): WP_REST_Response
+    {
+        $post = get_post($seasonId);
+        if (!$post || $post->post_type !== 'bigbrother-seasons') {
+            return new WP_REST_Response(['success' => false, 'message' => 'Season not found.'], 404);
+        }
+
+        if ($post->post_status !== $status) {
+            wp_update_post(['ID' => $seasonId, 'post_status' => $status]);
+            Revalidation::revalidateSeason($post->post_name);
+        }
+
+        return new WP_REST_Response(['success' => true, 'id' => $seasonId, 'status' => $status], 200);
     }
 
     /**
