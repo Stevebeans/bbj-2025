@@ -97,6 +97,13 @@ class SeasonRoutes
             'permission_callback' => [$this, 'checkSeasonManagementAccess'],
         ]);
 
+        // Admin: create a new season
+        register_rest_route(self::NAMESPACE, '/admin/seasons', [
+            'methods' => 'POST',
+            'callback' => [$this, 'createSeason'],
+            'permission_callback' => [$this, 'checkSeasonManagementAccess'],
+        ]);
+
         // Update season
         register_rest_route(self::NAMESPACE, '/admin/seasons/(?P<id>\d+)', [
             'methods' => 'POST',
@@ -380,6 +387,81 @@ class SeasonRoutes
         }, $rows);
 
         return new WP_REST_Response(['success' => true, 'seasons' => $seasons], 200);
+    }
+
+    /**
+     * Create a new season (WP post + wp_bbj_seasons row)
+     */
+    public function createSeason(WP_REST_Request $request): WP_REST_Response
+    {
+        global $wpdb;
+
+        $params       = $request->get_json_params() ?: [];
+        $fullName     = sanitize_text_field($params['full_name'] ?? '');
+        $seasonNumber = sanitize_text_field($params['season_number'] ?? '');
+        $abbreviation = sanitize_text_field($params['abbreviation'] ?? '');
+        $startDate    = sanitize_text_field($params['start_date'] ?? '');
+        $endDate      = sanitize_text_field($params['end_date'] ?? '');
+
+        if ($fullName === '' || $seasonNumber === '') {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Full name and season number are required.',
+            ], 400);
+        }
+
+        // BB22+ slug convention: big-brother-{N}
+        $slug = sanitize_title('big-brother-' . $seasonNumber);
+
+        $postId = wp_insert_post([
+            'post_title'   => $fullName,
+            'post_name'    => $slug,
+            'post_type'    => 'bigbrother-seasons',
+            'post_status'  => 'publish',
+            'post_content' => '',
+        ], true);
+
+        if (is_wp_error($postId)) {
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Failed to create season post: ' . $postId->get_error_message(),
+            ], 500);
+        }
+
+        $table = defined('BBJ_V2_TABLE_SEASONS') ? BBJ_V2_TABLE_SEASONS : $wpdb->prefix . 'bbj_seasons';
+
+        $inserted = $wpdb->insert(
+            $table,
+            [
+                'id'            => $postId,
+                'post_id'       => $postId,
+                'season_number' => $seasonNumber,
+                'full_name'     => $fullName,
+                'abbreviation'  => $abbreviation,
+                'start_date'    => $startDate ?: null,
+                'end_date'      => $endDate ?: null,
+            ],
+            ['%d', '%d', '%s', '%s', '%s', '%s', '%s']
+        );
+
+        if ($inserted === false) {
+            wp_delete_post($postId, true);
+            return new WP_REST_Response([
+                'success' => false,
+                'message' => 'Failed to create season data row.',
+            ], 500);
+        }
+
+        $post = get_post($postId);
+        if ($post) {
+            Revalidation::revalidateSeason($post->post_name);
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'id'      => (int) $postId,
+            'slug'    => $post ? $post->post_name : $slug,
+        ], 201);
     }
 
     /**
