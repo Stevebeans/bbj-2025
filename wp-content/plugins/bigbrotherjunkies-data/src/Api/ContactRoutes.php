@@ -137,8 +137,13 @@ class ContactRoutes
             }
         }
 
-        // Build email
-        $to = get_option('admin_email');
+        // Build email. Contact submissions go to the dedicated contact inbox
+        // (bbj_contact_email option), falling back to Steve's primary Gmail — NOT
+        // the WP admin_email, which is an unmonitored support@wp.* mailbox.
+        $to = get_option('bbj_contact_email');
+        if (empty($to) || !is_email($to)) {
+            $to = 'stevebeans@gmail.com';
+        }
         $subject = "[BBJ Contact] {$reasonLabel}: " . wp_trim_words($message, 10, '...');
 
         $body = "New contact form submission from Big Brother Junkies\n\n";
