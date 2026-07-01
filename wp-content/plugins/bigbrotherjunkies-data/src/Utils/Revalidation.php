@@ -32,6 +32,20 @@ class Revalidation
     }
 
     /**
+     * Trigger revalidation for a feed update (live-feed-updates CPT).
+     *
+     * Uses the full 'feed-update' type (not a bare 'feed-updates' tag) so the
+     * webhook revalidates the homepage + hub PATHS and targeted-purges those
+     * URLs from Cloudflare. A tag-only invalidation refreshes Vercel's data
+     * cache but leaves the CF-cached HTML stale until its edge TTL expires, so
+     * new updates don't appear promptly on the homepage.
+     */
+    public static function revalidateFeedUpdate(string $slug): bool
+    {
+        return self::trigger('feed-update', $slug);
+    }
+
+    /**
      * Trigger revalidation for a comment change. Refreshes the cached, server-
      * rendered comment counts (homepage hero count + "Recent Comments" widget)
      * and the post page. Comment lists are fetched client-side, but counts are
