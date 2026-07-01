@@ -15,6 +15,9 @@ use BigBrotherJunkies\Data\Comments\AvatarUploader;
  */
 class HomeRoutes
 {
+    /** Transient key for the premium live-poller payload (20s micro-cache). */
+    public const RECENT_TRANSIENT = 'bbjd_feed_updates_recent';
+
     public function register(): void
     {
         add_action('rest_api_init', [$this, 'registerRoutes']);
@@ -65,6 +68,15 @@ class HomeRoutes
         register_rest_route('bbjd/v1', '/feed-updates/hub', [
             'methods' => 'GET',
             'callback' => [$this, 'getFeedHub'],
+            'permission_callback' => '__return_true',
+        ]);
+
+        // Latest ~20 updates for the premium live poller. Param-less on
+        // purpose (one shared cacheable payload) and served from a 20s
+        // transient — any number of 30s pollers costs ~1 real query per 20s.
+        register_rest_route('bbjd/v1', '/feed-updates/recent', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getRecentFeedUpdates'],
             'permission_callback' => '__return_true',
         ]);
 
@@ -394,6 +406,37 @@ class HomeRoutes
             'offset'    => $offset,
             'has_more'  => ($offset + count($updates)) < $total,
         ];
+    }
+
+    /**
+     * Latest 20 updates, newest first, no filters — the canonical payload
+     * the premium live poller fetches every 30s. Served from a 20s transient
+     * (Redis object cache on prod; options table on flaky-Redis staging).
+     *
+     * The payload is ANONYMOUS by design: clients must not send an
+     * Authorization header, so `votes.user_vote` is always 0 here. Publish
+     * of a live-feed-update deletes the transient (see Plugin.php) so new
+     * posts show on the next poll tick.
+     */
+    public function getRecentFeedUpdates(): array
+    {
+        $cached = get_transient(self::RECENT_TRANSIENT);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $request = new \WP_REST_Request('GET', '/bbjd/v1/feed-updates');
+        $request->set_param('per_page', 20);
+        $request->set_param('offset', 0);
+        $request->set_param('sort', 'newest');
+        $request->set_param('date_range', 'all');
+        $request->set_param('search', '');
+        $request->set_param('mode', '');
+
+        $payload = $this->getFeedUpdates($request);
+        set_transient(self::RECENT_TRANSIENT, $payload, 20);
+
+        return $payload;
     }
 
     /**
