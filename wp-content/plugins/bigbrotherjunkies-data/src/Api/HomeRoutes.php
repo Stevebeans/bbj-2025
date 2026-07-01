@@ -413,10 +413,11 @@ class HomeRoutes
      * the premium live poller fetches every 30s. Served from a 20s transient
      * (Redis object cache on prod; options table on flaky-Redis staging).
      *
-     * The payload is ANONYMOUS by design: clients must not send an
-     * Authorization header, so `votes.user_vote` is always 0 here. Publish
-     * of a live-feed-update deletes the transient (see Plugin.php) so new
-     * posts show on the next poll tick.
+     * The payload is ANONYMOUS by design: `votes.user_vote` is always 0 here.
+     * The server enforces this on every cache miss, stripping any per-user state
+     * before caching. Clients should not send Authorization headers (pointless
+     * overhead), but anonymity is guaranteed regardless. Publish of a live-feed-update
+     * deletes the transient (see Plugin.php) so new posts show on the next poll tick.
      */
     public function getRecentFeedUpdates(): array
     {
@@ -434,6 +435,16 @@ class HomeRoutes
         $request->set_param('mode', '');
 
         $payload = $this->getFeedUpdates($request);
+
+        // Enforce the anonymous invariant server-side: jwt-auth authenticates
+        // globally on determine_current_user, so a Bearer-carrying request at
+        // cache-miss time would otherwise bake ITS user's vote state into the
+        // shared payload. Never cache per-user data here.
+        foreach ($payload['updates'] as &$update) {
+            $update['votes']['user_vote'] = 0;
+        }
+        unset($update);
+
         set_transient(self::RECENT_TRANSIENT, $payload, 20);
 
         return $payload;
