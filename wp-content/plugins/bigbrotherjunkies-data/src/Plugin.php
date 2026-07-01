@@ -147,6 +147,9 @@ class Plugin
             if ($post->post_type === 'post') {
                 Revalidation::revalidatePost($post->post_name);
             } elseif ($post->post_type === 'live-feed-updates') {
+                // Drop the live-poller micro-cache first so the next 30s poll
+                // sees this post immediately (otherwise up to 20s staler).
+                delete_transient(HomeRoutes::RECENT_TRANSIENT);
                 // Full treatment: revalidate homepage + hub PATHS and targeted-
                 // purge them from Cloudflare (was a bare tag invalidation, which
                 // left the CF-cached homepage stale until edge TTL — feed updates
