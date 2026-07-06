@@ -138,6 +138,14 @@ class Plugin
             return $token;
         }, 10, 2);
 
+        // WP core oEmbeds twitter.com but NOT x.com (verified on 6.8.5), and
+        // every link copied from the X app is x.com — so editor embed previews
+        // (/oembed/1.0/proxy) and content embeds silently failed. publish.x.com
+        // serves oEmbed for x.com URLs natively.
+        add_action('init', function () {
+            wp_oembed_add_provider('#https?://(www\.)?x\.com/.*#i', 'https://publish.x.com/oembed', true);
+        });
+
         // Revalidate Next.js cache when posts or feed updates are published
         add_action('transition_post_status', function ($new_status, $old_status, $post) {
             if ($new_status !== 'publish') return;
