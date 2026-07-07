@@ -44,8 +44,17 @@ class SearchRoutes
      */
     public function search(\WP_REST_Request $request): array
     {
-        $searchQuery = $request->get_param('query');
+        $searchQuery = (string) $request->get_param('query');
         $perPage = min($request->get_param('per_page'), 20); // Cap at 20
+
+        // Pasted slugs ("ashley-trail") never match WP's term search, which
+        // treats the whole thing as one token. For space-less hyphenated
+        // queries, search the terms instead — WP ANDs them as substrings, so
+        // "ashley trail" matches "Ashley Trail" (and hyphenated names like
+        // "Bowie-Jane" still match their own terms).
+        if (strpos($searchQuery, ' ') === false && strpos($searchQuery, '-') !== false) {
+            $searchQuery = str_replace('-', ' ', $searchQuery);
+        }
 
         // Run separate queries for each category to ensure balanced results
         // Order: Players, Seasons, Feed Updates, Posts/Pages
