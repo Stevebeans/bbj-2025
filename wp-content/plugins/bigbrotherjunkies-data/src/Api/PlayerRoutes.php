@@ -1457,6 +1457,11 @@ class PlayerRoutes
 
         // Trigger Next.js revalidation
         Revalidation::revalidatePlayer($post->post_name);
+        // Player edits (esp. profile photos) must also refresh the spoiler
+        // bar's webhook-revalidated static route — it has revalidate:false
+        // and previously only season edits busted it, so new cast photos
+        // never appeared without a manual kick.
+        Revalidation::revalidateSpoilerBar();
 
         // Get updated player data
         $updatedPlayer = function_exists('bbj_v2_get_player')
@@ -1538,6 +1543,7 @@ class PlayerRoutes
         $seasonLinked = false;
         if ($post) {
             Revalidation::revalidatePlayer($post->post_name);
+            Revalidation::revalidateSpoilerBar();
         }
         if ($seasonId) {
             $seasonPost = get_post($seasonId);
