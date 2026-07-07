@@ -213,7 +213,8 @@ class BillingRoutes
             'subscription' => [
                 'id' => (int) $subscription['id'],
                 'plan_type' => $subscription['plan_type'],
-                'plan_name' => $this->getPlanDisplayName($subscription['plan_type']),
+                'tier' => $subscription['tier'] ?? 'supporter',
+                'plan_name' => SubscriptionManager::displayName($subscription['plan_type'], $subscription['tier'] ?? 'supporter'),
                 'status' => $subscription['status'],
                 'processor' => $subscription['processor'],
                 'amount_display' => '$' . number_format($subscription['amount_cents'] / 100, 2),
@@ -504,7 +505,7 @@ class BillingRoutes
             return [
                 'id' => (int) $record['id'],
                 'date' => $record['created_at'],
-                'plan_name' => $this->getPlanDisplayName($record['plan_type']),
+                'plan_name' => SubscriptionManager::displayName($record['plan_type'], $record['tier'] ?? 'supporter'),
                 'plan_type' => $record['plan_type'],
                 'amount_display' => '$' . number_format(($record['amount_cents'] ?? 0) / 100, 2),
                 'status' => $record['status'],
@@ -580,20 +581,6 @@ class BillingRoutes
         unset($result['status']);
 
         return new \WP_REST_Response($result, $status);
-    }
-
-    /**
-     * Get plan display name
-     */
-    private function getPlanDisplayName(string $planType): string
-    {
-        $names = [
-            'monthly' => 'Monthly Supporter',
-            'annual' => 'Season Pass',
-            'lifetime' => 'Lifetime Member',
-        ];
-
-        return $names[$planType] ?? $planType;
     }
 
     /**
