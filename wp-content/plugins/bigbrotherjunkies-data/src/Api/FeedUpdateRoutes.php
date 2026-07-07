@@ -710,7 +710,9 @@ class FeedUpdateRoutes
             'time' => get_the_time('g:i a', $post),
             'modified' => get_the_modified_date('c', $post),
             'time_ago' => human_time_diff(get_the_modified_time('U', $post), current_time('timestamp')) . ' ago',
-            'thumbnail' => get_the_post_thumbnail_url($post, 'medium') ?: null,
+            // medium_large (768w): this site's 'medium' is configured at 200px,
+            // which upscales blurry in the ~350-520px feed cards.
+            'thumbnail' => get_the_post_thumbnail_url($post, 'medium_large') ?: null,
             'comment_count' => (int) get_comments_number($post),
             'recent_comments' => $formattedComments,
             'mode' => get_post_meta($post->ID, '_feed_update_mode', true) ?: 'feed',

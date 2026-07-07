@@ -380,7 +380,9 @@ class HomeRoutes
                 'time' => get_the_time('g:i a'),
                 'modified' => get_the_modified_date('c'),
                 'time_ago' => human_time_diff(get_the_modified_time('U'), current_time('timestamp')) . ' ago',
-                'thumbnail' => get_the_post_thumbnail_url($postId, 'medium') ?: null,
+                // medium_large (768w): this site's 'medium' is configured at 200px,
+                // which upscales blurry in the ~350-520px feed cards.
+                'thumbnail' => get_the_post_thumbnail_url($postId, 'medium_large') ?: null,
                 'comment_count' => (int) get_comments_number(),
                 'recent_comments' => $formattedComments,
                 'mode' => get_post_meta($postId, '_feed_update_mode', true) ?: 'feed',
