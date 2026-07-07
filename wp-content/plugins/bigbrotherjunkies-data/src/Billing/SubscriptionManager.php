@@ -353,9 +353,11 @@ class SubscriptionManager
     }
 
     /**
-     * Change a user's subscription plan (upgrade/downgrade)
+     * Change a user's subscription plan (upgrade/downgrade, incl. across
+     * tiers). Stripe-only; immediate with proration. $newPlanKey is a
+     * checkout key ('monthly'|'annual'|'full_bean_monthly'|'full_bean_annual').
      */
-    public function changePlan(int $userId, string $newPlanType): array
+    public function changePlan(int $userId, string $newPlanKey): array
     {
         $subscription = $this->getActiveSubscription($userId);
 
@@ -367,7 +369,17 @@ class SubscriptionManager
             return ['error' => 'Lifetime subscriptions cannot be changed'];
         }
 
-        if ($subscription['plan_type'] === $newPlanType) {
+        $target = self::resolvePlan($newPlanKey);
+
+        if (!$target) {
+            return ['error' => 'Invalid plan type'];
+        }
+
+        if ($target['plan_type'] === 'lifetime') {
+            return ['error' => 'To upgrade to Lifetime, please cancel your current subscription and purchase Lifetime separately.'];
+        }
+
+        if (self::isSamePlan($subscription, $newPlanKey)) {
             return ['error' => 'You are already on this plan'];
         }
 
@@ -375,13 +387,9 @@ class SubscriptionManager
             return ['error' => 'Cannot change plan while cancellation is pending. Please resubscribe after your current period ends.'];
         }
 
-        if ($newPlanType === 'lifetime') {
-            return ['error' => 'To upgrade to Lifetime, please cancel your current subscription and purchase Lifetime separately.'];
-        }
-
         // Only Stripe supports mid-cycle changes
         if ($subscription['processor'] === 'paypal') {
-            return ['error' => 'PayPal subscriptions cannot be changed mid-cycle. Please cancel your current subscription and resubscribe with the new plan.'];
+            return ['error' => "PayPal subscriptions can't switch plans here. Cancel your current plan, then resubscribe with the new plan after your period ends."];
         }
 
         if ($subscription['processor'] !== 'stripe' || empty($subscription['stripe_subscription_id'])) {
@@ -389,35 +397,34 @@ class SubscriptionManager
         }
 
         $stripe = new StripeService();
-        $result = $stripe->updateSubscription($subscription['stripe_subscription_id'], $newPlanType);
+        $result = $stripe->updateSubscription($subscription['stripe_subscription_id'], $newPlanKey);
 
         if (isset($result['error'])) {
             return $result;
         }
 
-        // Update local DB
+        // Update local DB with ENUM-safe plan_type + the new tier
         global $wpdb;
         $table = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
-        $newPlan = $stripe->getPlanConfig($newPlanType);
 
         $wpdb->update(
             $table,
             [
-                'plan_type' => $newPlanType,
-                'amount_cents' => $newPlan['amount'] ?? null,
+                'plan_type' => $target['plan_type'],
+                'tier' => $target['tier'],
+                'amount_cents' => $target['amount_cents'],
                 'updated_at' => current_time('mysql'),
             ],
             ['id' => $subscription['id']]
         );
 
-        $planNames = [
-            'monthly' => 'Monthly Supporter',
-            'annual' => 'Season Pass',
-        ];
+        // Reassign the role — a tier change (supporter <-> full_bean) must
+        // grant/revoke the corresponding role immediately.
+        $this->assignSupporterRole($userId, $target['plan_type'], $target['tier']);
 
         return [
             'success' => true,
-            'message' => 'Plan changed to ' . ($planNames[$newPlanType] ?? $newPlanType) . ' successfully!',
+            'message' => 'Plan changed to ' . self::displayName($target['plan_type'], $target['tier']) . ' successfully!',
         ];
     }
 

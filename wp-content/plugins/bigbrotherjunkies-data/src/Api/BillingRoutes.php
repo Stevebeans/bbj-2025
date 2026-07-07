@@ -468,7 +468,7 @@ class BillingRoutes
         $params = $request->get_json_params();
         $planType = $params['plan_type'] ?? null;
 
-        if (!$planType || !in_array($planType, ['monthly', 'annual', 'lifetime'])) {
+        if (!$planType || !in_array($planType, ['monthly', 'annual', 'lifetime', 'full_bean_monthly', 'full_bean_annual'])) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'Invalid plan type',
