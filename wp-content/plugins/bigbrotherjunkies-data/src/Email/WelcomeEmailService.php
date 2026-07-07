@@ -85,8 +85,10 @@ class WelcomeEmailService
         $first = get_user_meta($user->ID, 'first_name', true);
         $first = $first !== '' ? $first : $user->display_name;
 
-        $planNames = ['monthly' => 'Monthly Supporter', 'annual' => 'Season Pass', 'lifetime' => 'Lifetime Member'];
         $planType = $sub['plan_type'] ?? '';
+        $planName = $planType !== ''
+            ? \BigBrotherJunkies\Data\Billing\SubscriptionManager::displayName($planType, $sub['tier'] ?? 'supporter')
+            : '';
         $amount = isset($sub['amount_cents']) ? '$' . number_format(((int) $sub['amount_cents']) / 100, 2) : '';
         $nextBill = '';
         if (!empty($sub['current_period_end'])) {
@@ -100,7 +102,7 @@ class WelcomeEmailService
             '{{display_name}}' => esc_html($user->display_name),
             '{{site_url}}'     => esc_url($frontend),
             '{{current_season}}' => esc_html((string) get_option('bbjd_current_season_label', '')),
-            '{{plan_name}}'    => esc_html($planNames[$planType] ?? $planType),
+            '{{plan_name}}'    => esc_html($planName),
             '{{amount}}'       => esc_html($amount),
             '{{next_billing_date}}' => esc_html($nextBill),
             '{{settings_url}}' => esc_url($frontend . '/settings'),
