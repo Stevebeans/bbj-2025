@@ -17,7 +17,7 @@ class StripeService
     /**
      * Plan configuration
      */
-    private const PLANS = [
+    public const PLANS = [
         'monthly' => [
             'name' => 'BBJ Supporter Monthly',
             'amount' => 695, // $6.95 in cents

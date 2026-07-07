@@ -19,6 +19,67 @@ class SubscriptionManager
     }
 
     /**
+     * Roles swapped out when a member's paid tier changes. `lifetime` is
+     * deliberately absent: legacy Lifetime members keep that role for life,
+     * even when they gain another paid role like full_bean.
+     */
+    public const REPLACEABLE_ROLES = ['subscriber', 'supporter', 'full_bean'];
+
+    /**
+     * Resolve a checkout/plan key (e.g. 'full_bean_monthly') to ENUM-safe
+     * DB values + role. Returns null for unknown keys.
+     */
+    public static function resolvePlan(string $planKey): ?array
+    {
+        $plan = StripeService::PLANS[$planKey] ?? null;
+        if (!$plan) {
+            return null;
+        }
+
+        return [
+            'plan_type' => $plan['plan_type'],
+            'tier' => $plan['tier'] ?? 'supporter',
+            'role' => $plan['role'],
+            'amount_cents' => $plan['amount'],
+            'name' => $plan['name'],
+        ];
+    }
+
+    /**
+     * A subscription row matches a plan key only when BOTH plan_type and
+     * tier match (plan_type alone is ambiguous: supporter monthly and Full
+     * Bean monthly share plan_type 'monthly').
+     */
+    public static function isSamePlan(array $subscription, string $planKey): bool
+    {
+        $target = self::resolvePlan($planKey);
+        if (!$target) {
+            return false;
+        }
+
+        return ($subscription['plan_type'] ?? null) === $target['plan_type']
+            && ($subscription['tier'] ?? 'supporter') === $target['tier'];
+    }
+
+    /**
+     * Human-readable plan name from the stored (plan_type, tier) pair.
+     */
+    public static function displayName(string $planType, string $tier = 'supporter'): string
+    {
+        if ($tier === 'full_bean') {
+            return $planType === 'annual' ? 'Full Bean Annual' : 'Full Bean Monthly';
+        }
+
+        $names = [
+            'monthly' => 'Monthly Supporter',
+            'annual' => 'Season Pass',
+            'lifetime' => 'Lifetime Member',
+        ];
+
+        return $names[$planType] ?? $planType;
+    }
+
+    /**
      * Get user's active subscription
      */
     public function getActiveSubscription(int $userId): ?array
@@ -380,11 +441,11 @@ class SubscriptionManager
             $role = $planType === 'lifetime' ? 'lifetime' : 'supporter';
         }
 
-        // Remove existing tier roles that get replaced by the new one
-        $user->remove_role('subscriber');
-        $user->remove_role('supporter');
-        $user->remove_role('lifetime');
-        $user->remove_role('full_bean');
+        // Remove existing tier roles that get replaced by the new one.
+        // REPLACEABLE_ROLES excludes 'lifetime' on purpose.
+        foreach (self::REPLACEABLE_ROLES as $replaceable) {
+            $user->remove_role($replaceable);
+        }
 
         // Add the new role
         $user->add_role($role);
