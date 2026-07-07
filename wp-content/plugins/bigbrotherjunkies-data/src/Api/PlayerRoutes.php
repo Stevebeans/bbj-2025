@@ -1229,6 +1229,7 @@ class PlayerRoutes
         }
 
         return [
+            'id' => $attachmentId,
             'url' => $imageData[0],
             'width' => (int) $imageData[1],
             'height' => (int) $imageData[2],
@@ -1484,6 +1485,10 @@ class PlayerRoutes
         $firstName = sanitize_text_field($params['first_name'] ?? '');
         $lastName  = sanitize_text_field($params['last_name'] ?? '');
         $gender    = sanitize_text_field($params['gender'] ?? '');
+        // Site convention is full words (matches the edit UI + gender filters);
+        // normalize legacy client codes defensively.
+        $genderMap = ['M' => 'Male', 'F' => 'Female', 'NB' => 'Non-binary'];
+        $gender    = $genderMap[$gender] ?? $gender;
         $seasonId  = absint($params['season_id'] ?? 0);
 
         if ($firstName === '' || $lastName === '') {
