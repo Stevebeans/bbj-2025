@@ -327,12 +327,21 @@ class AuthRoutes
 
     /**
      * Re-mint a JWT for the currently-authenticated user (sliding refresh).
-     * Requires a still-valid Bearer token (enforced by checkUserLoggedIn /
-     * the jwt-auth plugin's determine_current_user). The client calls this
-     * before the token crosses its expiry so active users never get logged out.
+     * Accepts EITHER a valid Bearer token (jwt-auth's determine_current_user)
+     * OR, as a Phase 2 recovery path, a valid HttpOnly `bbj_token_s` anchor
+     * cookie (validated via AuthCookie::resolveUserId); enforced by
+     * checkUserLoggedInOrAnchor. The client calls this before the token
+     * crosses its expiry so active users never get logged out.
      */
     public function handleRefreshToken(\WP_REST_Request $request)
     {
+        // Auth responses must never be cacheable: on the anchor-cookie path
+        // is_user_logged_in() is false, so WP core's REST nocache headers
+        // don't fire — and this site has had an auth-cache leak before.
+        if (function_exists('nocache_headers')) {
+            nocache_headers();
+        }
+
         $user = wp_get_current_user();
         if (!$user || !$user->ID) {
             // Phase 2 recovery: no (valid) Bearer — fall back to the anchor.
@@ -1198,6 +1207,13 @@ class AuthRoutes
      */
     public function handleGetMe(\WP_REST_Request $request): array|\WP_Error
     {
+        // Auth responses must never be cacheable: on the anchor-cookie path
+        // is_user_logged_in() is false, so WP core's REST nocache headers
+        // don't fire — and this site has had an auth-cache leak before.
+        if (function_exists('nocache_headers')) {
+            nocache_headers();
+        }
+
         $authHeader = $request->get_header('Authorization');
         $token = null;
         if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
