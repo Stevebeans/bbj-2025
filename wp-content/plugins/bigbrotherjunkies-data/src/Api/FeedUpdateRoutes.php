@@ -195,6 +195,10 @@ class FeedUpdateRoutes
         $hashtag = $this->getSeasonHashtag();
         $imageUrl = $imageId ? wp_get_attachment_url($imageId) : null;
 
+        // Frontend URL for this update (Next.js site, not the WP backend)
+        $frontendBase = defined('NEXT_PUBLIC_SITE_URL') ? NEXT_PUBLIC_SITE_URL : 'https://bigbrotherjunkies.com';
+        $updateUrl = rtrim($frontendBase, '/') . '/live-feed-updates/' . get_post_field('post_name', $postId);
+
         // Social posting results
         $socialResults = [
             'bluesky' => ['posted' => false, 'url' => null, 'error' => null],
@@ -206,7 +210,7 @@ class FeedUpdateRoutes
             try {
                 $bluesky = new BlueskyClient();
                 $socialContent = $this->formatForSocial($postTitle, $postContent, $hashtag, 'bluesky');
-                $result = $bluesky->post($socialContent, $imageUrl);
+                $result = $bluesky->post($socialContent, $imageUrl, $updateUrl);
                 $socialResults['bluesky'] = $result;
             } catch (\Exception $e) {
                 $socialResults['bluesky']['error'] = $e->getMessage();

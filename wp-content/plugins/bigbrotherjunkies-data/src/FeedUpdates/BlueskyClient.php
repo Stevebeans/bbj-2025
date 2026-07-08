@@ -11,6 +11,8 @@ namespace BigBrotherJunkies\Data\FeedUpdates;
 class BlueskyClient
 {
     private const API_BASE = 'https://bsky.social/xrpc';
+    private const CHAR_LIMIT = 300;
+    private const LINK_DISPLAY = 'bigbrotherjunkies.com';
 
     private string $handle;
     private string $appPassword;
@@ -37,9 +39,10 @@ class BlueskyClient
      *
      * @param string $text The text content to post
      * @param string|null $imageUrl Optional image URL to attach
+     * @param string|null $linkUrl Optional URL back to the site (rendered as a clickable domain)
      * @return array Result with 'posted', 'url', 'error' keys
      */
-    public function post(string $text, ?string $imageUrl = null): array
+    public function post(string $text, ?string $imageUrl = null, ?string $linkUrl = null): array
     {
         if (!$this->isConfigured()) {
             return [
@@ -53,12 +56,19 @@ class BlueskyClient
             // Authenticate
             $this->authenticate();
 
-            // Prepare the post record
+            // Prepare the post record (hashtags + link line survive truncation)
+            $composed = $this->composeText($text, $linkUrl);
             $record = [
                 '$type' => 'app.bsky.feed.post',
-                'text' => $this->truncateText($text, 300),
+                'text' => $composed,
                 'createdAt' => gmdate('Y-m-d\TH:i:s\Z'),
             ];
+
+            // Rich-text facets make hashtags and the site link clickable
+            $facets = $this->buildFacets($composed, $linkUrl);
+            if ($facets) {
+                $record['facets'] = $facets;
+            }
 
             // Handle image if provided
             if ($imageUrl) {
@@ -202,6 +212,72 @@ class BlueskyClient
             return "https://bsky.app/profile/{$this->handle}/post/{$matches[2]}";
         }
         return $atUri;
+    }
+
+    /**
+     * Compose the final post text within CHAR_LIMIT.
+     * Trailing hashtags and the appended link line are peeled off first so
+     * truncation only ever shortens the message body, never the tag or link.
+     */
+    private function composeText(string $text, ?string $linkUrl): string
+    {
+        $text = rtrim($text);
+
+        // Peel trailing hashtag block (e.g. " #BB28" or " #BB28 #BigBrother")
+        $tags = '';
+        if (preg_match('/(\s+(?:#\w+\s*)+)$/u', $text, $m)) {
+            $tags = ' ' . trim($m[1]);
+            $text = rtrim(mb_substr($text, 0, mb_strlen($text) - mb_strlen($m[1])));
+        }
+
+        $suffix = $tags . ($linkUrl ? "\n" . self::LINK_DISPLAY : '');
+        $budget = self::CHAR_LIMIT - mb_strlen($suffix);
+
+        return $this->truncateText($text, $budget) . $suffix;
+    }
+
+    /**
+     * Build rich-text facets (byte-offset annotations) for hashtags and the
+     * site link. Without these, Bluesky renders them as plain dead text.
+     */
+    private function buildFacets(string $text, ?string $linkUrl): array
+    {
+        $facets = [];
+
+        // Hashtags -> tag facets (preg offsets are byte offsets, as required)
+        if (preg_match_all('/#(\w+)/u', $text, $m, PREG_OFFSET_CAPTURE)) {
+            foreach ($m[0] as $i => $match) {
+                $facets[] = [
+                    'index' => [
+                        'byteStart' => $match[1],
+                        'byteEnd' => $match[1] + strlen($match[0]),
+                    ],
+                    'features' => [[
+                        '$type' => 'app.bsky.richtext.facet#tag',
+                        'tag' => $m[1][$i][0],
+                    ]],
+                ];
+            }
+        }
+
+        // The appended domain -> link facet pointing at the full update URL
+        if ($linkUrl) {
+            $pos = strrpos($text, self::LINK_DISPLAY);
+            if ($pos !== false) {
+                $facets[] = [
+                    'index' => [
+                        'byteStart' => $pos,
+                        'byteEnd' => $pos + strlen(self::LINK_DISPLAY),
+                    ],
+                    'features' => [[
+                        '$type' => 'app.bsky.richtext.facet#link',
+                        'uri' => $linkUrl,
+                    ]],
+                ];
+            }
+        }
+
+        return $facets;
     }
 
     /**
