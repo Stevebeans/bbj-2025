@@ -303,7 +303,15 @@ class AuthRoutes
         register_rest_route(self::NAMESPACE, '/auth/refresh', [
             'methods'             => 'POST',
             'callback'            => [$this, 'handleRefreshToken'],
-            'permission_callback' => [$this, 'checkUserLoggedIn'],
+            'permission_callback' => [$this, 'checkUserLoggedInOrAnchor'],
+        ]);
+
+        // Phase 2: clear the server-set anchor cookies. Idempotent and harmless
+        // (only ever expires the caller's own cookies), hence open permission.
+        register_rest_route(self::NAMESPACE, '/auth/logout', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'handleLogout'],
+            'permission_callback' => '__return_true',
         ]);
     }
 
@@ -326,6 +334,11 @@ class AuthRoutes
     public function handleRefreshToken(\WP_REST_Request $request)
     {
         $user = wp_get_current_user();
+        if (!$user || !$user->ID) {
+            // Phase 2 recovery: no (valid) Bearer — fall back to the anchor.
+            $anchorId = AuthCookie::resolveUserId();
+            $user = $anchorId ? get_user_by('ID', $anchorId) : false;
+        }
         if (!$user || !$user->ID) {
             return new \WP_Error(
                 'not_logged_in',
@@ -354,6 +367,24 @@ class AuthRoutes
     public function checkUserLoggedIn(): bool
     {
         return is_user_logged_in();
+    }
+
+    /**
+     * Permission: valid Bearer session (jwt-auth's determine_current_user)
+     * OR a valid HttpOnly anchor cookie (Phase 2 recovery path).
+     */
+    public function checkUserLoggedInOrAnchor(): bool
+    {
+        return is_user_logged_in() || AuthCookie::resolveUserId() !== null;
+    }
+
+    /**
+     * Clear the Phase 2 anchor + hint cookies (client JS can't — HttpOnly).
+     */
+    public function handleLogout(): \WP_REST_Response
+    {
+        AuthCookie::clear();
+        return new \WP_REST_Response(['success' => true], 200);
     }
 
     /**
@@ -1168,11 +1199,18 @@ class AuthRoutes
     public function handleGetMe(\WP_REST_Request $request): array|\WP_Error
     {
         $authHeader = $request->get_header('Authorization');
-        if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
+        $token = null;
+        if ($authHeader && str_starts_with($authHeader, 'Bearer ')) {
+            $token = substr($authHeader, 7);
+        } elseif (!empty($_COOKIE[AuthCookie::TOKEN_COOKIE])) {
+            // Phase 2: HttpOnly anchor as fallback (client can't read it to
+            // build a Bearer header; the browser sends it with credentials).
+            $token = (string) $_COOKIE[AuthCookie::TOKEN_COOKIE];
+        }
+        if (!$token) {
             return new \WP_Error('no_token', 'Authorization header required.', ['status' => 401]);
         }
 
-        $token = substr($authHeader, 7);
         $secretKey = defined('JWT_AUTH_SECRET_KEY') ? JWT_AUTH_SECRET_KEY : false;
 
         if (!$secretKey) {
