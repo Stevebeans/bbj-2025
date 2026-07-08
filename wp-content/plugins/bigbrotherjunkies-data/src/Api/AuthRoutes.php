@@ -2,6 +2,7 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\Auth\AuthCookie;
 use BigBrotherJunkies\Data\Auth\GoogleOAuth;
 use BigBrotherJunkies\Data\Auth\Integrations\MailPoetSubscriber;
 use BigBrotherJunkies\Data\Auth\WpSessionBridge;
@@ -340,6 +341,10 @@ class AuthRoutes
             return $token;
         }
 
+        // Phase 2: re-arm the HttpOnly anchor on every refresh so it slides
+        // alongside the JWT (and existing members acquire it via heartbeat).
+        AuthCookie::emit($token, $remember);
+
         return new \WP_REST_Response(['token' => $token], 200);
     }
 
@@ -418,6 +423,7 @@ class AuthRoutes
 
         // Opt-in WP-native session for PHP theme consumers.
         WpSessionBridge::maybeSetAuthCookie((int) $user->ID, (bool) $rememberMe, $request);
+        AuthCookie::emit($token, (bool) $rememberMe);
 
         return new \WP_REST_Response([
             'success' => true,
@@ -589,6 +595,7 @@ class AuthRoutes
         }
 
         WpSessionBridge::maybeSetAuthCookie((int) $user->ID, true, $request);
+        AuthCookie::emit($token, true);
 
         return new \WP_REST_Response([
             'success' => true,
@@ -1050,6 +1057,7 @@ class AuthRoutes
         }
 
         WpSessionBridge::maybeSetAuthCookie((int) $user->ID, (bool) $rememberMe, $request);
+        AuthCookie::emit($token, (bool) $rememberMe);
 
         return new \WP_REST_Response([
             'success' => true,
@@ -1135,6 +1143,7 @@ class AuthRoutes
         }
 
         WpSessionBridge::maybeSetAuthCookie((int) $user->ID, (bool) $rememberMe, $request);
+        AuthCookie::emit($token, (bool) $rememberMe);
 
         return new \WP_REST_Response([
             'success' => true,

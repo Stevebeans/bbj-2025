@@ -21,3 +21,23 @@ if (!class_exists('WP_REST_Response')) {
         public function get_status(): int { return $this->status; }
     }
 }
+
+if (!class_exists('WP_REST_Request')) {
+    class WP_REST_Request {
+        private array $params;
+        public function __construct(array $params = []) { $this->params = $params; }
+        public function get_param($key) { return $this->params[$key] ?? null; }
+        public function get_header($key) { return $this->params['__headers'][$key] ?? null; }
+    }
+}
+
+if (!class_exists('WP_User')) {
+    class WP_User {
+        public int $ID = 0;
+        public string $display_name = '';
+        public array $roles = [];
+        public $data = null;
+        public string $user_email = '';
+        public string $user_login = '';
+    }
+}

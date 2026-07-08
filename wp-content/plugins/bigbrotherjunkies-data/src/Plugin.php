@@ -138,6 +138,18 @@ class Plugin
             return $token;
         }, 10, 2);
 
+        // Phase 2 (auth): the third-party /jwt-auth/v1/token login response gets
+        // the HttpOnly anchor cookie too. remember_me comes from the raw body,
+        // same trick as AuthRoutes::filterJwtExpiration.
+        add_filter('jwt_auth_token_before_dispatch', function ($data, $user) {
+            if (!empty($data['token'])) {
+                $body = json_decode((string) file_get_contents('php://input'), true);
+                $remember = (bool) (($body['remember_me'] ?? true));
+                \BigBrotherJunkies\Data\Auth\AuthCookie::emit($data['token'], $remember);
+            }
+            return $data;
+        }, 10, 2);
+
         // WP core oEmbeds twitter.com but NOT x.com (verified on 6.8.5), and
         // every link copied from the X app is x.com — so editor embed previews
         // (/oembed/1.0/proxy) and content embeds silently failed. publish.x.com
