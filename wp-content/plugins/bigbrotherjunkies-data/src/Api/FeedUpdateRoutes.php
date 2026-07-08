@@ -195,10 +195,6 @@ class FeedUpdateRoutes
         $hashtag = $this->getSeasonHashtag();
         $imageUrl = $imageId ? wp_get_attachment_url($imageId) : null;
 
-        // Frontend URL for this update (Next.js site, not the WP backend)
-        $frontendBase = defined('NEXT_PUBLIC_SITE_URL') ? NEXT_PUBLIC_SITE_URL : 'https://bigbrotherjunkies.com';
-        $updateUrl = rtrim($frontendBase, '/') . '/live-feed-updates/' . get_post_field('post_name', $postId);
-
         // Social posting results
         $socialResults = [
             'bluesky' => ['posted' => false, 'url' => null, 'error' => null],
@@ -210,7 +206,7 @@ class FeedUpdateRoutes
             try {
                 $bluesky = new BlueskyClient();
                 $socialContent = $this->formatForSocial($postTitle, $postContent, $hashtag, 'bluesky');
-                $result = $bluesky->post($socialContent, $imageUrl, $updateUrl);
+                $result = $bluesky->post($socialContent, $imageUrl);
                 $socialResults['bluesky'] = $result;
             } catch (\Exception $e) {
                 $socialResults['bluesky']['error'] = $e->getMessage();
@@ -651,7 +647,20 @@ class FeedUpdateRoutes
             return "<<< Feed Update - Spoiler Warning >>>\n\n\n\n\n[Update ({$time}) - {$text}]\n\n{$hashtag}";
         }
 
-        // Bluesky/Twitter: Simple format
+        if ($platform === 'bluesky') {
+            // Native voice: the update's own words + season tag. No robotic
+            // "[Update (time) - Title]" wrapper — reads like a person posting,
+            // not a bot (and Bluesky already shows the post's age).
+            $body = trim(wp_strip_all_tags($content));
+            $body = preg_replace("/\r\n?/", "\n", $body);
+            $body = preg_replace("/\n{3,}/", "\n\n", $body); // collapse big gaps
+            if ($body === '') {
+                $body = $title;
+            }
+            return $body . ' ' . $hashtag;
+        }
+
+        // Twitter/legacy: Simple format
         return "[Update ({$time}) - {$text}] {$hashtag}";
     }
 
