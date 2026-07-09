@@ -3,7 +3,9 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Billing\BillingSchema;
+use BigBrotherJunkies\Data\Billing\SubscriptionManager;
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
+use BigBrotherJunkies\Data\Comments\CommentSchema;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 /**
@@ -24,6 +26,12 @@ class UserAdminRoutes
         register_rest_route(self::NAMESPACE, '/admin/users', [
             'methods' => 'GET',
             'callback' => [$this, 'listUsers'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/users/(?P<id>\d+)', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getUser'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
     }
@@ -119,5 +127,76 @@ class UserAdminRoutes
                 'total_pages' => (int) ceil($total / $perPage),
             ],
         ]);
+    }
+
+    /**
+     * Full member-support detail: profile, karma, subscription snapshot, recent votes.
+     */
+    public function getUser(\WP_REST_Request $request)
+    {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $u = get_user_by('id', $id);
+        if (!$u) {
+            return new \WP_Error('not_found', 'User not found', ['status' => 404]);
+        }
+
+        $commentCount = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM {$wpdb->comments} WHERE user_id = %d AND comment_approved = '1'", $id
+        ));
+
+        // Karma: same upvotes-minus-downvotes calc UserProfileRoutes uses for public profiles.
+        $votesTable = CommentSchema::table(CommentSchema::TABLE_VOTES);
+        $votesReceived = $wpdb->get_row($wpdb->prepare(
+            "SELECT
+                COALESCE(SUM(CASE WHEN v.vote_type = 1 THEN 1 ELSE 0 END), 0) as upvotes,
+                COALESCE(SUM(CASE WHEN v.vote_type = -1 THEN 1 ELSE 0 END), 0) as downvotes
+             FROM {$votesTable} v
+             JOIN {$wpdb->comments} c ON v.comment_id = c.comment_ID
+             WHERE c.user_id = %d",
+            $id
+        ), ARRAY_A);
+        $karma = (int) (($votesReceived['upvotes'] ?? 0) - ($votesReceived['downvotes'] ?? 0));
+
+        $subTable = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
+        $sub = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$subTable} WHERE user_id = %d ORDER BY id DESC LIMIT 1", $id
+        ), ARRAY_A);
+        $subscription = $sub ? [
+            'plan_type' => $sub['plan_type'],
+            'tier' => $sub['tier'] ?? 'supporter',
+            'plan_name' => SubscriptionManager::displayName($sub['plan_type'], $sub['tier'] ?? 'supporter'),
+            'status' => $sub['status'] ?? null,
+            'processor' => $sub['processor'] ?? null,
+            'current_period_end' => $sub['current_period_end'] ?? null,
+            'stripe_customer_id' => $sub['stripe_customer_id'] ?? null,
+            'stripe_subscription_id' => $sub['stripe_subscription_id'] ?? null,
+            'paypal_subscription_id' => $sub['paypal_subscription_id'] ?? null,
+        ] : null;
+
+        // Last 10 feed-update votes. bbj_feed_ratings columns: update_id, user_id, rating,
+        // created_at (confirmed against FeedUpdateRoutes.php + a live DESCRIBE — the table
+        // has no post_id/vote/created columns as originally assumed).
+        $ratings = $wpdb->prefix . 'bbj_feed_ratings';
+        $votes = $wpdb->get_results($wpdb->prepare(
+            "SELECT r.update_id AS post_id, r.rating AS vote, r.created_at AS created,
+                    p.post_title AS title, p.post_name AS slug
+             FROM {$ratings} r JOIN {$wpdb->posts} p ON p.ID = r.update_id
+             WHERE r.user_id = %d ORDER BY r.id DESC LIMIT 10", $id
+        ), ARRAY_A);
+
+        return new \WP_REST_Response(['user' => [
+            'id' => $id,
+            'display_name' => $u->display_name,
+            'user_login' => $u->user_login,
+            'email' => $u->user_email,
+            'roles' => array_values($u->roles),
+            'registered' => $u->user_registered,
+            'avatar' => AvatarUploader::getAvatarUrl($id, 96),
+            'comment_count' => $commentCount,
+            'karma' => $karma,
+            'subscription' => $subscription,
+            'recent_votes' => $votes ?: [],
+        ]]);
     }
 }
