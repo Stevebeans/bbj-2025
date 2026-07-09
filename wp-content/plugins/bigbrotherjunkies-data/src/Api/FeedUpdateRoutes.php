@@ -648,16 +648,18 @@ class FeedUpdateRoutes
         }
 
         if ($platform === 'bluesky') {
-            // Native voice: the update's own words + season tag. No robotic
-            // "[Update (time) - Title]" wrapper — reads like a person posting,
-            // not a bot (and Bluesky already shows the post's age).
+            // Native voice: [BBT timestamp] + the update's own words + season
+            // tag. No robotic "[Update (time) - Title]" wrapper — reads like a
+            // person live-posting. BBT = Big Brother Time (Pacific), computed
+            // explicitly so it's correct regardless of the WP site timezone.
+            $bbt = (new \DateTime('now', new \DateTimeZone('America/Los_Angeles')))->format('h:i a');
             $body = trim(wp_strip_all_tags($content));
             $body = preg_replace("/\r\n?/", "\n", $body);
             $body = preg_replace("/\n{3,}/", "\n\n", $body); // collapse big gaps
             if ($body === '') {
                 $body = $title;
             }
-            return $body . ' ' . $hashtag;
+            return "[{$bbt} BBT] {$body} {$hashtag}";
         }
 
         // Twitter/legacy: Simple format
