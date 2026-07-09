@@ -6,6 +6,7 @@ use BigBrotherJunkies\Data\Billing\BillingSchema;
 use BigBrotherJunkies\Data\Billing\SubscriptionManager;
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
 use BigBrotherJunkies\Data\Comments\CommentSchema;
+use BigBrotherJunkies\Data\Email\WelcomeEmailService;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 /**
@@ -32,6 +33,30 @@ class UserAdminRoutes
         register_rest_route(self::NAMESPACE, '/admin/users/(?P<id>\d+)', [
             'methods' => 'GET',
             'callback' => [$this, 'getUser'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/users/(?P<id>\d+)', [
+            'methods' => 'PUT',
+            'callback' => [$this, 'updateUser'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/users/(?P<id>\d+)/roles', [
+            'methods' => 'PUT',
+            'callback' => [$this, 'updateRoles'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/users/(?P<id>\d+)/send-password-reset', [
+            'methods' => 'POST',
+            'callback' => [$this, 'sendPasswordReset'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/users/(?P<id>\d+)/resend-email', [
+            'methods' => 'POST',
+            'callback' => [$this, 'resendEmail'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
     }
@@ -198,5 +223,150 @@ class UserAdminRoutes
             'subscription' => $subscription,
             'recent_votes' => $votes ?: [],
         ]]);
+    }
+
+    /**
+     * Update email/display name. Returns the fresh detail payload on success.
+     */
+    public function updateUser(\WP_REST_Request $request)
+    {
+        $id = (int) $request['id'];
+        if (!get_user_by('id', $id)) {
+            return new \WP_Error('not_found', 'User not found', ['status' => 404]);
+        }
+        $data = ['ID' => $id];
+
+        $email = $request->get_param('email');
+        if ($email !== null && $email !== '') {
+            $email = sanitize_email($email);
+            if (!is_email($email)) {
+                return new \WP_Error('invalid_email', 'Invalid email address', ['status' => 400]);
+            }
+            $existing = email_exists($email);
+            if ($existing && (int) $existing !== $id) {
+                return new \WP_Error('email_taken', 'Email already in use by another account', ['status' => 400]);
+            }
+            $data['user_email'] = $email;
+        }
+
+        $name = $request->get_param('display_name');
+        if ($name !== null && trim($name) !== '') {
+            $data['display_name'] = sanitize_text_field($name);
+        }
+
+        if (count($data) === 1) {
+            return new \WP_Error('nothing_to_update', 'No fields provided', ['status' => 400]);
+        }
+        $result = wp_update_user($data);
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        return $this->getUser($request); // return fresh detail payload
+    }
+
+    /**
+     * Replace a user's roles. Server-side self-lockout guard: an admin can
+     * never remove `administrator` from their own account via this route.
+     */
+    public function updateRoles(\WP_REST_Request $request)
+    {
+        $id = (int) $request['id'];
+        $user = get_user_by('id', $id);
+        if (!$user) {
+            return new \WP_Error('not_found', 'User not found', ['status' => 404]);
+        }
+        $roles = (array) $request->get_param('roles');
+        $valid = array_keys(wp_roles()->roles);
+        foreach ($roles as $r) {
+            if (!in_array($r, $valid, true)) {
+                return new \WP_Error('invalid_role', "Unknown role: {$r}", ['status' => 400]);
+            }
+        }
+        // Self-lockout guard
+        if ($id === get_current_user_id() && !in_array('administrator', $roles, true)) {
+            return new \WP_Error(
+                'cannot_remove_own_admin',
+                'You cannot remove administrator from your own account',
+                ['status' => 400]
+            );
+        }
+        foreach (array_values($user->roles) as $r) {
+            $user->remove_role($r);
+        }
+        foreach ($roles as $r) {
+            $user->add_role($r);
+        }
+        return new \WP_REST_Response(['success' => true, 'roles' => array_values($user->roles)]);
+    }
+
+    /**
+     * Trigger the standard WP password-reset email. No password values ever
+     * pass through this route.
+     */
+    public function sendPasswordReset(\WP_REST_Request $request)
+    {
+        $id = (int) $request['id'];
+        $user = get_user_by('id', $id);
+        if (!$user) {
+            return new \WP_Error('not_found', 'User not found', ['status' => 404]);
+        }
+        $result = retrieve_password($user->user_login);
+        if (is_wp_error($result)) {
+            return $result;
+        }
+        return new \WP_REST_Response(['success' => true]);
+    }
+
+    /**
+     * Manually re-send one of the transactional account emails (member support).
+     */
+    public function resendEmail(\WP_REST_Request $request)
+    {
+        global $wpdb;
+        $id = (int) $request['id'];
+        $user = get_user_by('id', $id);
+        if (!$user) {
+            return new \WP_Error('not_found', 'User not found', ['status' => 404]);
+        }
+        $type = (string) $request->get_param('type');
+
+        if ($type === 'confirm') {
+            // Same token flow as registration (AuthRoutes::register): regenerate
+            // so the resend link is fresh, then build the same confirm URL.
+            $token = wp_generate_password(32, false);
+            update_user_meta($id, 'bbjd_verification_token', $token);
+            update_user_meta($id, 'bbjd_verification_expires', time() + (24 * HOUR_IN_SECONDS));
+            $frontend = rtrim(get_option('bbjd_email_settings', [])['frontend_url'] ?? 'https://bigbrotherjunkies.com', '/');
+            $confirmUrl = $frontend . '/register/confirm?token=' . urlencode($token);
+            WelcomeEmailService::sendConfirmation($id, $confirmUrl);
+            return new \WP_REST_Response(['success' => true, 'type' => $type]);
+        }
+
+        if ($type === 'welcome') {
+            // Manual admin resend: don't claim newsletter opt-in we haven't verified.
+            WelcomeEmailService::sendWelcome($id, false);
+            return new \WP_REST_Response(['success' => true, 'type' => $type]);
+        }
+
+        if ($type === 'premium') {
+            $subTable = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
+            $sub = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$subTable} WHERE user_id = %d AND status IN ('active', 'lifetime')
+                 ORDER BY id DESC LIMIT 1", $id
+            ), ARRAY_A);
+            if (!$sub) {
+                return new \WP_Error('no_subscription', 'User has no active subscription to send a premium receipt for', ['status' => 400]);
+            }
+            // sendPremium() is idempotent-by-design (one send per subscription row, to
+            // survive webhook retries) — clear its guard so an explicit admin resend
+            // actually goes out instead of silently no-op'ing.
+            if (!empty($sub['id'])) {
+                delete_option('bbjd_premium_email_sent_' . (int) $sub['id']);
+            }
+            WelcomeEmailService::sendPremium($id, $sub);
+            return new \WP_REST_Response(['success' => true, 'type' => $type]);
+        }
+
+        return new \WP_Error('not_implemented', "No sender for {$type}", ['status' => 501]);
     }
 }
