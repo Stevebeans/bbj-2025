@@ -66,6 +66,7 @@ use BigBrotherJunkies\Data\Api\AdSettingsRoutes;
 use BigBrotherJunkies\Data\Api\NewsAggregatorRoutes;
 use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Api\LiveThreadRoutes;
+use BigBrotherJunkies\Data\Api\UserAdminRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
@@ -663,6 +664,10 @@ class Plugin
         // Live thread routes (current, take-over, close, updates-since)
         $liveThreadRoutes = new LiveThreadRoutes();
         $liveThreadRoutes->register();
+
+        // Admin user-management routes (member support: list, detail, roles, actions)
+        $userAdminRoutes = new UserAdminRoutes();
+        $userAdminRoutes->register();
     }
 
     /**
