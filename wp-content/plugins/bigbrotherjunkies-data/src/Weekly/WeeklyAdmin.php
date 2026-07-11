@@ -119,4 +119,300 @@ class WeeklyAdmin
 
         return ['players' => $players, 'comps' => $comps, 'errors' => []];
     }
+
+    // -----------------------------------------------------------------------
+    // DB layer (thin wrappers around the pure planner)
+    // -----------------------------------------------------------------------
+
+    private static function t(string $name): string
+    {
+        global $wpdb;
+        return $wpdb->prefix . $name;
+    }
+
+    /** Roster player IDs for a season, from player_season. */
+    private static function rosterIds(int $seasonId): array
+    {
+        global $wpdb;
+        return array_map('intval', $wpdb->get_col($wpdb->prepare(
+            "SELECT bbj_player FROM {$wpdb->prefix}bbj_v2_player_season WHERE bbj_season = %d",
+            $seasonId
+        )) ?: []);
+    }
+
+    /**
+     * Everything the admin weekly editor needs for one season, in one call.
+     */
+    public static function getAdminBundle(int $seasonId): array
+    {
+        global $wpdb;
+        $weeks    = self::t(WeeklySchema::TABLE_WEEKS);
+        $wplayers = self::t(WeeklySchema::TABLE_WEEKS_PLAYERS);
+        $wcomps   = self::t(WeeklySchema::TABLE_WEEK_COMPS);
+        $ctypes   = self::t(WeeklySchema::TABLE_COMP_TYPES);
+
+        $rosterRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT p.ID AS id, p.post_title AS name, p.post_name AS slug, bp.profile_picture
+               FROM {$wpdb->prefix}bbj_v2_player_season ps
+               INNER JOIN {$wpdb->posts} p ON p.ID = ps.bbj_player
+               LEFT JOIN {$wpdb->prefix}bbj_players bp
+                      ON (bp.post_id = p.ID OR (bp.id = p.ID AND bp.post_id = 0))
+              WHERE ps.bbj_season = %d
+              ORDER BY p.post_title ASC",
+            $seasonId
+        ), ARRAY_A) ?: [];
+        $roster = array_map(static function ($r) {
+            $pic = (int) ($r['profile_picture'] ?? 0);
+            return [
+                'id'    => (int) $r['id'],
+                'name'  => (string) $r['name'],
+                'slug'  => (string) $r['slug'],
+                'photo' => $pic ? (wp_get_attachment_image_url($pic, 'thumbnail') ?: '') : '',
+            ];
+        }, $rosterRows);
+
+        $compTypes = array_map(static fn ($r) => [
+            'id' => (int) $r['id'], 'slug' => $r['slug'], 'name' => $r['name'],
+        ], $wpdb->get_results(
+            "SELECT id, slug, name FROM {$ctypes} WHERE is_archived = 0 ORDER BY sort_order ASC, name ASC",
+            ARRAY_A
+        ) ?: []);
+
+        $weekRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, week_num, start_date, end_date, summary
+               FROM {$weeks} WHERE season_id = %d ORDER BY week_num ASC",
+            $seasonId
+        ), ARRAY_A) ?: [];
+
+        $out = [];
+        $byWeekId = [];
+        foreach ($weekRows as $w) {
+            $wid = (int) $w['id'];
+            $out[$wid] = [
+                'id'         => $wid,
+                'week_num'   => (int) $w['week_num'],
+                'start_date' => $w['start_date'],
+                'end_date'   => $w['end_date'],
+                'summary'    => (string) ($w['summary'] ?? ''),
+                'players'    => [],
+                'comps'      => [],
+            ];
+            $byWeekId[] = $wid;
+        }
+
+        if ($byWeekId) {
+            $in = implode(',', $byWeekId);
+            $playerRows = $wpdb->get_results(
+                "SELECT week_id, player_id, nom, evicted, veto_played, voted_for,
+                        saved_by_player_id, vote_to_win, vote_to_win_for, active
+                   FROM {$wplayers} WHERE week_id IN ({$in})",
+                ARRAY_A
+            ) ?: [];
+            foreach ($playerRows as $r) {
+                $out[(int) $r['week_id']]['players'][] = [
+                    'player_id'          => (int) $r['player_id'],
+                    'nom'                => (int) $r['nom'],
+                    'evicted'            => (int) $r['evicted'],
+                    'veto_played'        => (int) $r['veto_played'],
+                    'voted_for'          => (int) $r['voted_for'],
+                    'saved_by_player_id' => $r['saved_by_player_id'] !== null ? (int) $r['saved_by_player_id'] : null,
+                    'vote_to_win'        => (int) $r['vote_to_win'],
+                    'vote_to_win_for'    => $r['vote_to_win_for'] !== null ? (int) $r['vote_to_win_for'] : null,
+                    'active'             => (int) $r['active'],
+                ];
+            }
+            $compRows = $wpdb->get_results(
+                "SELECT wc.week_id, wc.player_id, wc.comp_type_id, wc.notes, ct.slug
+                   FROM {$wcomps} wc
+                   INNER JOIN {$ctypes} ct ON ct.id = wc.comp_type_id
+                  WHERE wc.week_id IN ({$in})",
+                ARRAY_A
+            ) ?: [];
+            foreach ($compRows as $r) {
+                $out[(int) $r['week_id']]['comps'][] = [
+                    'player_id'    => (int) $r['player_id'],
+                    'comp_type_id' => (int) $r['comp_type_id'],
+                    'slug'         => (string) $r['slug'],
+                    'notes'        => $r['notes'],
+                ];
+            }
+        }
+
+        return [
+            'season_id'  => $seasonId,
+            'roster'     => $roster,
+            'comp_types' => $compTypes,
+            'weeks'      => array_values($out),
+        ];
+    }
+
+    public static function createWeek(int $seasonId, ?string $startDate, ?string $endDate): array
+    {
+        global $wpdb;
+        $weeks = self::t(WeeklySchema::TABLE_WEEKS);
+        $next = 1 + (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COALESCE(MAX(week_num), 0) FROM {$weeks} WHERE season_id = %d",
+            $seasonId
+        ));
+        // Legacy copies of this table have NOT NULL date columns (the canonical
+        // schema allows NULL) — omit empty dates instead of writing NULL.
+        $row = ['season_id' => $seasonId, 'week_num' => $next];
+        if ($startDate) $row['start_date'] = $startDate;
+        if ($endDate)   $row['end_date']   = $endDate;
+        $wpdb->insert($weeks, $row);
+        return ['id' => (int) $wpdb->insert_id, 'week_num' => $next];
+    }
+
+    private static function compTypeId(string $slug, string $name): int
+    {
+        global $wpdb;
+        $table = self::t(WeeklySchema::TABLE_COMP_TYPES);
+        $id = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table} WHERE slug = %s", $slug));
+        if ($id) {
+            return (int) $id;
+        }
+        $wpdb->insert($table, ['slug' => $slug, 'name' => $name, 'sort_order' => 40]);
+        return (int) $wpdb->insert_id;
+    }
+
+    /**
+     * Replace one week's rows from an editor payload (delete+insert in a
+     * transaction), recompute season totals, and report which players changed.
+     * Optional payload keys besides the planner's: summary, start_date,
+     * end_date, jury_votes (juror_id => vote_to_win_for id, finale only).
+     */
+    public static function saveWeek(int $weekId, array $payload): array
+    {
+        global $wpdb;
+        $weeks    = self::t(WeeklySchema::TABLE_WEEKS);
+        $wplayers = self::t(WeeklySchema::TABLE_WEEKS_PLAYERS);
+        $wcomps   = self::t(WeeklySchema::TABLE_WEEK_COMPS);
+
+        $week = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, season_id FROM {$weeks} WHERE id = %d", $weekId
+        ), ARRAY_A);
+        if (!$week) {
+            return ['errors' => ['Week not found']];
+        }
+        $seasonId = (int) $week['season_id'];
+
+        $plan = self::planWeekRows($payload, self::rosterIds($seasonId));
+        if ($plan['errors']) {
+            return ['errors' => $plan['errors']];
+        }
+
+        $oldIds = array_map('intval', $wpdb->get_col($wpdb->prepare(
+            "SELECT player_id FROM {$wplayers} WHERE week_id = %d
+              UNION SELECT player_id FROM {$wcomps} WHERE week_id = %d",
+            $weekId, $weekId
+        )) ?: []);
+
+        $juryVotes = [];
+        foreach ((array) ($payload['jury_votes'] ?? []) as $juror => $for) {
+            if ((int) $juror && (int) $for) {
+                $juryVotes[(int) $juror] = (int) $for;
+            }
+        }
+
+        $wpdb->query('START TRANSACTION');
+        try {
+            $wpdb->query($wpdb->prepare("DELETE FROM {$wcomps} WHERE week_id = %d", $weekId));
+            $wpdb->query($wpdb->prepare("DELETE FROM {$wplayers} WHERE week_id = %d", $weekId));
+
+            foreach ($plan['players'] as $p) {
+                $wpdb->insert($wplayers, [
+                    'week_id'            => $weekId,
+                    'player_id'          => $p['player_id'],
+                    'season_id'          => $seasonId,
+                    'nom'                => $p['nom'],
+                    'evicted'            => $p['evicted'],
+                    'veto_played'        => $p['veto_played'],
+                    'voted_for'          => $p['voted_for'],
+                    'saved_by_player_id' => $p['saved_by'],
+                    'vote_to_win'        => 0,
+                    'active'             => $p['active'],
+                ]);
+            }
+
+            foreach ($plan['comps'] as $c) {
+                $ctid = $c['comp_type_id']
+                    ?? self::compTypeId($c['slug'], $c['slug'] === 'hoh' ? 'HOH' : 'Power of Veto');
+                $wpdb->query($wpdb->prepare(
+                    "INSERT IGNORE INTO {$wcomps} (week_id, player_id, comp_type_id, notes)
+                     VALUES (%d, %d, %d, %s)",
+                    $weekId, $c['player_id'], $ctid, (string) ($c['notes'] ?? '')
+                ));
+            }
+
+            $meta = [];
+            if (array_key_exists('summary', $payload)) {
+                $meta['summary'] = sanitize_textarea_field((string) $payload['summary']);
+            }
+            // Empty dates are skipped, not nulled — legacy tables have NOT NULL
+            // date columns, so "clear a date" isn't supported (re-set it instead).
+            if (!empty($payload['start_date'])) $meta['start_date'] = $payload['start_date'];
+            if (!empty($payload['end_date']))   $meta['end_date']   = $payload['end_date'];
+            if ($meta) {
+                $wpdb->update($weeks, $meta, ['id' => $weekId]);
+            }
+
+            // Finale: jury votes live on each juror's own eviction-week row.
+            if ($juryVotes) {
+                $winnerId = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT season_winner FROM {$wpdb->prefix}bbj_seasons WHERE id = %d",
+                    $seasonId
+                ));
+                foreach ($juryVotes as $juror => $for) {
+                    $wpdb->query($wpdb->prepare(
+                        "UPDATE {$wplayers} SET vote_to_win_for = %d, vote_to_win = %d
+                          WHERE season_id = %d AND player_id = %d AND evicted = 1",
+                        $for, ($winnerId && $for === $winnerId) ? 1 : 0, $seasonId, $juror
+                    ));
+                }
+            }
+
+            WeeklyData::recomputeSeasonTotals($seasonId);
+            $wpdb->query('COMMIT');
+        } catch (\Throwable $e) {
+            $wpdb->query('ROLLBACK');
+            return ['errors' => ['Save failed: ' . $e->getMessage()]];
+        }
+
+        $newIds = array_map(static fn ($p) => $p['player_id'], $plan['players']);
+        $changed = array_values(array_unique(array_merge($oldIds, $newIds, array_keys($juryVotes))));
+
+        return ['season_id' => $seasonId, 'changed_player_ids' => $changed];
+    }
+
+    /** Delete a week and its rows; recompute totals. Null if week not found. */
+    public static function deleteWeek(int $weekId): ?array
+    {
+        global $wpdb;
+        $weeks    = self::t(WeeklySchema::TABLE_WEEKS);
+        $wplayers = self::t(WeeklySchema::TABLE_WEEKS_PLAYERS);
+        $wcomps   = self::t(WeeklySchema::TABLE_WEEK_COMPS);
+
+        $week = $wpdb->get_row($wpdb->prepare(
+            "SELECT id, season_id FROM {$weeks} WHERE id = %d", $weekId
+        ), ARRAY_A);
+        if (!$week) {
+            return null;
+        }
+        $seasonId = (int) $week['season_id'];
+
+        $oldIds = array_map('intval', $wpdb->get_col($wpdb->prepare(
+            "SELECT player_id FROM {$wplayers} WHERE week_id = %d
+              UNION SELECT player_id FROM {$wcomps} WHERE week_id = %d",
+            $weekId, $weekId
+        )) ?: []);
+
+        $wpdb->query('START TRANSACTION');
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wcomps} WHERE week_id = %d", $weekId));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wplayers} WHERE week_id = %d", $weekId));
+        $wpdb->query($wpdb->prepare("DELETE FROM {$weeks} WHERE id = %d", $weekId));
+        WeeklyData::recomputeSeasonTotals($seasonId);
+        $wpdb->query('COMMIT');
+
+        return ['season_id' => $seasonId, 'changed_player_ids' => $oldIds];
+    }
 }
