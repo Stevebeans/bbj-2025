@@ -19,6 +19,7 @@ class WeeklyAdmin
      *   noms: int[]                    ALL nominees this week (incl. replacement)
      *   veto_used_on: ?int             nominee saved by the veto (must be in noms)
      *   evicted: int[]                 evictees (supports double evictions/expulsions)
+     *   havenot: int[]                 Have-Nots for the week
      *   votes: array<int|string,int>   voter_id => voted-to-evict id
      *   misc_comps: array<array{player_id:int, comp_type_id:int, notes?:string}>
      *
@@ -35,6 +36,7 @@ class WeeklyAdmin
         $vetoUsedOn = (int) ($payload['veto_used_on'] ?? 0) ?: null;
         $noms    = array_values(array_unique(array_map('intval', (array) ($payload['noms'] ?? []))));
         $evicted = array_values(array_unique(array_map('intval', (array) ($payload['evicted'] ?? []))));
+        $havenot = array_values(array_unique(array_map('intval', (array) ($payload['havenot'] ?? []))));
         $active  = array_values(array_unique(array_map('intval', (array) ($payload['active'] ?? []))));
 
         $votes = [];
@@ -49,7 +51,7 @@ class WeeklyAdmin
                 $errors[] = "{$label}: player {$id} is not on this season's roster";
             }
         }
-        foreach (['noms' => $noms, 'evicted' => $evicted, 'active' => $active] as $label => $ids) {
+        foreach (['noms' => $noms, 'evicted' => $evicted, 'havenot' => $havenot, 'active' => $active] as $label => $ids) {
             foreach ($ids as $id) {
                 if (!$inRoster($id)) {
                     $errors[] = "{$label}: player {$id} is not on this season's roster";
@@ -97,7 +99,7 @@ class WeeklyAdmin
         // Row set: every active player, plus anyone referenced (safety net for a
         // short active list — an evictee must always land a row).
         $rowIds = $active;
-        $referenced = array_merge([$hoh, $pov, $vetoUsedOn], $noms, $evicted, array_keys($votes));
+        $referenced = array_merge([$hoh, $pov, $vetoUsedOn], $noms, $evicted, $havenot, array_keys($votes));
         foreach ($referenced as $id) {
             if ($id !== null && $id !== 0 && !in_array($id, $rowIds, true)) {
                 $rowIds[] = $id;
@@ -110,6 +112,7 @@ class WeeklyAdmin
                 'player_id'   => $pid,
                 'nom'         => in_array($pid, $noms, true) ? 1 : 0,
                 'evicted'     => in_array($pid, $evicted, true) ? 1 : 0,
+                'havenot'     => in_array($pid, $havenot, true) ? 1 : 0,
                 'veto_played' => 0,
                 'voted_for'   => $votes[$pid] ?? 0,
                 'saved_by'    => ($vetoUsedOn !== null && $pid === $vetoUsedOn) ? $pov : null,
@@ -123,6 +126,20 @@ class WeeklyAdmin
     // -----------------------------------------------------------------------
     // DB layer (thin wrappers around the pure planner)
     // -----------------------------------------------------------------------
+
+    /**
+     * Rollout switch: while '0' (default), admin week saves/deletes write the
+     * weekly rows (timelines/faces grids update) but do NOT recompute the
+     * bbj_v2_player_season stat totals — the manually-maintained totals stay
+     * authoritative. Flip to '1' (wp option update bbj_weekly_recompute_enabled 1)
+     * once totalsDiff() confirms weekly-derived totals match the live stats.
+     */
+    public const RECOMPUTE_OPTION = 'bbj_weekly_recompute_enabled';
+
+    public static function recomputeEnabled(): bool
+    {
+        return (string) get_option(self::RECOMPUTE_OPTION, '0') === '1';
+    }
 
     private static function t(string $name): string
     {
@@ -203,7 +220,7 @@ class WeeklyAdmin
         if ($byWeekId) {
             $in = implode(',', $byWeekId);
             $playerRows = $wpdb->get_results(
-                "SELECT week_id, player_id, nom, evicted, veto_played, voted_for,
+                "SELECT week_id, player_id, nom, evicted, havenot, veto_played, voted_for,
                         saved_by_player_id, vote_to_win, vote_to_win_for, active
                    FROM {$wplayers} WHERE week_id IN ({$in})",
                 ARRAY_A
@@ -213,6 +230,7 @@ class WeeklyAdmin
                     'player_id'          => (int) $r['player_id'],
                     'nom'                => (int) $r['nom'],
                     'evicted'            => (int) $r['evicted'],
+                    'havenot'            => (int) $r['havenot'],
                     'veto_played'        => (int) $r['veto_played'],
                     'voted_for'          => (int) $r['voted_for'],
                     'saved_by_player_id' => $r['saved_by_player_id'] !== null ? (int) $r['saved_by_player_id'] : null,
@@ -326,6 +344,7 @@ class WeeklyAdmin
                     'season_id'          => $seasonId,
                     'nom'                => $p['nom'],
                     'evicted'            => $p['evicted'],
+                    'havenot'            => $p['havenot'],
                     'veto_played'        => $p['veto_played'],
                     'voted_for'          => $p['voted_for'],
                     'saved_by_player_id' => $p['saved_by'],
@@ -371,7 +390,10 @@ class WeeklyAdmin
                 }
             }
 
-            WeeklyData::recomputeSeasonTotals($seasonId);
+            if (self::recomputeEnabled()) {
+                WeeklyData::recomputeSeasonTotals($seasonId);
+                self::recomputeHavenotTotals($seasonId);
+            }
             $wpdb->query('COMMIT');
         } catch (\Throwable $e) {
             $wpdb->query('ROLLBACK');
@@ -410,9 +432,133 @@ class WeeklyAdmin
         $wpdb->query($wpdb->prepare("DELETE FROM {$wcomps} WHERE week_id = %d", $weekId));
         $wpdb->query($wpdb->prepare("DELETE FROM {$wplayers} WHERE week_id = %d", $weekId));
         $wpdb->query($wpdb->prepare("DELETE FROM {$weeks} WHERE id = %d", $weekId));
-        WeeklyData::recomputeSeasonTotals($seasonId);
+        if (self::recomputeEnabled()) {
+            WeeklyData::recomputeSeasonTotals($seasonId);
+            self::recomputeHavenotTotals($seasonId);
+        }
         $wpdb->query('COMMIT');
 
         return ['season_id' => $seasonId, 'changed_player_ids' => $oldIds];
+    }
+
+    /**
+     * Write bbj_total_havenot from the weekly rows — but ONLY if this season
+     * has any havenot data at all. Historical seasons (BB2-27) were imported
+     * without havenot tracking; recomputing them would zero their manually
+     * maintained totals.
+     */
+    public static function recomputeHavenotTotals(int $seasonId): int
+    {
+        global $wpdb;
+        $wplayers = self::t(WeeklySchema::TABLE_WEEKS_PLAYERS);
+        $pseason  = self::t('bbj_v2_player_season');
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT player_id, SUM(havenot) AS havenots
+               FROM {$wplayers} WHERE season_id = %d GROUP BY player_id",
+            $seasonId
+        ), ARRAY_A) ?: [];
+
+        $seasonHasData = false;
+        foreach ($rows as $r) {
+            if ((int) $r['havenots'] > 0) {
+                $seasonHasData = true;
+                break;
+            }
+        }
+        if (!$seasonHasData) {
+            return 0;
+        }
+
+        $updated = 0;
+        foreach ($rows as $r) {
+            $updated += (int) $wpdb->update(
+                $pseason,
+                ['bbj_total_havenot' => (int) $r['havenots']],
+                ['bbj_player' => (int) $r['player_id'], 'bbj_season' => $seasonId]
+            );
+        }
+        return $updated;
+    }
+
+    /**
+     * Read-only comparison of weekly-derived totals vs the live
+     * bbj_v2_player_season stat columns. Used to verify the weekly data
+     * before flipping RECOMPUTE_OPTION on. Writes nothing.
+     *
+     * @return array{season_id:int, mismatches:int, players:array<int,array>}
+     */
+    public static function totalsDiff(int $seasonId): array
+    {
+        global $wpdb;
+        $weeks    = self::t(WeeklySchema::TABLE_WEEKS);
+        $wplayers = self::t(WeeklySchema::TABLE_WEEKS_PLAYERS);
+        $wcomps   = self::t(WeeklySchema::TABLE_WEEK_COMPS);
+        $ctypes   = self::t(WeeklySchema::TABLE_COMP_TYPES);
+        $pseason  = self::t('bbj_v2_player_season');
+
+        // Same sources as WeeklyData::recomputeSeasonTotals, without writing.
+        $compRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT wc.player_id, ct.slug
+               FROM {$wcomps} wc
+               INNER JOIN {$weeks} w   ON w.id  = wc.week_id
+               INNER JOIN {$ctypes} ct ON ct.id = wc.comp_type_id
+              WHERE w.season_id = %d",
+            $seasonId
+        ), ARRAY_A) ?: [];
+        $nomRows = $wpdb->get_results($wpdb->prepare(
+            "SELECT wp.player_id, SUM(wp.nom) AS noms, SUM(wp.evicted) AS evicted
+               FROM {$wplayers} wp WHERE wp.season_id = %d GROUP BY wp.player_id",
+            $seasonId
+        ), ARRAY_A) ?: [];
+        $derived = WeeklyData::countTotalsFromRows($compRows, $nomRows);
+
+        $havenots = [];
+        foreach ($wpdb->get_results($wpdb->prepare(
+            "SELECT player_id, SUM(havenot) AS havenots
+               FROM {$wplayers} WHERE season_id = %d GROUP BY player_id",
+            $seasonId
+        ), ARRAY_A) ?: [] as $r) {
+            $havenots[(int) $r['player_id']] = (int) $r['havenots'];
+        }
+
+        $current = $wpdb->get_results($wpdb->prepare(
+            "SELECT ps.bbj_player, p.post_title AS name,
+                    ps.bbj_total_hoh, ps.bbj_total_pov, ps.bbj_total_misc,
+                    ps.bbj_total_nom, ps.bbj_total_havenot
+               FROM {$pseason} ps
+               INNER JOIN {$wpdb->posts} p ON p.ID = ps.bbj_player
+              WHERE ps.bbj_season = %d
+              ORDER BY p.post_title ASC",
+            $seasonId
+        ), ARRAY_A) ?: [];
+
+        $players = [];
+        $mismatches = 0;
+        foreach ($current as $c) {
+            $pid = (int) $c['bbj_player'];
+            $d = $derived[$pid] ?? ['hoh' => 0, 'pov' => 0, 'misc' => 0, 'nom' => 0];
+            $d['havenot'] = $havenots[$pid] ?? 0;
+            $cur = [
+                'hoh'     => (int) $c['bbj_total_hoh'],
+                'pov'     => (int) $c['bbj_total_pov'],
+                'misc'    => (int) $c['bbj_total_misc'],
+                'nom'     => (int) $c['bbj_total_nom'],
+                'havenot' => (int) $c['bbj_total_havenot'],
+            ];
+            $match = $d == $cur;
+            if (!$match) {
+                $mismatches++;
+            }
+            $players[] = [
+                'player_id' => $pid,
+                'name'      => $c['name'],
+                'derived'   => $d,
+                'current'   => $cur,
+                'match'     => $match,
+            ];
+        }
+
+        return ['season_id' => $seasonId, 'mismatches' => $mismatches, 'players' => $players];
     }
 }

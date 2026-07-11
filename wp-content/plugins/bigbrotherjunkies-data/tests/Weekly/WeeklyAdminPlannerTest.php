@@ -18,6 +18,7 @@ class WeeklyAdminPlannerTest extends TestCase
             'noms' => [103, 104, 105],          // 104 saved by veto, 105 = replacement
             'veto_used_on' => 104,
             'evicted' => [103],
+            'havenot' => [105, 106],
             'votes' => ['102' => 103, '106' => 103], // JSON object keys arrive as strings
             'misc_comps' => [
                 ['player_id' => 106, 'comp_type_id' => 9, 'notes' => 'AI Arena'],
@@ -54,15 +55,26 @@ class WeeklyAdminPlannerTest extends TestCase
         $voter = $this->playerRow($result, 106);
         $this->assertSame(103, $voter['voted_for']);
         $this->assertSame(1, $voter['active']);
+        $this->assertSame(1, $voter['havenot']);
         $this->assertNull($voter['saved_by']);
 
         $hohRow = $this->playerRow($result, 101);
         $this->assertSame(0, $hohRow['voted_for']); // HoH cast no vote
+        $this->assertSame(0, $hohRow['havenot']);
 
         $comps = $result['comps'];
         $this->assertContains(['player_id' => 101, 'slug' => 'hoh', 'comp_type_id' => null, 'notes' => null], $comps);
         $this->assertContains(['player_id' => 102, 'slug' => 'pov', 'comp_type_id' => null, 'notes' => null], $comps);
         $this->assertContains(['player_id' => 106, 'slug' => null, 'comp_type_id' => 9, 'notes' => 'AI Arena'], $comps);
+    }
+
+    public function test_havenot_off_roster_is_rejected(): void
+    {
+        $payload = $this->basePayload();
+        $payload['havenot'] = [999];
+        $result = WeeklyAdmin::planWeekRows($payload, self::ROSTER);
+        $this->assertNotSame([], $result['errors']);
+        $this->assertStringContainsString('havenot', implode(' ', $result['errors']));
     }
 
     public function test_rejects_players_not_on_roster(): void
