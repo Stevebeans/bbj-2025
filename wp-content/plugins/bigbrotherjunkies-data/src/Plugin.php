@@ -33,6 +33,7 @@ use BigBrotherJunkies\Data\Api\AuthRoutes;
 use BigBrotherJunkies\Data\Api\WelcomeEmailRoutes;
 use BigBrotherJunkies\Data\Api\PlayerRoutes;
 use BigBrotherJunkies\Data\Api\SeasonRoutes;
+use BigBrotherJunkies\Data\Api\WeeklyRoutes;
 use BigBrotherJunkies\Data\Api\ContactRoutes;
 use BigBrotherJunkies\Data\Api\PlayerPhotoRoutes;
 use BigBrotherJunkies\Data\Api\ImportRoutes;
@@ -592,6 +593,10 @@ class Plugin
         // Season routes (list, single, edit)
         $seasonRoutes = new SeasonRoutes();
         $seasonRoutes->init();
+
+        // Weekly results admin routes (week-by-week editor)
+        $weeklyRoutes = new WeeklyRoutes();
+        $weeklyRoutes->init();
 
         // Contact form routes
         $contactRoutes = new ContactRoutes();
