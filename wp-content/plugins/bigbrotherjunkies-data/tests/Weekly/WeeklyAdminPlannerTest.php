@@ -19,6 +19,7 @@ class WeeklyAdminPlannerTest extends TestCase
             'veto_used_on' => 104,
             'evicted' => [103],
             'havenot' => [105, 106],
+            'veto_played' => [101, 103, 104, 105, 106], // hoh + noms + drawn
             'votes' => ['102' => 103, '106' => 103], // JSON object keys arrive as strings
             'misc_comps' => [
                 ['player_id' => 106, 'comp_type_id' => 9, 'notes' => 'AI Arena'],
@@ -56,11 +57,15 @@ class WeeklyAdminPlannerTest extends TestCase
         $this->assertSame(103, $voter['voted_for']);
         $this->assertSame(1, $voter['active']);
         $this->assertSame(1, $voter['havenot']);
+        $this->assertSame(1, $voter['veto_played']);
         $this->assertNull($voter['saved_by']);
 
         $hohRow = $this->playerRow($result, 101);
         $this->assertSame(0, $hohRow['voted_for']); // HoH cast no vote
         $this->assertSame(0, $hohRow['havenot']);
+        $this->assertSame(1, $hohRow['veto_played']);
+
+        $this->assertSame(0, $this->playerRow($result, 102)['veto_played']); // pov WINNER not in played list here — planner trusts payload
 
         $comps = $result['comps'];
         $this->assertContains(['player_id' => 101, 'slug' => 'hoh', 'comp_type_id' => null, 'notes' => null], $comps);
@@ -75,6 +80,15 @@ class WeeklyAdminPlannerTest extends TestCase
         $result = WeeklyAdmin::planWeekRows($payload, self::ROSTER);
         $this->assertNotSame([], $result['errors']);
         $this->assertStringContainsString('havenot', implode(' ', $result['errors']));
+    }
+
+    public function test_veto_played_off_roster_is_rejected(): void
+    {
+        $payload = $this->basePayload();
+        $payload['veto_played'] = [999];
+        $result = WeeklyAdmin::planWeekRows($payload, self::ROSTER);
+        $this->assertNotSame([], $result['errors']);
+        $this->assertStringContainsString('veto_played', implode(' ', $result['errors']));
     }
 
     public function test_rejects_players_not_on_roster(): void
