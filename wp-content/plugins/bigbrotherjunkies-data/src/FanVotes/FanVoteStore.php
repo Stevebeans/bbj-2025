@@ -18,7 +18,16 @@ class FanVoteStore
     public const DB_VERSION        = '1.1.0';
 
     public const CACHE_GROUP = 'bbj_fanvotes';
-    public const MIN_VOTERS  = 10;
+
+    /** Default voter threshold before standings show; override via option for previews. */
+    public const MIN_VOTERS        = 10;
+    public const MIN_VOTERS_OPTION = 'bbj_fanvotes_min_voters';
+
+    /** Voter threshold before the tracker shows standings (option-overridable, default 10). */
+    public static function minVoters(): int
+    {
+        return max(1, (int) get_option(self::MIN_VOTERS_OPTION, self::MIN_VOTERS));
+    }
 
     /** Vote-weight multipliers by role slug; a user's weight = max across their roles. */
     public const ROLE_WEIGHTS = ['full_bean' => 3.0, 'supporter' => 2.0, 'lifetime' => 2.0];
@@ -383,7 +392,7 @@ class FanVoteStore
             'season_slug'  => (string) get_post_field('post_name', $seasonId),
             'total_voters' => $tally['total_voters'],
             'total_points' => $tally['total_points'],
-            'min_voters'   => self::MIN_VOTERS,
+            'min_voters'   => self::minVoters(),
             'as_of'        => $today,
             'players'      => $players,
             'series'       => $series,
