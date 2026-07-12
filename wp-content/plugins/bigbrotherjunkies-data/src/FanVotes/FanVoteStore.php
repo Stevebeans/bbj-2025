@@ -119,6 +119,9 @@ class FanVoteStore
         if (!$order) {
             return ['errors' => ['order must be a non-empty list of player ids']];
         }
+        if (count($order) > 200) {
+            return ['errors' => ['Ballot too large']];
+        }
 
         $roster = self::rosterIds($seasonId);
         $off = array_diff($order, $roster);

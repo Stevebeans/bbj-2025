@@ -108,7 +108,11 @@ class FanVoteRoutes
 
         $result = FanVoteStore::castVote($userId, $playerId);
         if (!empty($result['errors'])) {
-            return new WP_REST_Response(['success' => false, 'errors' => $result['errors']], 400);
+            return new WP_REST_Response([
+                'success' => false,
+                'errors' => $result['errors'],
+                'message' => implode('; ', $result['errors']),
+            ], 400);
         }
 
         set_transient($rlKey, 1, 60);
@@ -151,7 +155,11 @@ class FanVoteRoutes
 
         $result = FanVoteStore::saveBallot($userId, $order);
         if (!empty($result['errors'])) {
-            return new WP_REST_Response(['success' => false, 'errors' => $result['errors']], 400);
+            return new WP_REST_Response([
+                'success' => false,
+                'errors' => $result['errors'],
+                'message' => implode('; ', $result['errors']),
+            ], 400);
         }
 
         set_transient($rlKey, 1, 5);
