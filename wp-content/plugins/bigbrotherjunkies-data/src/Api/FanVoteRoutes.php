@@ -15,6 +15,7 @@ use WP_REST_Response;
  *  - GET  /fan-vote/mine      the logged-in user's current-season vote
  *  - GET  /fan-vote/ballot    the logged-in user's ranked ballot + vote weight
  *  - POST /fan-vote/ballot    replace the logged-in user's ranked ballot
+ *  - POST /fan-vote/prefs     save the logged-in user's tracker chart prefs
  *  - POST /fan-vote/note      admin (season_management) mover note for today
  *
  * Write routes bust the tracker caches. No Revalidation / cache-tag calls
@@ -63,6 +64,12 @@ class FanVoteRoutes
                 'callback' => [$this, 'saveBallot'],
                 'permission_callback' => 'is_user_logged_in',
             ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/fan-vote/prefs', [
+            'methods' => 'POST',
+            'callback' => [$this, 'savePrefs'],
+            'permission_callback' => 'is_user_logged_in',
         ]);
 
         register_rest_route(self::NAMESPACE, '/fan-vote/note', [
@@ -134,7 +141,23 @@ class FanVoteRoutes
             'success' => true,
             'order'   => FanVoteStore::myBallot($userId),
             'weight'  => FanVoteStore::weightFor($userId),
+            'prefs'   => FanVoteStore::getPrefs($userId),
         ], 200);
+    }
+
+    public function savePrefs(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $patch = [];
+        if (array_key_exists('chart_filter', $params)) {
+            $patch['chart_filter'] = (string) $params['chart_filter'];
+        }
+        if (array_key_exists('days', $params)) {
+            $patch['days'] = (int) $params['days'];
+        }
+
+        $prefs = FanVoteStore::savePrefs(get_current_user_id(), $patch);
+        return new WP_REST_Response(['success' => true, 'prefs' => $prefs], 200);
     }
 
     public function saveBallot(WP_REST_Request $request): WP_REST_Response

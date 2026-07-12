@@ -188,6 +188,48 @@ class FanVoteStore
         )) ?: []);
     }
 
+    // -----------------------------------------------------------------------
+    // Tracker prefs (per-user, cross-device via user meta)
+    // -----------------------------------------------------------------------
+
+    /** User-meta key holding the tracker chart prefs (assoc array). */
+    public const PREFS_META_KEY = 'bbj_fanvote_prefs';
+
+    /** Allowed chart-filter values. */
+    public const PREF_CHART_FILTERS = ['all', 'top5', 'top10', 'in_house'];
+
+    /** Allowed range (days) values — mirrors the frontend range toggle. */
+    public const PREF_DAYS = [7, 30, 120];
+
+    /** The user's saved tracker prefs, or null when none stored. */
+    public static function getPrefs(int $userId): ?array
+    {
+        $prefs = get_user_meta($userId, self::PREFS_META_KEY, true);
+        return is_array($prefs) && $prefs ? $prefs : null;
+    }
+
+    /**
+     * Merge a partial prefs patch into the user's stored prefs. Only the
+     * whitelisted keys with valid values are written; anything else is
+     * ignored. Returns the resulting prefs array.
+     */
+    public static function savePrefs(int $userId, array $patch): array
+    {
+        $current = self::getPrefs($userId) ?? [];
+
+        if (array_key_exists('chart_filter', $patch)
+            && in_array($patch['chart_filter'], self::PREF_CHART_FILTERS, true)) {
+            $current['chart_filter'] = $patch['chart_filter'];
+        }
+        if (array_key_exists('days', $patch)
+            && in_array((int) $patch['days'], self::PREF_DAYS, true)) {
+            $current['days'] = (int) $patch['days'];
+        }
+
+        update_user_meta($userId, self::PREFS_META_KEY, $current);
+        return $current;
+    }
+
     /** Vote-weight multiplier for one user (current roles, max across ROLE_WEIGHTS). */
     public static function weightFor(int $userId): float
     {
@@ -340,6 +382,7 @@ class FanVoteStore
                 'name'     => $d['name'],
                 'slug'     => $d['slug'],
                 'photo'    => $d['photo'],
+                'active'   => (bool) ($d['active'] ?? true),
                 'votes'    => (int) ($counts[$pid] ?? 0),
                 'points'   => $sharesToday[$pid]['points'],
                 'share'    => $sharesToday[$pid]['share'],
@@ -434,8 +477,12 @@ class FanVoteStore
     private static function rosterDisplay(int $seasonId): array
     {
         global $wpdb;
+        // current_evicted / current_jury mirror PlayerRoutes::getSeasonResult():
+        // a player is "still in the house" (active) when neither flag is set.
+        // Selected inline here so the active flag adds no extra query.
         $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT p.ID AS id, p.post_title AS name, p.post_name AS slug, bp.profile_picture
+            "SELECT p.ID AS id, p.post_title AS name, p.post_name AS slug, bp.profile_picture,
+                    ps.current_evicted, ps.current_jury
                FROM {$wpdb->prefix}bbj_v2_player_season ps
                INNER JOIN {$wpdb->posts} p ON p.ID = ps.bbj_player
                LEFT JOIN {$wpdb->prefix}bbj_players bp
@@ -450,10 +497,11 @@ class FanVoteStore
             $pid = (int) $r['id'];
             $pic = (int) ($r['profile_picture'] ?? 0);
             $out[$pid] = [
-                'id'    => $pid,
-                'name'  => (string) $r['name'],
-                'slug'  => (string) $r['slug'],
-                'photo' => $pic ? (wp_get_attachment_image_url($pic, 'thumbnail') ?: '') : '',
+                'id'     => $pid,
+                'name'   => (string) $r['name'],
+                'slug'   => (string) $r['slug'],
+                'photo'  => $pic ? (wp_get_attachment_image_url($pic, 'thumbnail') ?: '') : '',
+                'active' => empty($r['current_evicted']) && empty($r['current_jury']),
             ];
         }
         return $out;
