@@ -34,6 +34,7 @@ use BigBrotherJunkies\Data\Api\WelcomeEmailRoutes;
 use BigBrotherJunkies\Data\Api\PlayerRoutes;
 use BigBrotherJunkies\Data\Api\SeasonRoutes;
 use BigBrotherJunkies\Data\Api\WeeklyRoutes;
+use BigBrotherJunkies\Data\Api\FanVoteRoutes;
 use BigBrotherJunkies\Data\Api\ContactRoutes;
 use BigBrotherJunkies\Data\Api\PlayerPhotoRoutes;
 use BigBrotherJunkies\Data\Api\ImportRoutes;
@@ -597,6 +598,11 @@ class Plugin
         // Weekly results admin routes (week-by-week editor)
         $weeklyRoutes = new WeeklyRoutes();
         $weeklyRoutes->init();
+
+        // Fan-favorite (AFP) voting routes
+        \BigBrotherJunkies\Data\FanVotes\FanVoteStore::maybeMigrate();
+        $fanVoteRoutes = new FanVoteRoutes();
+        $fanVoteRoutes->init();
 
         // Contact form routes
         $contactRoutes = new ContactRoutes();
