@@ -290,9 +290,10 @@ class FanVoteStore
     // -----------------------------------------------------------------------
 
     /**
-     * Everything the tracker page needs. Writes today's lazy snapshot if
-     * missing (before reading the series / writing cache), then returns live
-     * standings + daily history. Cached 60s per window.
+     * Everything the tracker page needs. Upserts today's rolling snapshot
+     * (before reading the series / writing cache) so the day seals at its
+     * closing standings, then returns live standings + daily history.
+     * Cached 60s per window.
      *
      * @return array When there is no current season: ['season_id'=>0, 'error'=>...].
      */
@@ -645,15 +646,6 @@ class FanVoteStore
         $snapshots = FanVoteSchema::table(FanVoteSchema::TABLE_SNAPSHOTS);
         $today = current_time('Y-m-d');
 
-        $exists = (int) $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$snapshots} WHERE season_id = %d AND snap_date = %s",
-            $seasonId,
-            $today
-        ));
-        if ($exists > 0) {
-            return;
-        }
-
         $roster = self::rosterIds($seasonId);
         if (!$roster) {
             return;
@@ -661,11 +653,21 @@ class FanVoteStore
         $counts = self::voteCounts($seasonId);
         $tally  = self::tallyPoints($seasonId);
 
+        // Rolling upsert: today's row tracks the live standings on every
+        // cache-miss recompute, so the last write before midnight (site tz)
+        // seals the day at its CLOSING standings. Votes near midnight land in
+        // the right day because each vote busts the tracker cache and the
+        // voter's own refetch re-runs this upsert within seconds.
         foreach ($roster as $pid) {
             $wpdb->query($wpdb->prepare(
-                "INSERT IGNORE INTO {$snapshots}
+                "INSERT INTO {$snapshots}
                     (season_id, snap_date, player_id, votes, total_voters, points, total_points)
-                 VALUES (%d, %s, %d, %d, %d, %f, %f)",
+                 VALUES (%d, %s, %d, %d, %d, %f, %f)
+                 ON DUPLICATE KEY UPDATE
+                    votes = VALUES(votes),
+                    total_voters = VALUES(total_voters),
+                    points = VALUES(points),
+                    total_points = VALUES(total_points)",
                 $seasonId,
                 $today,
                 $pid,
