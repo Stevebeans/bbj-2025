@@ -403,6 +403,10 @@ class WeeklyAdmin
             return ['errors' => ['Save failed: ' . $e->getMessage()]];
         }
 
+        if (self::recomputeEnabled()) {
+            self::bustSeasonStatCaches($seasonId);
+        }
+
         $newIds = array_map(static fn ($p) => $p['player_id'], $plan['players']);
         $changed = array_values(array_unique(array_merge($oldIds, $newIds, array_keys($juryVotes))));
 
@@ -441,8 +445,25 @@ class WeeklyAdmin
             self::recomputeVetoPlayedTotals($seasonId);
         }
         $wpdb->query('COMMIT');
+        if (self::recomputeEnabled()) {
+            self::bustSeasonStatCaches($seasonId);
+        }
 
         return ['season_id' => $seasonId, 'changed_player_ids' => $oldIds];
+    }
+
+    /**
+     * The homepage/season stat blocks read player rows through the bbj_v2
+     * object-cache group — recomputed totals stay invisible until it's busted.
+     */
+    private static function bustSeasonStatCaches(int $seasonId): void
+    {
+        if (function_exists('bbj_spoiler_bar_bust_cache')) {
+            bbj_spoiler_bar_bust_cache($seasonId);
+        }
+        if (function_exists('wp_cache_flush_group')) {
+            wp_cache_flush_group('bbj_v2');
+        }
     }
 
     /**
