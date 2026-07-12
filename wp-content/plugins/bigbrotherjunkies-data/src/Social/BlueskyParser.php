@@ -47,6 +47,10 @@ class BlueskyParser
 
     public static function toUtc(string $iso8601): string
     {
+        if (trim($iso8601) === '') {
+            return '';
+        }
+
         try {
             $dt = new \DateTimeImmutable($iso8601);
         } catch (\Exception $e) {

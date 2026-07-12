@@ -52,5 +52,7 @@ class BlueskyParserTest extends TestCase
     {
         $this->assertSame('2026-07-13 04:03:05', BlueskyParser::toUtc('2026-07-12T21:03:05-07:00'));
         $this->assertSame('', BlueskyParser::toUtc('not-a-date'));
+        $this->assertSame('', BlueskyParser::toUtc(''));
+        $this->assertSame('', BlueskyParser::toUtc('   '));
     }
 }
