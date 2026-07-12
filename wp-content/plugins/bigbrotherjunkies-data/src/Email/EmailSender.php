@@ -226,7 +226,8 @@ class EmailSender
     private function buildPostNotificationTemplate(\WP_Post $post): string
     {
         $title = esc_html($post->post_title);
-        $permalink = esc_url(get_permalink($post));
+        // Public frontend URL, never get_permalink() (that resolves to wp.).
+        $permalink = esc_url(\BigBrotherJunkies\Data\Utils\FrontendUrl::forPost($post));
         $excerpt = wp_trim_words(wp_strip_all_tags($post->post_content), 40, '...');
         $excerpt = esc_html($excerpt);
 

@@ -507,7 +507,7 @@ class NotificationService
             'post' => $notification['post_id'] ? [
                 'id' => (int) $notification['post_id'],
                 'title' => $notification['post_title'] ?? 'Unknown Post',
-                'url' => get_permalink($notification['post_id']),
+                'url' => \BigBrotherJunkies\Data\Utils\FrontendUrl::forPost((int) $notification['post_id']),
             ] : null,
             'comment' => $notification['comment_id'] ? [
                 'id' => (int) $notification['comment_id'],

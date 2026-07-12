@@ -690,7 +690,7 @@ class CommentRoutes
     {
         $post = get_post($comment->comment_post_ID);
         $postTitle = $post ? $post->post_title : 'Unknown Post';
-        $postUrl = get_permalink($comment->comment_post_ID);
+        $postUrl = \BigBrotherJunkies\Data\Utils\FrontendUrl::forPost((int) $comment->comment_post_ID);
         $adminUrl = admin_url('comment.php?action=editcomment&c=' . $comment->comment_ID);
 
         $subject = sprintf('[BBJ] Comment reported %d times - Review needed', $reportCount);

@@ -730,7 +730,7 @@ class EditorRoutes
                     'Your post has been approved: ' . $post->post_title,
                     "Hi {$authorName},\n\nYour post \"{$post->post_title}\" has been approved and published on Big Brother Junkies.\n\n"
                         . ($note ? "Reviewer note: {$note}\n\n" : '')
-                        . "View it here: " . get_permalink($postId) . "\n"
+                        . "View it here: " . \BigBrotherJunkies\Data\Utils\FrontendUrl::forPost($postId) . "\n"
                 );
             }
 
