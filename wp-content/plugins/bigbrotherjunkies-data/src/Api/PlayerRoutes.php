@@ -737,11 +737,17 @@ class PlayerRoutes
         $postsTable = $wpdb->prefix . 'posts';
         $seasonsTable = $wpdb->prefix . 'bbj_seasons';
         $seasonLinkTable = $wpdb->prefix . 'bbj_v2_player_season';
+        $geoTable = $wpdb->prefix . 'bbj_geo';
 
+        // Coordinates live in TWO disjoint stores: legacy backfill in
+        // bbj_players.hometown_lat/lng (~273 players) and bbj_geo lat/lng,
+        // which is what the player edit form writes (~80 players). A player
+        // is mappable if EITHER has real coordinates; geo wins when both
+        // exist so edit-form corrections take effect.
         $where = [
             "p.post_status = 'publish'",
-            "pl.hometown_lat IS NOT NULL",
-            "pl.hometown_lat != 0",
+            "((pl.hometown_lat IS NOT NULL AND pl.hometown_lat != 0)
+              OR (g.lat IS NOT NULL AND g.lat != '' AND g.lat != '0'))",
         ];
         $params = [];
         $joins = '';
@@ -812,16 +818,17 @@ class PlayerRoutes
                 pl.first_name,
                 pl.last_name,
                 pl.profile_picture,
-                pl.hometown_city,
-                pl.hometown_state,
-                pl.hometown_lat as lat,
-                pl.hometown_lng as lng,
+                COALESCE(NULLIF(g.locality, ''), pl.hometown_city) as hometown_city,
+                COALESCE(NULLIF(g.administrative_area_level_1, ''), pl.hometown_state) as hometown_state,
+                COALESCE(NULLIF(g.lat, ''), NULLIF(pl.hometown_lat, 0)) as lat,
+                COALESCE(NULLIF(g.lng, ''), NULLIF(pl.hometown_lng, 0)) as lng,
                 p.post_name as slug,
                 (SELECT COUNT(*) FROM {$seasonsTable} WHERE season_winner = pl.id) as is_winner,
                 (SELECT COUNT(*) FROM {$seasonsTable} WHERE afp = pl.id) as is_afp
                 {$extraSelect}
             FROM {$playersTable} pl
             INNER JOIN {$postsTable} p ON pl.id = p.ID
+            LEFT JOIN {$geoTable} g ON g.ID = pl.id
             {$joins}
             {$extraJoin}
             WHERE {$whereClause}
@@ -1076,6 +1083,7 @@ class PlayerRoutes
                 'status' => $status,
                 'evicted_date' => $evictedDate ? $evictedDate->format('Y-m-d') : null,
                 'weekly_timeline' => \BigBrotherJunkies\Data\Weekly\WeeklyData::getPlayerTimeline($playerId, $seasonId),
+                'comps_played' => \BigBrotherJunkies\Data\Weekly\WeeklyData::getPlayerCompsPlayed($playerId, $seasonId),
             ];
         }
 
@@ -1400,7 +1408,14 @@ class PlayerRoutes
 
         foreach ($geoFields as $field => $format) {
             if (isset($params[$field])) {
-                $geoData[$field] = sanitize_text_field($params[$field]);
+                $value = sanitize_text_field($params[$field]);
+                // Never wipe stored coordinates with an empty submission. The
+                // edit form can't round-trip lat/lng (the player API omits
+                // them), so an empty value means "unchanged", not "clear".
+                if (($field === 'lat' || $field === 'lng') && $value === '') {
+                    continue;
+                }
+                $geoData[$field] = $value;
                 $geoFormat[] = $format;
             }
         }

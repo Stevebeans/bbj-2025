@@ -207,6 +207,23 @@ class WeeklyData
     }
 
     /**
+     * Comp participation counts for one player in one season, from the weekly
+     * flags. Zeros for seasons without participation tracking (pre-BB28 for
+     * HoH; pre-BB23 for veto) — callers should hide percentages when 0.
+     */
+    public static function getPlayerCompsPlayed(int $playerId, int $seasonId): array
+    {
+        global $wpdb;
+        $wplayers = $wpdb->prefix . WeeklySchema::TABLE_WEEKS_PLAYERS;
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT COALESCE(SUM(hoh_played), 0) AS hoh, COALESCE(SUM(veto_played), 0) AS veto
+               FROM {$wplayers} WHERE player_id = %d AND season_id = %d",
+            $playerId, $seasonId
+        ), ARRAY_A) ?: ['hoh' => 0, 'veto' => 0];
+        return ['hoh' => (int) $row['hoh'], 'veto' => (int) $row['veto']];
+    }
+
+    /**
      * Per-season list of weeks for the season-page breakdown.
      * Returns: [{ week_num, start_date, end_date, summary,
      *            hoh:[names], pov:[names], noms:[names], evicted:[names],
