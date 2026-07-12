@@ -184,10 +184,17 @@ class FeedUpdateRoutes
 
         // Handle image upload if provided
         $imageId = null;
+        $imageError = null;
         $files = $request->get_file_params();
         if (!empty($files['image'])) {
             $imageId = $this->handleImageUpload($files['image'], $postId);
-            if ($imageId && !is_wp_error($imageId)) {
+            if (is_wp_error($imageId)) {
+                // Don't fail the post — the text is still valuable. Capture the
+                // reason so the composer can surface it and Bluesky posts text-only.
+                error_log('BBJD feed image upload failed: ' . $imageId->get_error_message());
+                $imageError = $imageId->get_error_message();
+                $imageId = null;
+            } elseif ($imageId) {
                 set_post_thumbnail($postId, $imageId);
             }
         }
@@ -265,6 +272,7 @@ class FeedUpdateRoutes
             'success' => true,
             'update' => $this->formatFeedUpdate($post),
             'social_results' => $socialResults,
+            'image_error' => $imageError,
         ], 201);
     }
 
@@ -542,6 +550,9 @@ class FeedUpdateRoutes
         ];
 
         $attachId = wp_insert_attachment($attachment, $upload['file'], $postId);
+        if (!$attachId || is_wp_error($attachId)) {
+            return new \WP_Error('attach_error', 'Could not create attachment');
+        }
         $attachData = wp_generate_attachment_metadata($attachId, $upload['file']);
         wp_update_attachment_metadata($attachId, $attachData);
 
