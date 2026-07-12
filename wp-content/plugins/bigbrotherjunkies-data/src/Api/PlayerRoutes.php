@@ -1041,7 +1041,7 @@ class PlayerRoutes
             $evictedDate = $this->parseDate($season['bbj_evicted_date'] ?? null);
 
             $totalDays = ($startDate && $endDate) ? $endDate->diff($startDate)->days + 1 : null;
-            $exitDate = $evictedDate ?: $endDate;
+            $exitDate = $this->resolveExitDate($startDate, $endDate, $evictedDate);
             $daysInHouse = ($startDate && $exitDate) ? $exitDate->diff($startDate)->days + 1 : null;
 
             $progressPct = ($totalDays && $daysInHouse)
@@ -1306,13 +1306,34 @@ class PlayerRoutes
             return 0;
         }
 
-        $exitDate = $evictedDate ?: $endDate;
+        $exitDate = $this->resolveExitDate($startDate, $endDate, $evictedDate);
 
         if (!$exitDate) {
             return 0;
         }
 
         return $exitDate->diff($startDate)->days + 1;
+    }
+
+    /**
+     * A player's exit date for day-count math: eviction date if evicted;
+     * otherwise TODAY while the season is still running (an active player
+     * mid-season was previously credited through the finale), clamped inside
+     * the season window; else the season end.
+     */
+    private function resolveExitDate(?\DateTime $startDate, ?\DateTime $endDate, ?\DateTime $evictedDate): ?\DateTime
+    {
+        if ($evictedDate) {
+            return $evictedDate;
+        }
+        if (!$endDate) {
+            return null;
+        }
+        $today = new \DateTime(current_time('Y-m-d'));
+        if ($today < $endDate) {
+            return ($startDate && $today < $startDate) ? $startDate : $today;
+        }
+        return $endDate;
     }
 
     // ========================================
