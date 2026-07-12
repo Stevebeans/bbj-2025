@@ -13,6 +13,8 @@ use WP_REST_Response;
  *  - GET  /fan-votes/tracker  public standings + daily history
  *  - POST /fan-vote           cast/move the logged-in user's single vote
  *  - GET  /fan-vote/mine      the logged-in user's current-season vote
+ *  - GET  /fan-vote/ballot    the logged-in user's ranked ballot + vote weight
+ *  - POST /fan-vote/ballot    replace the logged-in user's ranked ballot
  *  - POST /fan-vote/note      admin (season_management) mover note for today
  *
  * Write routes bust the tracker caches. No Revalidation / cache-tag calls
@@ -48,6 +50,19 @@ class FanVoteRoutes
             'methods' => 'GET',
             'callback' => [$this, 'getMine'],
             'permission_callback' => 'is_user_logged_in',
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/fan-vote/ballot', [
+            [
+                'methods' => 'GET',
+                'callback' => [$this, 'getBallot'],
+                'permission_callback' => 'is_user_logged_in',
+            ],
+            [
+                'methods' => 'POST',
+                'callback' => [$this, 'saveBallot'],
+                'permission_callback' => 'is_user_logged_in',
+            ],
         ]);
 
         register_rest_route(self::NAMESPACE, '/fan-vote/note', [
@@ -106,6 +121,43 @@ class FanVoteRoutes
     {
         $playerId = FanVoteStore::myVote(get_current_user_id());
         return new WP_REST_Response(['success' => true, 'player_id' => $playerId], 200);
+    }
+
+    public function getBallot(WP_REST_Request $request): WP_REST_Response
+    {
+        $userId = get_current_user_id();
+        return new WP_REST_Response([
+            'success' => true,
+            'order'   => FanVoteStore::myBallot($userId),
+            'weight'  => FanVoteStore::weightFor($userId),
+        ], 200);
+    }
+
+    public function saveBallot(WP_REST_Request $request): WP_REST_Response
+    {
+        $userId = get_current_user_id();
+
+        // Drag sessions save in bursts; a short window absorbs accidental spam.
+        $rlKey = 'bbj_fanballot_rl_' . $userId;
+        if (get_transient($rlKey)) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Please wait a moment before saving again'], 429);
+        }
+
+        $params = $request->get_json_params() ?: [];
+        $order = $params['order'] ?? null;
+        if (!is_array($order) || !$order) {
+            return new WP_REST_Response(['success' => false, 'message' => 'order must be a non-empty array of player ids'], 400);
+        }
+
+        $result = FanVoteStore::saveBallot($userId, $order);
+        if (!empty($result['errors'])) {
+            return new WP_REST_Response(['success' => false, 'errors' => $result['errors']], 400);
+        }
+
+        set_transient($rlKey, 1, 5);
+        FanVoteStore::bustTrackerCaches();
+
+        return new WP_REST_Response(['success' => true, 'count' => $result['count']], 200);
     }
 
     public function saveNote(WP_REST_Request $request): WP_REST_Response
