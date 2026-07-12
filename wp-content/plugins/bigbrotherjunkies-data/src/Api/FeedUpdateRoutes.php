@@ -154,6 +154,11 @@ class FeedUpdateRoutes
             ? wp_kses_post($adminDetails)
             : wp_kses_post($legacyContent);
 
+        // wp_posts is utf8mb3 (legacy DB): raw 4-byte emoji make the INSERT
+        // fail. Encode them as HTML entities — they render identically.
+        $postTitle   = wp_encode_emoji($postTitle);
+        $postContent = wp_encode_emoji($postContent);
+
         // Create the post
         $postId = wp_insert_post([
             'post_title' => $postTitle,
@@ -165,10 +170,15 @@ class FeedUpdateRoutes
             ],
         ]);
 
-        if (is_wp_error($postId)) {
+        // wp_insert_post can also fail with 0 (e.g. rejected INSERT) — bail
+        // BEFORE side effects (image upload, Bluesky) so a failed save can't
+        // half-publish.
+        if (is_wp_error($postId) || !$postId) {
             return new \WP_REST_Response([
                 'success' => false,
-                'message' => $postId->get_error_message(),
+                'message' => is_wp_error($postId)
+                    ? $postId->get_error_message()
+                    : 'Could not save the update to the database.',
             ], 500);
         }
 
@@ -306,10 +316,10 @@ class FeedUpdateRoutes
 
         $update = ['ID' => $id];
         if ($title !== null) {
-            $update['post_title'] = sanitize_text_field((string) $title);
+            $update['post_title'] = wp_encode_emoji(sanitize_text_field((string) $title));
         }
         if ($details !== null) {
-            $update['post_content'] = wp_kses_post((string) $details);
+            $update['post_content'] = wp_encode_emoji(wp_kses_post((string) $details));
         }
 
         if (count($update) > 1) {
