@@ -20,6 +20,7 @@ class WeeklyAdmin
      *   veto_used_on: ?int             nominee saved by the veto (must be in noms)
      *   evicted: int[]                 evictees (supports double evictions/expulsions)
      *   havenot: int[]                 Have-Nots for the week
+     *   hoh_played: int[]              players who competed in the HoH comp
      *   veto_played: int[]             players who competed in the veto comp
      *   votes: array<int|string,int>   voter_id => voted-to-evict id
      *   misc_comps: array<array{player_id:int, comp_type_id:int, notes?:string}>
@@ -39,6 +40,7 @@ class WeeklyAdmin
         $evicted = array_values(array_unique(array_map('intval', (array) ($payload['evicted'] ?? []))));
         $havenot = array_values(array_unique(array_map('intval', (array) ($payload['havenot'] ?? []))));
         $vetoPlayed = array_values(array_unique(array_map('intval', (array) ($payload['veto_played'] ?? []))));
+        $hohPlayed = array_values(array_unique(array_map('intval', (array) ($payload['hoh_played'] ?? []))));
         $active  = array_values(array_unique(array_map('intval', (array) ($payload['active'] ?? []))));
 
         $votes = [];
@@ -53,7 +55,7 @@ class WeeklyAdmin
                 $errors[] = "{$label}: player {$id} is not on this season's roster";
             }
         }
-        foreach (['noms' => $noms, 'evicted' => $evicted, 'havenot' => $havenot, 'veto_played' => $vetoPlayed, 'active' => $active] as $label => $ids) {
+        foreach (['noms' => $noms, 'evicted' => $evicted, 'havenot' => $havenot, 'veto_played' => $vetoPlayed, 'hoh_played' => $hohPlayed, 'active' => $active] as $label => $ids) {
             foreach ($ids as $id) {
                 if (!$inRoster($id)) {
                     $errors[] = "{$label}: player {$id} is not on this season's roster";
@@ -101,7 +103,7 @@ class WeeklyAdmin
         // Row set: every active player, plus anyone referenced (safety net for a
         // short active list — an evictee must always land a row).
         $rowIds = $active;
-        $referenced = array_merge([$hoh, $pov, $vetoUsedOn], $noms, $evicted, $havenot, $vetoPlayed, array_keys($votes));
+        $referenced = array_merge([$hoh, $pov, $vetoUsedOn], $noms, $evicted, $havenot, $vetoPlayed, $hohPlayed, array_keys($votes));
         foreach ($referenced as $id) {
             if ($id !== null && $id !== 0 && !in_array($id, $rowIds, true)) {
                 $rowIds[] = $id;
@@ -115,6 +117,7 @@ class WeeklyAdmin
                 'nom'         => in_array($pid, $noms, true) ? 1 : 0,
                 'evicted'     => in_array($pid, $evicted, true) ? 1 : 0,
                 'havenot'     => in_array($pid, $havenot, true) ? 1 : 0,
+                'hoh_played'  => in_array($pid, $hohPlayed, true) ? 1 : 0,
                 'veto_played' => in_array($pid, $vetoPlayed, true) ? 1 : 0,
                 'voted_for'   => $votes[$pid] ?? 0,
                 'saved_by'    => ($vetoUsedOn !== null && $pid === $vetoUsedOn) ? $pov : null,
@@ -222,7 +225,7 @@ class WeeklyAdmin
         if ($byWeekId) {
             $in = implode(',', $byWeekId);
             $playerRows = $wpdb->get_results(
-                "SELECT week_id, player_id, nom, evicted, havenot, veto_played, voted_for,
+                "SELECT week_id, player_id, nom, evicted, havenot, hoh_played, veto_played, voted_for,
                         saved_by_player_id, vote_to_win, vote_to_win_for, active
                    FROM {$wplayers} WHERE week_id IN ({$in})",
                 ARRAY_A
@@ -233,6 +236,7 @@ class WeeklyAdmin
                     'nom'                => (int) $r['nom'],
                     'evicted'            => (int) $r['evicted'],
                     'havenot'            => (int) $r['havenot'],
+                    'hoh_played'         => (int) $r['hoh_played'],
                     'veto_played'        => (int) $r['veto_played'],
                     'voted_for'          => (int) $r['voted_for'],
                     'saved_by_player_id' => $r['saved_by_player_id'] !== null ? (int) $r['saved_by_player_id'] : null,
@@ -347,6 +351,7 @@ class WeeklyAdmin
                     'nom'                => $p['nom'],
                     'evicted'            => $p['evicted'],
                     'havenot'            => $p['havenot'],
+                    'hoh_played'         => $p['hoh_played'],
                     'veto_played'        => $p['veto_played'],
                     'voted_for'          => $p['voted_for'],
                     'saved_by_player_id' => $p['saved_by'],

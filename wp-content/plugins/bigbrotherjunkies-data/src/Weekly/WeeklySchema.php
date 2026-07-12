@@ -77,6 +77,7 @@ class WeeklySchema
             nom TINYINT(1) NOT NULL DEFAULT 0,
             evicted TINYINT(1) NOT NULL DEFAULT 0,
             havenot TINYINT(1) NOT NULL DEFAULT 0,
+            hoh_played TINYINT(1) NOT NULL DEFAULT 0,
             veto_played TINYINT(1) NOT NULL DEFAULT 0,
             voted_for BIGINT(20) NOT NULL DEFAULT 0,
             saved_by_player_id BIGINT(20) DEFAULT NULL,
