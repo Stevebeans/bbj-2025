@@ -35,6 +35,7 @@ use BigBrotherJunkies\Data\Api\PlayerRoutes;
 use BigBrotherJunkies\Data\Api\SeasonRoutes;
 use BigBrotherJunkies\Data\Api\WeeklyRoutes;
 use BigBrotherJunkies\Data\Api\FanVoteRoutes;
+use BigBrotherJunkies\Data\Api\SocialRoutes;
 use BigBrotherJunkies\Data\Api\ContactRoutes;
 use BigBrotherJunkies\Data\Api\PlayerPhotoRoutes;
 use BigBrotherJunkies\Data\Api\ImportRoutes;
@@ -603,6 +604,11 @@ class Plugin
         \BigBrotherJunkies\Data\FanVotes\FanVoteStore::maybeMigrate();
         $fanVoteRoutes = new FanVoteRoutes();
         $fanVoteRoutes->init();
+
+        // Bluesky social monitor routes
+        \BigBrotherJunkies\Data\Social\SocialStore::maybeMigrate();
+        $socialRoutes = new SocialRoutes();
+        $socialRoutes->init();
 
         // Contact form routes
         $contactRoutes = new ContactRoutes();

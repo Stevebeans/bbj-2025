@@ -84,6 +84,11 @@ class PermissionChecker
             'description' => 'Review, approve, and reject blog post submissions',
             'roles' => ['administrator'],
         ],
+        'social_monitor' => [
+            'label' => 'Social Monitor',
+            'description' => 'Configure the Bluesky feed monitor and view collected posts and summaries',
+            'roles' => ['administrator'],
+        ],
     ];
 
     public static function userCan(string $feature, ?int $userId = null): bool
