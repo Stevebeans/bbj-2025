@@ -46,27 +46,21 @@ scrub back and verify on the feeds. Exclude pure opinions, jokes, memes, and TV-
 commentary. If nothing qualifies, write "Nothing credible surfaced outside your trusted
 sources this window."
 
-## Facebook draft
-A discussion-bait post for the Big Brother Junkies Facebook page, ready to paste, in this
-exact layout:
-1. One eye-popping opening sentence that teases the biggest confirmed development without
-   giving it away.
-2. On its own line: (feed spoilers below)
-3. Then four blank lines, so Facebook's "See more" fold hides everything that follows.
-4. The payoff: two to four sentences on the biggest confirmed developments in a casual
-   fan voice. Catchy and funny when the material allows it, never forced.
-5. A closing question inviting opinions on the key moment. Vary the phrasing every post
-   instead of repeating a stock line: "What are your thoughts on...", "Are you buying...",
-   "Smart move or disaster?", "Whose side are you on?" are the flavor, not a script. One
-   question only.
-Spoilers are fine after the fold, never in the opening sentence. Present tense. No hashtags,
-no emojis, no handles or attributions. Never tell readers to like, comment, or share
-(Facebook demotes that); the question is the call to action. Never include anything that
-only appeared in the "You might have missed" section.
+## Conversation reconstructions
+When two or more posts reference the same conversation (same participants and a similar
+camera or time), stitch the reported fragments into a scene, formatted as:
+**{Participants}, {camera if known}, ~{time}** (pieced from {k} reports)
+{Speaker}: "{exact quoted fragment}" (quoted by {n} accounts)
+{Speaker}: {paraphrased line} (paraphrased, {n} account(s))
+[gap - no coverage]
+Only lines someone actually reported: quoted fragments stay in quotes with a source count,
+paraphrases are labeled as paraphrases, and gaps are marked. Never invent connective
+dialogue. When reports conflict, show both versions side by side. If no conversation has
+two or more sources this window, write "No multi-source conversations this window."
 
 Rules: never invent events. When trusted accounts conflict, say so. Quote at most a short
 phrase from any single post. Ignore posts about the broadcast episode edit unless they
-report live-feed events. Keep the whole output under 700 words.
+report live-feed events. Keep the whole output under 900 words.
 PROMPT;
 
     /**
@@ -102,6 +96,7 @@ PROMPT;
         $allIds = array_merge(array_column($trusted, 'id'), array_column($tag, 'id'));
 
         $summaryId = SocialStore::insertSummary([
+            'kind'          => 'digest',
             'window_from'   => $window['from'],
             'window_to'     => $window['to'],
             'model'         => (string) $settings['model'],
@@ -112,7 +107,7 @@ PROMPT;
 
         SocialStore::markSummarized($allIds);
 
-        $summaries  = SocialStore::summaries(1);
+        $summaries  = SocialStore::summaries(1, 'digest');
         $summaryRow = $summaries[0] ?? null;
         if ($summaryRow !== null && (int) ($summaryRow['id'] ?? 0) === $summaryId) {
             $summaryRow['content'] = html_entity_decode((string) $summaryRow['content'], ENT_QUOTES, 'UTF-8');

@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Social\BeanBotService;
+use BigBrotherJunkies\Data\Social\DraftService;
 use BigBrotherJunkies\Data\Social\SocialStore;
 use BigBrotherJunkies\Data\Social\SummaryService;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
@@ -16,8 +17,9 @@ use WP_REST_Response;
  *  - POST /social/config     save settings + reschedule the poller
  *  - POST /social/poll       run one poll now (manual refresh)
  *  - GET  /social/posts      paged collected posts
- *  - GET  /social/summaries  stored summaries
+ *  - GET  /social/summaries  stored summaries/drafts (optional ?kind=)
  *  - POST /social/summarize  run the Claude summarizer over the unsummarized window
+ *  - POST /social/draft      generate a facebook/blog draft over a time window
  *
  * Every route is gated by PermissionChecker::userCan('social_monitor'). The
  * admin page is client-fetched; no Revalidation / cache-tag / CF-purge calls.
@@ -79,11 +81,20 @@ class SocialRoutes
             'methods'             => 'GET',
             'callback'            => [$this, 'getSummaries'],
             'permission_callback' => [$this, 'checkAccess'],
+            'args'                => [
+                'kind' => ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field'],
+            ],
         ]);
 
         register_rest_route(self::NAMESPACE, '/social/summarize', [
             'methods'             => 'POST',
             'callback'            => [$this, 'runSummarize'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/draft', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'runDraft'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
 
@@ -145,15 +156,19 @@ class SocialRoutes
         return new WP_REST_Response(array_merge(['success' => true], $result), 200);
     }
 
-    public function getSummaries(): WP_REST_Response
+    public function getSummaries(WP_REST_Request $request): WP_REST_Response
     {
+        // Optional ?kind= filter, whitelisted to the three known kinds.
+        $kind = (string) $request->get_param('kind');
+        $kind = in_array($kind, ['digest', 'facebook', 'blog'], true) ? $kind : null;
+
         // Stored content is wp_encode_emoji'd (utf8mb3-safe); decode it here so
         // GET matches what POST /social/summarize already returns, otherwise a
         // page reload shows literal entities like &#x1f5a4; in the digest.
         $summaries = array_map(static function (array $row): array {
             $row['content'] = html_entity_decode((string) ($row['content'] ?? ''), ENT_QUOTES, 'UTF-8');
             return $row;
-        }, SocialStore::summaries(20));
+        }, SocialStore::summaries(20, $kind));
 
         return new WP_REST_Response([
             'success'   => true,
@@ -164,6 +179,17 @@ class SocialRoutes
     public function runSummarize(): WP_REST_Response
     {
         $result = SummaryService::run();
+        $status = !empty($result['success']) ? 200 : 400;
+        return new WP_REST_Response($result, $status);
+    }
+
+    public function runDraft(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $kind   = (string) ($params['kind'] ?? '');
+        $window = (string) ($params['window'] ?? 'today');
+
+        $result = DraftService::generate($kind, $window);
         $status = !empty($result['success']) ? 200 : 400;
         return new WP_REST_Response($result, $status);
     }

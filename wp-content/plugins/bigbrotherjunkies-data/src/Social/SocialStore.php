@@ -439,6 +439,63 @@ class SocialStore
     }
 
     /**
+     * Posts with posted_at BETWEEN fromUtc and toUtc, split by source, for the
+     * Task 3 draft generators. Trusted capped at the newest CAP_TRUSTED, tag at
+     * CAP_TAG (same caps + capped-logging as unsummarizedWindow). READ-ONLY:
+     * unlike unsummarizedWindow(), this never filters or updates the
+     * `summarized` flag, so it cannot disturb the digest's or Bean Bot's cursor.
+     *
+     * @return array{trusted:array<int,array<string,mixed>>,tag:array<int,array<string,mixed>>}
+     */
+    public static function postsInWindow(string $fromUtc, string $toUtc): array
+    {
+        global $wpdb;
+        $table = SocialSchema::table(SocialSchema::TABLE_POSTS);
+
+        $trusted = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$table} WHERE source = 'trusted' AND posted_at BETWEEN %s AND %s
+              ORDER BY posted_at DESC, id DESC LIMIT %d",
+            $fromUtc,
+            $toUtc,
+            self::CAP_TRUSTED
+        ), ARRAY_A) ?: [];
+
+        $tag = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$table} WHERE source = 'tag' AND posted_at BETWEEN %s AND %s
+              ORDER BY posted_at DESC, id DESC LIMIT %d",
+            $fromUtc,
+            $toUtc,
+            self::CAP_TAG
+        ), ARRAY_A) ?: [];
+
+        if (count($trusted) >= self::CAP_TRUSTED) {
+            $totalTrusted = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE source = 'trusted' AND posted_at BETWEEN %s AND %s",
+                $fromUtc,
+                $toUtc
+            ));
+            if ($totalTrusted > self::CAP_TRUSTED) {
+                error_log("[BBJ Social] postsInWindow: trusted capped at " . self::CAP_TRUSTED . " of {$totalTrusted}");
+            }
+        }
+        if (count($tag) >= self::CAP_TAG) {
+            $totalTag = (int) $wpdb->get_var($wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE source = 'tag' AND posted_at BETWEEN %s AND %s",
+                $fromUtc,
+                $toUtc
+            ));
+            if ($totalTag > self::CAP_TAG) {
+                error_log("[BBJ Social] postsInWindow: tag capped at " . self::CAP_TAG . " of {$totalTag}");
+            }
+        }
+
+        return [
+            'trusted' => $trusted,
+            'tag'     => $tag,
+        ];
+    }
+
+    /**
      * Trusted-source rows past a cursor id, oldest first, for the Bean Bot
      * cycle. Only id/handle/text/posted_at (text stays entity-encoded; the
      * caller decodes before sending to Claude).
@@ -476,9 +533,11 @@ class SocialStore
     }
 
     /**
-     * Store a generated summary. Content is emoji-encoded (utf8mb3-safe).
+     * Store a generated summary or draft. Content is emoji-encoded
+     * (utf8mb3-safe). `kind` defaults to 'digest' (the summarizer's row shape,
+     * kept byte-identical) but Task 3's DraftService passes 'facebook'/'blog'.
      *
-     * @param array{window_from?:?string,window_to?:?string,model?:string,post_count?:int,trusted_count?:int,content?:string} $row
+     * @param array{kind?:string,window_from?:?string,window_to?:?string,model?:string,post_count?:int,trusted_count?:int,content?:string} $row
      * @return int inserted summary id
      */
     public static function insertSummary(array $row): int
@@ -487,25 +546,43 @@ class SocialStore
         $table = SocialSchema::table(SocialSchema::TABLE_SUMMARIES);
         $now   = current_time('mysql', true);
 
+        $kind = (string) ($row['kind'] ?? 'digest');
+        if (!in_array($kind, ['digest', 'facebook', 'blog'], true)) {
+            $kind = 'digest';
+        }
+
         $wpdb->insert($table, [
             'created_at'    => $now,
+            'kind'          => $kind,
             'window_from'   => $row['window_from'] ?? $now,
             'window_to'     => $row['window_to'] ?? $now,
             'model'         => (string) ($row['model'] ?? ''),
             'post_count'    => (int) ($row['post_count'] ?? 0),
             'trusted_count' => (int) ($row['trusted_count'] ?? 0),
             'content'       => wp_encode_emoji((string) ($row['content'] ?? '')),
-        ], ['%s', '%s', '%s', '%s', '%d', '%d', '%s']);
+        ], ['%s', '%s', '%s', '%s', '%s', '%d', '%d', '%s']);
 
         return (int) $wpdb->insert_id;
     }
 
-    /** Most recent summaries, newest first. */
-    public static function summaries(int $limit = 20): array
+    /**
+     * Most recent summaries/drafts, newest first. When $kind is given
+     * ('digest'|'facebook'|'blog'), only rows of that kind are returned.
+     */
+    public static function summaries(int $limit = 20, ?string $kind = null): array
     {
         global $wpdb;
         $table = SocialSchema::table(SocialSchema::TABLE_SUMMARIES);
         $limit = max(1, min(100, $limit));
+
+        if ($kind !== null) {
+            return $wpdb->get_results($wpdb->prepare(
+                "SELECT * FROM {$table} WHERE kind = %s ORDER BY created_at DESC, id DESC LIMIT %d",
+                $kind,
+                $limit
+            ), ARRAY_A) ?: [];
+        }
+
         return $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM {$table} ORDER BY created_at DESC, id DESC LIMIT %d",
             $limit
