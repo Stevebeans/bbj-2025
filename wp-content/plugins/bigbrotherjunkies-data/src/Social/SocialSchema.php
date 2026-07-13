@@ -57,6 +57,7 @@ class SocialSchema
         return "CREATE TABLE {$t} (
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             created_at DATETIME NOT NULL,
+            kind VARCHAR(12) NOT NULL DEFAULT 'digest',
             window_from DATETIME NOT NULL,
             window_to DATETIME NOT NULL,
             model VARCHAR(60) NOT NULL DEFAULT '',
@@ -64,7 +65,8 @@ class SocialSchema
             trusted_count INT(11) NOT NULL DEFAULT 0,
             content LONGTEXT NOT NULL,
             PRIMARY KEY (id),
-            KEY idx_created (created_at)
+            KEY idx_created (created_at),
+            KEY idx_kind_created (kind, created_at)
         ) " . self::charset() . ";";
     }
 }
