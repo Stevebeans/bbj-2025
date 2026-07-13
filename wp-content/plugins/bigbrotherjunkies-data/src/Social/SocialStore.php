@@ -19,7 +19,7 @@ class SocialStore
 {
     public const OPTION            = 'bbjd_social_monitor';
     public const DB_VERSION_OPTION = 'bbj_social_db_version';
-    public const DB_VERSION        = '1.0.0';
+    public const DB_VERSION        = '1.1.0';
 
     /** Action Scheduler recurring hook + group for the poller. */
     public const POLL_HOOK = 'bbjd_social_poll';
@@ -436,6 +436,27 @@ class SocialStore
             'trusted' => $trusted,
             'tag'     => $tag,
         ];
+    }
+
+    /**
+     * Trusted-source rows past a cursor id, oldest first, for the Bean Bot
+     * cycle. Only id/handle/text/posted_at (text stays entity-encoded; the
+     * caller decodes before sending to Claude).
+     *
+     * @return array<int,array{id:string,handle:string,text:string,posted_at:string}>
+     */
+    public static function trustedPostsSince(int $afterId, int $limit = 200): array
+    {
+        global $wpdb;
+        $table = SocialSchema::table(SocialSchema::TABLE_POSTS);
+        $limit = max(1, min(500, $limit));
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT id, handle, text, posted_at FROM {$table}
+              WHERE source = 'trusted' AND id > %d
+              ORDER BY id ASC LIMIT %d",
+            $afterId,
+            $limit
+        ), ARRAY_A) ?: [];
     }
 
     /** Flag the given post ids as summarized. */

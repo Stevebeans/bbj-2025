@@ -2,6 +2,7 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\Social\BeanBotService;
 use BigBrotherJunkies\Data\Social\SocialStore;
 use BigBrotherJunkies\Data\Social\SummaryService;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
@@ -31,6 +32,9 @@ class SocialRoutes
         // Poller callback + idempotent init-time scheduling.
         add_action(SocialStore::POLL_HOOK, [SocialStore::class, 'poll']);
         add_action('init', [SocialStore::class, 'ensureScheduled']);
+        // Bean Bot cycle callback + idempotent init-time scheduling.
+        add_action(BeanBotService::CYCLE_HOOK, [BeanBotService::class, 'cron']);
+        add_action('init', [BeanBotService::class, 'ensureScheduled']);
     }
 
     public function checkAccess(): bool
@@ -80,6 +84,25 @@ class SocialRoutes
         register_rest_route(self::NAMESPACE, '/social/summarize', [
             'methods'             => 'POST',
             'callback'            => [$this, 'runSummarize'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/beanbot', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'getBeanBot'],
+                'permission_callback' => [$this, 'checkAccess'],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'saveBeanBot'],
+                'permission_callback' => [$this, 'checkAccess'],
+            ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/beanbot/preview', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'previewBeanBot'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
     }
@@ -143,5 +166,38 @@ class SocialRoutes
         $result = SummaryService::run();
         $status = !empty($result['success']) ? 200 : 400;
         return new WP_REST_Response($result, $status);
+    }
+
+    // -----------------------------------------------------------------------
+    // Bean Bot (auto feed-update writer)
+    // -----------------------------------------------------------------------
+
+    public function getBeanBot(): WP_REST_Response
+    {
+        // The whole option is safe to return; it holds no secrets (the API key
+        // lives in the monitor settings, never here).
+        return new WP_REST_Response([
+            'success'  => true,
+            'settings' => BeanBotService::settings(),
+        ], 200);
+    }
+
+    public function saveBeanBot(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        BeanBotService::saveSettings($params);
+        BeanBotService::reschedule();
+
+        return new WP_REST_Response([
+            'success'  => true,
+            'settings' => BeanBotService::settings(),
+        ], 200);
+    }
+
+    public function previewBeanBot(): WP_REST_Response
+    {
+        // Dry run: performs the real Claude call, persists nothing. Always 200
+        // so the UI can render the (possibly error-shaped) result inline.
+        return new WP_REST_Response(BeanBotService::runCycle(true), 200);
     }
 }

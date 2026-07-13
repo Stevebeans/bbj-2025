@@ -13,6 +13,8 @@ class BeanBotLogicTest extends TestCase
         $this->assertSame('post', $out['mode']);
         $this->assertSame('Dee camtalking about Haley again', $out['text']);
         $this->assertTrue($out['bluesky']);
+        // Strict boolean: the string "false" must not coerce truthy into true.
+        $this->assertFalse(BeanBotLogic::parseModelJson('{"mode":"post","text":"x","bluesky":"false"}')['bluesky']);
     }
 
     public function test_parse_strips_markdown_fences_and_defaults_bluesky(): void

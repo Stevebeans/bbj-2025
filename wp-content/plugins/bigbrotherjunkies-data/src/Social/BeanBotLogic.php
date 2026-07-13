@@ -40,7 +40,9 @@ class BeanBotLogic
         $text = mb_substr($text, 0, self::MAX_TEXT_LENGTH);
 
         $bluesky = $decoded['bluesky'] ?? false;
-        $bluesky = is_bool($bluesky) ? $bluesky : (bool) $bluesky;
+        // Strict: only a real JSON boolean true enables Bluesky. An LLM that
+        // emits the STRING "false" must not be coerced truthy into true.
+        $bluesky = $bluesky === true;
         if ($mode === 'skip') {
             $bluesky = false;
         }
