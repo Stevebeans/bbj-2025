@@ -31,6 +31,25 @@ class BeanBotService
     public const INTERVALS = [30, 45, 60];
 
     /**
+     * Service-managed keys — the ONLY keys a running cycle may write. The four
+     * user-settable keys (enabled / interval_minutes / max_per_day /
+     * bluesky_enabled) are deliberately absent so a cycle can never resurrect a
+     * setting Steve changed mid-flight (kill-switch safety).
+     */
+    public const SERVICE_KEYS = [
+        'cursor_post_id',
+        'posts_today',
+        'posts_today_date',
+        'last_was_brief',
+        'last_error',
+        'last_run',
+        'author_user_id',
+    ];
+
+    /** Transient that prevents two publish cycles from overlapping. */
+    public const LOCK_KEY = 'bbjd_bean_bot_lock';
+
+    /**
      * Option defaults. `enabled=false` so a fresh deploy never auto-posts.
      * The first four keys are user-settable via REST; the rest are
      * service-managed (cursor, cap bookkeeping, run state).
@@ -90,7 +109,8 @@ PROMPT;
      */
     public static function saveSettings(array $patch): array
     {
-        $current = self::settings();
+        $current    = self::settings();
+        $wasEnabled = !empty($current['enabled']);
 
         if (array_key_exists('enabled', $patch)) {
             $current['enabled'] = (bool) $patch['enabled'];
@@ -109,13 +129,37 @@ PROMPT;
         }
 
         update_option(self::OPTION, $current);
-        return $current;
+
+        // On a false->true enable, make sure the WP author exists before the
+        // first cycle so Steve can set the avatar ahead of the first post.
+        if (!$wasEnabled && !empty($current['enabled'])) {
+            self::ensureUser();
+        }
+
+        return self::settings();
     }
 
-    /** Persist the full option (service-managed writes). */
-    private static function persist(array $settings): void
+    /**
+     * Read-modify-write of ONLY the service-managed keys. Re-reads the option
+     * fresh at write time so a mid-cycle settings change (disable, interval, or
+     * cap) is never clobbered by stale cycle state. The user-settable keys are
+     * never written here.
+     *
+     * @param array<string,mixed> $keys service-managed key => value pairs
+     */
+    public static function persistCycleState(array $keys): void
     {
-        update_option(self::OPTION, $settings);
+        $stored = get_option(self::OPTION, []);
+        if (!is_array($stored)) {
+            $stored = [];
+        }
+        $current = array_merge(self::DEFAULTS, $stored);
+        foreach (self::SERVICE_KEYS as $k) {
+            if (array_key_exists($k, $keys)) {
+                $current[$k] = $keys[$k];
+            }
+        }
+        update_option(self::OPTION, $current);
     }
 
     // -----------------------------------------------------------------------
@@ -160,8 +204,7 @@ PROMPT;
 
         $id = (int) $id;
         if ($id > 0) {
-            $settings['author_user_id'] = $id;
-            self::persist($settings);
+            self::persistCycleState(['author_user_id' => $id]);
         }
         return $id;
     }
@@ -178,14 +221,44 @@ PROMPT;
      */
     public static function runCycle(bool $dry = false): array
     {
+        // Concurrency lock (live cycles only). A dry preview never publishes, so
+        // it bypasses the lock entirely. If a live cycle is already running, bail
+        // without touching any state.
+        if (!$dry) {
+            if (get_transient(self::LOCK_KEY)) {
+                return self::result('skipped', ['message' => 'Another cycle is running.']);
+            }
+            set_transient(self::LOCK_KEY, 1, 120);
+        }
+
+        try {
+            return self::runCycleBody($dry);
+        } finally {
+            if (!$dry) {
+                delete_transient(self::LOCK_KEY);
+            }
+        }
+    }
+
+    /**
+     * The actual cycle. Split out so runCycle() can wrap it in a lock/finally.
+     * Every persist here goes through persistCycleState (service-managed keys
+     * only) so a mid-cycle settings change is never clobbered.
+     */
+    private static function runCycleBody(bool $dry): array
+    {
         $settings = self::settings();
         $monitor  = SocialStore::settings();
         $key      = (string) ($monitor['anthropic_api_key'] ?? '');
         $model    = (string) ($monitor['model'] ?? '');
 
-        // 1a. Disabled gate: bot off, monitor off, or no API key.
-        if (empty($settings['enabled']) || empty($monitor['enabled']) || $key === '') {
+        // 1a. Disabled gate: bot off or monitor off.
+        if (empty($settings['enabled']) || empty($monitor['enabled'])) {
             return self::result('disabled');
+        }
+        // Enabled but no key configured: distinct, actionable message.
+        if ($key === '') {
+            return self::result('disabled', ['message' => 'Monitor API key not configured.']);
         }
 
         // 1b. Daily cap with date rollover against the site clock.
@@ -222,8 +295,7 @@ PROMPT;
         $resp   = $client->complete((string) $system, $userMessage, $model, $key);
         if (isset($resp['error'])) {
             if (!$dry) {
-                $settings['last_error'] = (string) $resp['error'];
-                self::persist($settings);
+                self::persistCycleState(['last_error' => (string) $resp['error']]);
             }
             return self::result('error', array_merge($windowExtra, ['message' => (string) $resp['error']]));
         }
@@ -233,8 +305,7 @@ PROMPT;
         if (isset($parsed['error'])) {
             $message = 'Model returned unusable output: ' . $parsed['error'];
             if (!$dry) {
-                $settings['last_error'] = $message;
-                self::persist($settings);
+                self::persistCycleState(['last_error' => $message]);
             }
             return self::result('error', array_merge($windowExtra, ['message' => $message]));
         }
@@ -246,10 +317,11 @@ PROMPT;
         // 6. Skip: advance the cursor, publish nothing.
         if ($parsed['mode'] === 'skip') {
             if (!$dry) {
-                $settings['cursor_post_id'] = $maxId;
-                $settings['last_error']     = '';
-                $settings['last_run']       = $nowUtc;
-                self::persist($settings);
+                self::persistCycleState([
+                    'cursor_post_id' => $maxId,
+                    'last_error'     => '',
+                    'last_run'       => $nowUtc,
+                ]);
             }
             return self::result('skipped', array_merge($windowExtra, [
                 'text'    => $text,
@@ -261,11 +333,12 @@ PROMPT;
         $isBrief = mb_strlen($text) < 120;
         if (BeanBotLogic::shouldSuppressQuiet($isBrief, (bool) $settings['last_was_brief'])) {
             if (!$dry) {
-                $settings['cursor_post_id'] = $maxId;
-                $settings['last_was_brief'] = $isBrief;
-                $settings['last_error']     = '';
-                $settings['last_run']       = $nowUtc;
-                self::persist($settings);
+                self::persistCycleState([
+                    'cursor_post_id' => $maxId,
+                    'last_was_brief' => $isBrief,
+                    'last_error'     => '',
+                    'last_run'       => $nowUtc,
+                ]);
             }
             return self::result('suppressed', array_merge($windowExtra, [
                 'text'    => $text,
@@ -283,28 +356,36 @@ PROMPT;
             ]));
         }
 
-        // 8. Publish through the shared creator.
+        // 8. Resolve the author before publishing; never post as user 0.
+        $authorId = self::ensureUser();
+        if ($authorId <= 0) {
+            $message = 'Could not resolve the Bean Bot author user.';
+            self::persistCycleState(['last_error' => $message]);
+            return self::result('error', array_merge($windowExtra, ['message' => $message]));
+        }
+
+        // Publish through the shared creator (kses-filter for composer parity).
         $create = FeedUpdateCreator::create([
-            'content'         => $text,
-            'author_id'       => self::ensureUser(),
+            'content'         => wp_kses_post($text),
+            'author_id'       => $authorId,
             'post_to_bluesky' => $blueskyOn,
         ]);
         if (empty($create['success'])) {
             $message = (string) ($create['message'] ?? 'Feed update creation failed.');
-            $settings['last_error'] = $message;
-            self::persist($settings);
+            self::persistCycleState(['last_error' => $message]);
             return self::result('error', array_merge($windowExtra, ['message' => $message]));
         }
 
         // Success: advance cursor, count the post (with rollover), remember
         // brevity, clear error, stamp the run.
-        $settings['cursor_post_id']   = $maxId;
-        $settings['posts_today']      = $postsToday + 1;
-        $settings['posts_today_date'] = $today;
-        $settings['last_was_brief']   = $isBrief;
-        $settings['last_error']       = '';
-        $settings['last_run']         = $nowUtc;
-        self::persist($settings);
+        self::persistCycleState([
+            'cursor_post_id'   => $maxId,
+            'posts_today'      => $postsToday + 1,
+            'posts_today_date' => $today,
+            'last_was_brief'   => $isBrief,
+            'last_error'       => '',
+            'last_run'         => $nowUtc,
+        ]);
 
         return self::result('posted', array_merge($windowExtra, [
             'text'    => $text,
@@ -396,7 +477,8 @@ PROMPT;
     private static function scheduleRecurring(array $settings): void
     {
         $interval = self::intervalSeconds($settings);
-        as_schedule_recurring_action(time() + $interval, $interval, self::CYCLE_HOOK, [], self::AS_GROUP);
+        // $unique=true so a duplicate recurring cycle can never be queued.
+        as_schedule_recurring_action(time() + $interval, $interval, self::CYCLE_HOOK, [], self::AS_GROUP, true);
     }
 
     private static function intervalSeconds(array $settings): int

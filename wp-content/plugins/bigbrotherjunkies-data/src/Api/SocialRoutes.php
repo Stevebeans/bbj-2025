@@ -186,8 +186,8 @@ class SocialRoutes
     public function runDraft(WP_REST_Request $request): WP_REST_Response
     {
         $params = $request->get_json_params() ?: [];
-        $kind   = (string) ($params['kind'] ?? '');
-        $window = (string) ($params['window'] ?? 'today');
+        $kind   = is_string($params['kind'] ?? null) ? $params['kind'] : '';
+        $window = is_string($params['window'] ?? null) ? $params['window'] : 'today';
 
         $result = DraftService::generate($kind, $window);
         $status = !empty($result['success']) ? 200 : 400;
