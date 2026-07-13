@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Social\SocialStore;
+use BigBrotherJunkies\Data\Social\SummaryService;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 use WP_REST_Request;
 use WP_REST_Response;
@@ -15,7 +16,7 @@ use WP_REST_Response;
  *  - POST /social/poll       run one poll now (manual refresh)
  *  - GET  /social/posts      paged collected posts
  *  - GET  /social/summaries  stored summaries
- *  - POST /social/summarize  Task 3's summarizer (stubbed 501 here)
+ *  - POST /social/summarize  run the Claude summarizer over the unsummarized window
  *
  * Every route is gated by PermissionChecker::userCan('social_monitor'). The
  * admin page is client-fetched; no Revalidation / cache-tag / CF-purge calls.
@@ -131,10 +132,8 @@ class SocialRoutes
 
     public function runSummarize(): WP_REST_Response
     {
-        // Task 3 replaces this with SummaryService::run().
-        return new WP_REST_Response([
-            'success' => false,
-            'message' => 'summarizer lands in the next commit',
-        ], 501);
+        $result = SummaryService::run();
+        $status = !empty($result['success']) ? 200 : 400;
+        return new WP_REST_Response($result, $status);
     }
 }
