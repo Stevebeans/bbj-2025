@@ -346,7 +346,7 @@ PROMPT;
             ]));
         }
 
-        // 9. Dry run: everything above happened (incl. the Claude call) but we
+        // 8. Dry run: everything above happened (incl. the Claude call) but we
         //    persist nothing and publish nothing. Report what WOULD post.
         if ($dry) {
             return self::result('posted', array_merge($windowExtra, [
@@ -356,7 +356,7 @@ PROMPT;
             ]));
         }
 
-        // 8. Resolve the author before publishing; never post as user 0.
+        // 9. Resolve the author before publishing; never post as user 0.
         $authorId = self::ensureUser();
         if ($authorId <= 0) {
             $message = 'Could not resolve the Bean Bot author user.';
