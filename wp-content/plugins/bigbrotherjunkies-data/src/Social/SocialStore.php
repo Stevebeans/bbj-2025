@@ -281,8 +281,11 @@ class SocialStore
 
         foreach ((array) $settings['handles'] as $handle) {
             try {
-                $rows = BlueskyReader::authorFeed((string) $handle);
-                $result['trusted'] += self::insertPosts($rows, 'trusted');
+                $feed = BlueskyReader::authorFeed((string) $handle);
+                $result['trusted'] += self::insertPosts($feed['rows'], 'trusted');
+                if ($feed['error'] !== null) {
+                    $result['errors'][] = $feed['error'];
+                }
             } catch (\Throwable $e) {
                 $msg = 'author feed ' . $handle . ': ' . $e->getMessage();
                 error_log('[BBJ Social] poll ' . $msg);
@@ -293,8 +296,11 @@ class SocialStore
         try {
             $tag = (string) $settings['tag'];
             if ($tag !== '') {
-                $rows = BlueskyReader::search($tag);
-                $result['tag'] += self::insertPosts($rows, 'tag');
+                $feed = BlueskyReader::search($tag);
+                $result['tag'] += self::insertPosts($feed['rows'], 'tag');
+                if ($feed['error'] !== null) {
+                    $result['errors'][] = $feed['error'];
+                }
             }
         } catch (\Throwable $e) {
             $msg = 'search ' . (string) $settings['tag'] . ': ' . $e->getMessage();

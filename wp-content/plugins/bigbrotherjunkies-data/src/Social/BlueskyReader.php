@@ -7,8 +7,10 @@ namespace BigBrotherJunkies\Data\Social;
  *
  * One page per source per poll (limit=100, no cursor walking) keeps volume
  * polite and well under a page at the 10-minute default cadence. Non-200 or
- * transport failures return an empty array and error_log, so a single bad
- * handle never aborts the caller.
+ * transport failures are error_log'd AND returned as an `error` string
+ * alongside the (empty) rows, so a single bad handle never aborts the
+ * caller but a typo'd handle or an outage is still visible in the poll
+ * result rather than silently reporting "0 posts".
  *
  * @see https://public.api.bsky.app/xrpc/
  */
@@ -21,13 +23,13 @@ class BlueskyReader
      * Author feed for one handle, replies and reposts filtered out by the
      * AppView (filter=posts_no_replies) and the parser (reposts).
      *
-     * @return array<int,array<string,string>> normalized BlueskyParser rows
+     * @return array{rows:array<int,array<string,string>>,error:?string}
      */
     public static function authorFeed(string $handle): array
     {
         $handle = strtolower(ltrim(trim($handle), '@'));
         if ($handle === '') {
-            return [];
+            return ['rows' => [], 'error' => null];
         }
 
         $url = self::BASE . 'app.bsky.feed.getAuthorFeed?' . http_build_query([
@@ -36,24 +38,24 @@ class BlueskyReader
             'filter' => 'posts_no_replies',
         ]);
 
-        $json = self::getJson($url, 'author feed ' . $handle);
+        [$json, $error] = self::getJson($url, 'author feed @' . $handle);
         if ($json === null) {
-            return [];
+            return ['rows' => [], 'error' => $error];
         }
 
-        return BlueskyParser::fromAuthorFeed($json);
+        return ['rows' => BlueskyParser::fromAuthorFeed($json), 'error' => null];
     }
 
     /**
      * Latest posts matching a hashtag / query string.
      *
-     * @return array<int,array<string,string>> normalized BlueskyParser rows
+     * @return array{rows:array<int,array<string,string>>,error:?string}
      */
     public static function search(string $tag): array
     {
         $tag = trim($tag);
         if ($tag === '') {
-            return [];
+            return ['rows' => [], 'error' => null];
         }
 
         $url = self::BASE . 'app.bsky.feed.searchPosts?' . http_build_query([
@@ -62,18 +64,23 @@ class BlueskyReader
             'limit' => 100,
         ]);
 
-        $json = self::getJson($url, 'search ' . $tag);
+        [$json, $error] = self::getJson($url, 'search ' . $tag);
         if ($json === null) {
-            return [];
+            return ['rows' => [], 'error' => $error];
         }
 
-        return BlueskyParser::fromSearch($json);
+        return ['rows' => BlueskyParser::fromSearch($json), 'error' => null];
     }
 
     /**
-     * GET + decode. Returns the decoded array or null on any failure.
+     * GET + decode. Returns [decoded array, null] on success or [null, error
+     * message] on any failure. The error message names the source
+     * (`$context`) and the failure kind only; it never includes an API key
+     * (this client sends none) or the raw response body.
+     *
+     * @return array{0:?array,1:?string}
      */
-    private static function getJson(string $url, string $context): ?array
+    private static function getJson(string $url, string $context): array
     {
         $response = wp_remote_get($url, [
             'timeout' => self::TIMEOUT,
@@ -81,22 +88,23 @@ class BlueskyReader
         ]);
 
         if (is_wp_error($response)) {
-            error_log('[BBJ Social] Bluesky ' . $context . ' error: ' . $response->get_error_message());
-            return null;
+            $message = $response->get_error_message();
+            error_log('[BBJ Social] Bluesky ' . $context . ' error: ' . $message);
+            return [null, "{$context}: {$message}"];
         }
 
         $status = wp_remote_retrieve_response_code($response);
         if ($status < 200 || $status >= 300) {
             error_log("[BBJ Social] Bluesky {$context} HTTP {$status}");
-            return null;
+            return [null, "{$context}: HTTP {$status}"];
         }
 
         $decoded = json_decode(wp_remote_retrieve_body($response), true);
         if (!is_array($decoded)) {
             error_log("[BBJ Social] Bluesky {$context}: invalid JSON response");
-            return null;
+            return [null, "{$context}: invalid JSON response"];
         }
 
-        return $decoded;
+        return [$decoded, null];
     }
 }

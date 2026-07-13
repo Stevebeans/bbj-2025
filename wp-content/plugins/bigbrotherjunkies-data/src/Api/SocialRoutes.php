@@ -124,9 +124,17 @@ class SocialRoutes
 
     public function getSummaries(): WP_REST_Response
     {
+        // Stored content is wp_encode_emoji'd (utf8mb3-safe); decode it here so
+        // GET matches what POST /social/summarize already returns, otherwise a
+        // page reload shows literal entities like &#x1f5a4; in the digest.
+        $summaries = array_map(static function (array $row): array {
+            $row['content'] = html_entity_decode((string) ($row['content'] ?? ''), ENT_QUOTES, 'UTF-8');
+            return $row;
+        }, SocialStore::summaries(20));
+
         return new WP_REST_Response([
             'success'   => true,
-            'summaries' => SocialStore::summaries(20),
+            'summaries' => $summaries,
         ], 200);
     }
 
