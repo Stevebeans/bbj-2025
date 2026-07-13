@@ -177,8 +177,7 @@ class SocialStore
             return;
         }
         if (as_next_scheduled_action(self::POLL_HOOK) === false) {
-            $interval = max(self::MIN_POLL_MINUTES, (int) $settings['poll_minutes']) * 60;
-            as_schedule_recurring_action(time() + $interval, $interval, self::POLL_HOOK, [], self::AS_GROUP);
+            self::scheduleRecurring($settings);
         }
     }
 
@@ -198,6 +197,12 @@ class SocialStore
         if (empty($settings['enabled']) || !function_exists('as_schedule_recurring_action')) {
             return;
         }
+        self::scheduleRecurring($settings);
+    }
+
+    /** Schedule the recurring poll action from the given settings' poll_minutes. */
+    private static function scheduleRecurring(array $settings): void
+    {
         $interval = max(self::MIN_POLL_MINUTES, (int) $settings['poll_minutes']) * 60;
         as_schedule_recurring_action(time() + $interval, $interval, self::POLL_HOOK, [], self::AS_GROUP);
     }
