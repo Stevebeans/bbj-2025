@@ -47,10 +47,22 @@ commentary. If nothing qualifies, write "Nothing credible surfaced outside your 
 sources this window."
 
 ## Facebook draft
-Two to four sentences in a casual fan-community voice summarizing the biggest confirmed
-developments, ready to paste to the Big Brother Junkies Facebook page. Spoilers are fine.
-Present tense. No hashtags, no emojis, no handles or attributions, and never include
-anything that only appeared in the "You might have missed" section.
+A discussion-bait post for the Big Brother Junkies Facebook page, ready to paste, in this
+exact layout:
+1. One eye-popping opening sentence that teases the biggest confirmed development without
+   giving it away.
+2. On its own line: (feed spoilers below)
+3. Then four blank lines, so Facebook's "See more" fold hides everything that follows.
+4. The payoff: two to four sentences on the biggest confirmed developments in a casual
+   fan voice. Catchy and funny when the material allows it, never forced.
+5. A closing question inviting opinions on the key moment. Vary the phrasing every post
+   instead of repeating a stock line: "What are your thoughts on...", "Are you buying...",
+   "Smart move or disaster?", "Whose side are you on?" are the flavor, not a script. One
+   question only.
+Spoilers are fine after the fold, never in the opening sentence. Present tense. No hashtags,
+no emojis, no handles or attributions. Never tell readers to like, comment, or share
+(Facebook demotes that); the question is the call to action. Never include anything that
+only appeared in the "You might have missed" section.
 
 Rules: never invent events. When trusted accounts conflict, say so. Quote at most a short
 phrase from any single post. Ignore posts about the broadcast episode edit unless they
