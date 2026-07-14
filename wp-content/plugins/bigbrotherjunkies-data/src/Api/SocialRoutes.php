@@ -10,6 +10,7 @@ use BigBrotherJunkies\Data\Social\QuoteStore;
 use BigBrotherJunkies\Data\Social\SocialStore;
 use BigBrotherJunkies\Data\Social\SummaryService;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
+use BigBrotherJunkies\Data\Utils\Revalidation;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -252,60 +253,60 @@ class SocialRoutes
     // Quotes (transcript, candidates, CRUD)
     // -----------------------------------------------------------------------
 
-    public function getTranscript(\WP_REST_Request $request): \WP_REST_Response
+    public function getTranscript(WP_REST_Request $request): WP_REST_Response
     {
         $date = (string) $request->get_param('date');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            return new \WP_REST_Response(['message' => 'Invalid date.'], 400);
+        if (!self::isValidDate($date)) {
+            return new WP_REST_Response(['message' => 'Invalid date.'], 400);
         }
         $bounds = QuoteLogic::houseDayBounds($date);
         $posts  = SocialStore::postsForDay($bounds['from'], $bounds['to']);
         foreach ($posts as &$p) {
             $p['text'] = html_entity_decode((string) $p['text'], ENT_QUOTES, 'UTF-8');
         }
-        return new \WP_REST_Response(['date' => $date, 'posts' => $posts], 200);
+        return new WP_REST_Response(['date' => $date, 'posts' => $posts], 200);
     }
 
-    public function getQuoteCandidates(\WP_REST_Request $request): \WP_REST_Response
+    public function getQuoteCandidates(WP_REST_Request $request): WP_REST_Response
     {
         $date = (string) $request->get_param('date');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            return new \WP_REST_Response(['message' => 'Invalid date.'], 400);
+        if (!self::isValidDate($date)) {
+            return new WP_REST_Response(['message' => 'Invalid date.'], 400);
         }
         $stored = QuoteService::storedCandidates($date);
-        return new \WP_REST_Response($stored ?? ['date' => $date, 'candidates' => null], 200);
+        return new WP_REST_Response($stored ?? ['date' => $date, 'candidates' => null], 200);
     }
 
-    public function generateQuoteCandidates(\WP_REST_Request $request): \WP_REST_Response
+    public function generateQuoteCandidates(WP_REST_Request $request): WP_REST_Response
     {
         $date = (string) $request->get_param('date');
-        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-            return new \WP_REST_Response(['message' => 'Invalid date.'], 400);
+        if (!self::isValidDate($date)) {
+            return new WP_REST_Response(['message' => 'Invalid date.'], 400);
         }
         $out = QuoteService::candidates($date);
-        return new \WP_REST_Response($out, empty($out['success']) ? 502 : 200);
+        return new WP_REST_Response($out, empty($out['success']) ? 502 : 200);
     }
 
-    public function getQuotes(\WP_REST_Request $request): \WP_REST_Response
+    public function getQuotes(WP_REST_Request $request): WP_REST_Response
     {
         $player = (int) $request->get_param('player');
         $season = (int) $request->get_param('season');
         if ($player > 0) {
-            return new \WP_REST_Response(['quotes' => QuoteStore::forPlayer($player)], 200);
+            return new WP_REST_Response(['quotes' => QuoteStore::forPlayer($player)], 200);
         }
         if ($season <= 0) {
             $season = (int) get_option('bbj_v2_current_season', 0);
         }
-        return new \WP_REST_Response(['quotes' => QuoteStore::forSeason($season)], 200);
+        return new WP_REST_Response(['quotes' => QuoteStore::forSeason($season)], 200);
     }
 
-    public function createQuote(\WP_REST_Request $request): \WP_REST_Response
+    public function createQuote(WP_REST_Request $request): WP_REST_Response
     {
         $quote = trim((string) $request->get_param('quote_text'));
         $saidOn = (string) $request->get_param('said_on');
         $season = (int) ($request->get_param('season_id') ?: get_option('bbj_v2_current_season', 0));
-        if ($quote === '' || $season <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $saidOn)) {
-            return new \WP_REST_Response(['message' => 'quote_text, valid said_on and a season are required.'], 400);
+        if ($quote === '' || $season <= 0 || !self::isValidDate($saidOn)) {
+            return new WP_REST_Response(['message' => 'quote_text, valid said_on and a season are required.'], 400);
         }
         $id = QuoteStore::insert([
             'season_id'    => $season,
@@ -316,21 +317,27 @@ class SocialRoutes
             'source_count' => (int) ($request->get_param('source_count') ?: 1),
         ]);
         if (!$id) {
-            return new \WP_REST_Response(['message' => 'Insert failed.'], 500);
+            return new WP_REST_Response(['message' => 'Insert failed.'], 500);
         }
         $this->purgeQuoteSurfaces($season, (int) $request->get_param('player_id'));
-        return new \WP_REST_Response(['success' => true, 'id' => $id], 200);
+        return new WP_REST_Response(['success' => true, 'id' => $id], 200);
     }
 
-    public function deleteQuote(\WP_REST_Request $request): \WP_REST_Response
+    public function deleteQuote(WP_REST_Request $request): WP_REST_Response
     {
         $row = QuoteStore::get((int) $request->get_param('id'));
         if (!$row) {
-            return new \WP_REST_Response(['message' => 'Not found.'], 404);
+            return new WP_REST_Response(['message' => 'Not found.'], 404);
         }
         QuoteStore::delete($row['id']);
         $this->purgeQuoteSurfaces($row['season_id'], (int) ($row['player_id'] ?? 0));
-        return new \WP_REST_Response(['success' => true], 200);
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    /** Shared YYYY-MM-DD guard for the transcript/candidates/quote-create routes. */
+    private static function isValidDate(string $date): bool
+    {
+        return (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $date);
     }
 
     /** Targeted purge: exactly the season page + (optionally) one player page. */
@@ -338,11 +345,11 @@ class SocialRoutes
     {
         $season = $seasonId > 0 ? get_post($seasonId) : null;
         if ($season) {
-            \BigBrotherJunkies\Data\Utils\Revalidation::revalidateSeason($season->post_name);
+            Revalidation::revalidateSeason($season->post_name);
         }
         $player = $playerId > 0 ? get_post($playerId) : null;
         if ($player) {
-            \BigBrotherJunkies\Data\Utils\Revalidation::revalidatePlayer($player->post_name);
+            Revalidation::revalidatePlayer($player->post_name);
         }
     }
 
