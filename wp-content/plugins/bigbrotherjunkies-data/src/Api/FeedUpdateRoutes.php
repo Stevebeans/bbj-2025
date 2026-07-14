@@ -4,6 +4,7 @@ namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
 use BigBrotherJunkies\Data\FeedUpdates\FeedUpdateCreator;
+use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 /**
@@ -500,6 +501,7 @@ class FeedUpdateRoutes
             'thumbnail' => get_the_post_thumbnail_url($post, 'medium_large') ?: null,
             'comment_count' => (int) get_comments_number($post),
             'recent_comments' => $formattedComments,
+            'thread' => LiveThreadState::threadSummaryForUpdate($post->ID),
             'mode' => get_post_meta($post->ID, '_feed_update_mode', true) ?: 'feed',
             'votes' => [
                 'total' => $totalVotes,

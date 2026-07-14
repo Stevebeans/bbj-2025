@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
+use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 
 /**
  * Home Page API Routes
@@ -385,6 +386,7 @@ class HomeRoutes
                 'thumbnail' => get_the_post_thumbnail_url($postId, 'medium_large') ?: null,
                 'comment_count' => (int) get_comments_number(),
                 'recent_comments' => $formattedComments,
+                'thread' => LiveThreadState::threadSummaryForUpdate($postId),
                 'mode' => get_post_meta($postId, '_feed_update_mode', true) ?: 'feed',
                 'votes' => [
                     'total' => $totalVotes,

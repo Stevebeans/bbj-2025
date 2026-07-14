@@ -151,6 +151,40 @@ class LiveThreadState
         Revalidation::revalidateTag("live-thread-{$targetId}");
     }
 
+    /** Request-lifetime cache: threadId => summary array|null. Not persisted (no transients). */
+    private static $threadSummaryCache = [];
+
+    /**
+     * Build the `thread` payload field for a feed-update post: the daily live
+     * thread it's attached to (via `_bbjd_thread_post_id` meta), or null when
+     * there is no meta, or the referenced post is missing/unpublished.
+     *
+     * Shared by FeedUpdateRoutes::formatFeedUpdate() and the HomeRoutes feed
+     * loop so both payload builders stay byte-identical for this field.
+     * Cached per-thread-id for the lifetime of the request only.
+     *
+     * @return array{id:int,slug:string,title:string,comment_count:int}|null
+     */
+    public static function threadSummaryForUpdate(int $updatePostId): ?array
+    {
+        $threadId = (int) get_post_meta($updatePostId, '_bbjd_thread_post_id', true);
+        if (!$threadId) {
+            return null;
+        }
+        if (!array_key_exists($threadId, self::$threadSummaryCache)) {
+            $thread = get_post($threadId);
+            self::$threadSummaryCache[$threadId] = ($thread && $thread->post_status === 'publish')
+                ? [
+                    'id'            => $threadId,
+                    'slug'          => $thread->post_name,
+                    'title'         => html_entity_decode(get_the_title($thread), ENT_QUOTES, 'UTF-8'),
+                    'comment_count' => (int) $thread->comment_count,
+                  ]
+                : null;
+        }
+        return self::$threadSummaryCache[$threadId];
+    }
+
     /**
      * Find which currently-live thread (if any) a feed-update at $updateTime
      * belongs to. Returns post ID or 0.
