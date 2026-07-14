@@ -9,6 +9,7 @@ class SocialSchema
 {
     public const TABLE_POSTS     = 'bbj_social_posts';
     public const TABLE_SUMMARIES = 'bbj_social_summaries';
+    public const TABLE_QUOTES    = 'bbj_player_quotes';
 
     public static function table(string $name): string
     {
@@ -27,6 +28,7 @@ class SocialSchema
         return [
             self::TABLE_POSTS     => self::posts(),
             self::TABLE_SUMMARIES => self::summaries(),
+            self::TABLE_QUOTES    => self::quotes(),
         ];
     }
 
@@ -67,6 +69,25 @@ class SocialSchema
             PRIMARY KEY (id),
             KEY idx_created (created_at),
             KEY idx_kind_created (kind, created_at)
+        ) " . self::charset() . ";";
+    }
+
+    /** Steve-approved houseguest quotes (candidates are never stored here). */
+    private static function quotes(): string
+    {
+        $t = self::table(self::TABLE_QUOTES);
+        return "CREATE TABLE {$t} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            season_id BIGINT(20) UNSIGNED NOT NULL,
+            player_id BIGINT(20) UNSIGNED NULL DEFAULT NULL,
+            quote_text TEXT NOT NULL,
+            context VARCHAR(255) NOT NULL DEFAULT '',
+            said_on DATE NOT NULL,
+            source_count INT NOT NULL DEFAULT 1,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY (id),
+            KEY idx_player (player_id),
+            KEY idx_season_day (season_id, said_on)
         ) " . self::charset() . ";";
     }
 }

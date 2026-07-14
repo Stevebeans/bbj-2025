@@ -19,7 +19,7 @@ class SocialStore
 {
     public const OPTION            = 'bbjd_social_monitor';
     public const DB_VERSION_OPTION = 'bbj_social_db_version';
-    public const DB_VERSION        = '1.1.0';
+    public const DB_VERSION        = '1.2.0';
 
     /** Action Scheduler recurring hook + group for the poller. */
     public const POLL_HOOK = 'bbjd_social_poll';
