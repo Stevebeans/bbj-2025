@@ -414,15 +414,15 @@ PROMPT;
     {
         $lines   = [];
         $lines[] = sprintf(
-            "Season: Big Brother 28. New reports from Steve's trusted feed watchers since the last check (%d posts, %s to %s UTC):",
+            "Season: Big Brother 28. New reports from Steve's trusted feed watchers since the last check (%d posts, %s to %s PT). Times on each report line are Pacific house time.",
             count($rows),
-            $from,
-            $to
+            BeanBotLogic::toHouseTime($from),
+            BeanBotLogic::toHouseTime($to)
         );
         $lines[] = '';
         foreach ($rows as $row) {
             $text    = html_entity_decode((string) $row['text'], ENT_QUOTES, 'UTF-8');
-            $lines[] = sprintf('[%s] %s', (string) $row['posted_at'], $text);
+            $lines[] = sprintf('[%s] %s', BeanBotLogic::toHouseTime((string) $row['posted_at']), $text);
         }
         return implode("\n", $lines);
     }

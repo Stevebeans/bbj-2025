@@ -73,4 +73,17 @@ class BeanBotLogicTest extends TestCase
         $this->assertFalse(BeanBotLogic::shouldSuppressQuiet(true, false));
         $this->assertFalse(BeanBotLogic::shouldSuppressQuiet(false, true));
     }
+
+    public function test_to_house_time_converts_utc_to_pacific_across_midnight(): void
+    {
+        // 02:23 UTC on Jul 14 is 19:23 PDT (UTC-7) on Jul 13 the day before:
+        // proves both the timezone shift and the date rollover across midnight.
+        $this->assertSame('Jul 13 7:23 PM', BeanBotLogic::toHouseTime('2026-07-14 02:23:00'));
+    }
+
+    public function test_to_house_time_passes_garbage_through_unchanged(): void
+    {
+        $this->assertSame('not a date', BeanBotLogic::toHouseTime('not a date'));
+        $this->assertSame('', BeanBotLogic::toHouseTime(''));
+    }
 }

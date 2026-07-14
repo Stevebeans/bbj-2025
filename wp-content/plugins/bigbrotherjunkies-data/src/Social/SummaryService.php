@@ -127,9 +127,9 @@ PROMPT;
 
         $lines   = [];
         $lines[] = sprintf(
-            'Season: Big Brother 28. Window: %s to %s (UTC). %d trusted posts from %d accounts, %d tag posts.',
-            (string) $window['from'],
-            (string) $window['to'],
+            'Season: Big Brother 28. Window: %s to %s PT. %d trusted posts from %d accounts, %d tag posts. Times on each report line are Pacific house time.',
+            BeanBotLogic::toHouseTime((string) $window['from']),
+            BeanBotLogic::toHouseTime((string) $window['to']),
             count($trusted),
             count($handles),
             count($tag)
@@ -165,6 +165,6 @@ PROMPT;
     private static function formatPostLine(array $post): string
     {
         $text = html_entity_decode((string) $post['text'], ENT_QUOTES, 'UTF-8');
-        return sprintf('[%s] @%s: %s', (string) $post['posted_at'], (string) $post['handle'], $text);
+        return sprintf('[%s] @%s: %s', BeanBotLogic::toHouseTime((string) $post['posted_at']), (string) $post['handle'], $text);
     }
 }

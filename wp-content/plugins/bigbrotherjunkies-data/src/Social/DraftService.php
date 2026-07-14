@@ -127,9 +127,9 @@ PROMPT;
     {
         $lines   = [];
         $lines[] = sprintf(
-            'Season: Big Brother 28. Window: %s to %s (UTC). %d trusted reports, %d public tag posts.',
-            (string) $bounds['from'],
-            (string) $bounds['to'],
+            'Season: Big Brother 28. Window: %s to %s PT. %d trusted reports, %d public tag posts. Times on each report line are Pacific house time.',
+            BeanBotLogic::toHouseTime((string) $bounds['from']),
+            BeanBotLogic::toHouseTime((string) $bounds['to']),
             count($trusted),
             count($tag)
         );
@@ -138,7 +138,7 @@ PROMPT;
         foreach (self::chronological($trusted) as $post) {
             $lines[] = sprintf(
                 '[%s] %s',
-                (string) $post['posted_at'],
+                BeanBotLogic::toHouseTime((string) $post['posted_at']),
                 html_entity_decode((string) $post['text'], ENT_QUOTES, 'UTF-8')
             );
         }
@@ -147,7 +147,7 @@ PROMPT;
         foreach (self::chronological($tag) as $post) {
             $lines[] = sprintf(
                 '[%s] @%s: %s',
-                (string) $post['posted_at'],
+                BeanBotLogic::toHouseTime((string) $post['posted_at']),
                 (string) $post['handle'],
                 html_entity_decode((string) $post['text'], ENT_QUOTES, 'UTF-8')
             );

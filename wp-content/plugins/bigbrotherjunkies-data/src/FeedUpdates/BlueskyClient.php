@@ -14,6 +14,9 @@ class BlueskyClient
     private const CHAR_LIMIT = 300;
     private const LINK_DISPLAY = 'bigbrotherjunkies.com';
 
+    /** Cache for the read access JWT (shared with BlueskyReader's authed search). */
+    public const TOKEN_TRANSIENT = 'bbjd_bsky_access_token';
+
     private string $handle;
     private string $appPassword;
     private ?string $accessToken = null;
@@ -116,6 +119,42 @@ class BlueskyClient
                 'error' => $e->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Obtain a read access JWT for authenticated GET calls (e.g. searchPosts),
+     * reusing the brand account's stored credentials. Cached in a transient for
+     * 30 minutes. Returns null when unconfigured or session creation fails, so
+     * callers can fall back to the public AppView. Never returns the password;
+     * the JWT is a short-lived access token, not the credential.
+     */
+    public function getAccessToken(): ?string
+    {
+        if (!$this->isConfigured()) {
+            return null;
+        }
+
+        $cached = get_transient(self::TOKEN_TRANSIENT);
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
+        }
+
+        try {
+            $response = $this->request('com.atproto.server.createSession', [
+                'identifier' => $this->handle,
+                'password'   => $this->appPassword,
+            ], false);
+        } catch (\Exception $e) {
+            return null;
+        }
+
+        $token = $response['accessJwt'] ?? null;
+        if (!is_string($token) || $token === '') {
+            return null;
+        }
+
+        set_transient(self::TOKEN_TRANSIENT, $token, 30 * MINUTE_IN_SECONDS);
+        return $token;
     }
 
     /**
