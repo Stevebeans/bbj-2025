@@ -181,7 +181,7 @@ class LiveThreadState
         }
         if (!array_key_exists($threadId, self::$threadSummaryCache)) {
             $thread = get_post($threadId);
-            self::$threadSummaryCache[$threadId] = ($thread && $thread->post_status === 'publish')
+            self::$threadSummaryCache[$threadId] = ($thread && $thread->post_status === 'publish' && $thread->comment_status === 'open')
                 ? [
                     'id'            => $threadId,
                     'slug'          => $thread->post_name,
