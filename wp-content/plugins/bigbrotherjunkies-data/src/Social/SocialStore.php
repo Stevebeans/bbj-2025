@@ -502,17 +502,23 @@ class SocialStore
      *
      * @return array<int,array{id:string,handle:string,text:string,posted_at:string}>
      */
-    public static function trustedPostsSince(int $afterId, int $limit = 200): array
+    public static function trustedPostsSince(int $afterId, ?string $sincePostedAt = null, int $limit = 200): array
     {
         global $wpdb;
         $table = SocialSchema::table(SocialSchema::TABLE_POSTS);
         $limit = max(1, min(500, $limit));
+        $where = "source = 'trusted' AND id > %d";
+        $args  = [$afterId];
+        if ($sincePostedAt !== null) {
+            $where .= ' AND posted_at >= %s';
+            $args[] = $sincePostedAt;
+        }
+        $args[] = $limit;
         return $wpdb->get_results($wpdb->prepare(
             "SELECT id, handle, text, posted_at FROM {$table}
-              WHERE source = 'trusted' AND id > %d
+              WHERE {$where}
               ORDER BY id ASC LIMIT %d",
-            $afterId,
-            $limit
+            ...$args
         ), ARRAY_A) ?: [];
     }
 

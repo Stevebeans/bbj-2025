@@ -84,6 +84,22 @@ class BeanBotLogic
     }
 
     /**
+     * Auto feed updates narrate the live feeds, so source reports older than
+     * this are stale no matter where the cursor sits (fresh install, cursor
+     * reset, bot re-enabled after a gap). Digests/drafts keep their own wider
+     * windows — this only bounds the every-cycle bot.
+     */
+    public const FRESH_HOURS = 3;
+
+    /** UTC 'Y-m-d H:i:s' cutoff: source posts older than this are ignored. */
+    public static function freshnessCutoff(\DateTimeImmutable $now): string
+    {
+        return $now->setTimezone(new \DateTimeZone('UTC'))
+            ->sub(new \DateInterval('PT' . self::FRESH_HOURS . 'H'))
+            ->format('Y-m-d H:i:s');
+    }
+
+    /**
      * Format a stored UTC timestamp ('Y-m-d H:i:s') as Pacific house time
      * ('M j g:i A', e.g. "Jul 13 7:23 PM"). Posts are stored in UTC but the
      * house (and Steve) run on America/Los_Angeles, so model-facing report

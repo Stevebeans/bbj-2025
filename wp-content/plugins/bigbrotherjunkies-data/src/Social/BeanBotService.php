@@ -271,8 +271,11 @@ PROMPT;
             return self::result('capped');
         }
 
-        // 2. Fetch trusted rows beyond the cursor.
-        $rows = SocialStore::trustedPostsSince((int) $settings['cursor_post_id']);
+        // 2. Fetch trusted rows beyond the cursor — but never older than the
+        // freshness window: the bot narrates the live feeds, so a cold cursor
+        // (fresh install/reset/re-enable after a gap) must not replay backlog.
+        $cutoff = BeanBotLogic::freshnessCutoff(new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
+        $rows   = SocialStore::trustedPostsSince((int) $settings['cursor_post_id'], $cutoff);
         if (empty($rows)) {
             return self::result('skipped', ['message' => 'No new trusted posts.']);
         }
