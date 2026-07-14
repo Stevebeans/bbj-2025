@@ -4,6 +4,9 @@ namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Social\BeanBotService;
 use BigBrotherJunkies\Data\Social\DraftService;
+use BigBrotherJunkies\Data\Social\QuoteLogic;
+use BigBrotherJunkies\Data\Social\QuoteService;
+use BigBrotherJunkies\Data\Social\QuoteStore;
 use BigBrotherJunkies\Data\Social\SocialStore;
 use BigBrotherJunkies\Data\Social\SummaryService;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
@@ -13,16 +16,23 @@ use WP_REST_Response;
 /**
  * REST routes for the Bluesky Feed-Intel monitor (admin-only).
  *
- *  - GET  /social/config     current settings (api key masked)
- *  - POST /social/config     save settings + reschedule the poller
- *  - POST /social/poll       run one poll now (manual refresh)
- *  - GET  /social/posts      paged collected posts
- *  - GET  /social/summaries  stored summaries/drafts (optional ?kind=)
- *  - POST /social/summarize  run the Claude summarizer over the unsummarized window
- *  - POST /social/draft      generate a facebook/blog draft over a time window
+ *  - GET  /social/config             current settings (api key masked)
+ *  - POST /social/config             save settings + reschedule the poller
+ *  - POST /social/poll               run one poll now (manual refresh)
+ *  - GET  /social/posts              paged collected posts
+ *  - GET  /social/summaries          stored summaries/drafts (optional ?kind=)
+ *  - POST /social/summarize          run the Claude summarizer over the unsummarized window
+ *  - GET  /social/transcript         a Pacific day's collected posts (entity-decoded)
+ *  - GET  /social/quotes/candidates  stored quote-candidate batch for a day, if any
+ *  - POST /social/quotes/candidates  generate live quote candidates for a day
+ *  - GET  /social/quotes             approved quotes for a season or player
+ *  - POST /social/quotes             approve/insert a quote
+ *  - DELETE /social/quotes/{id}      remove an approved quote
+ *  - POST /social/draft              generate a facebook/blog draft over a time window
  *
  * Every route is gated by PermissionChecker::userCan('social_monitor'). The
- * admin page is client-fetched; no Revalidation / cache-tag / CF-purge calls.
+ * admin page is client-fetched. Only the quote CRUD routes trigger a
+ * Revalidation purge, and only for the one season + one player affected.
  */
 class SocialRoutes
 {
@@ -89,6 +99,45 @@ class SocialRoutes
         register_rest_route(self::NAMESPACE, '/social/summarize', [
             'methods'             => 'POST',
             'callback'            => [$this, 'runSummarize'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/transcript', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'getTranscript'],
+            'permission_callback' => [$this, 'checkAccess'],
+            'args'                => [
+                'date' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+        register_rest_route(self::NAMESPACE, '/social/quotes/candidates', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'getQuoteCandidates'],
+                'permission_callback' => [$this, 'checkAccess'],
+                'args'                => ['date' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field']],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'generateQuoteCandidates'],
+                'permission_callback' => [$this, 'checkAccess'],
+            ],
+        ]);
+        register_rest_route(self::NAMESPACE, '/social/quotes', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'getQuotes'],
+                'permission_callback' => [$this, 'checkAccess'],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'createQuote'],
+                'permission_callback' => [$this, 'checkAccess'],
+            ],
+        ]);
+        register_rest_route(self::NAMESPACE, '/social/quotes/(?P<id>\d+)', [
+            'methods'             => 'DELETE',
+            'callback'            => [$this, 'deleteQuote'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
 
@@ -192,6 +241,104 @@ class SocialRoutes
         $result = DraftService::generate($kind, $window);
         $status = !empty($result['success']) ? 200 : 400;
         return new WP_REST_Response($result, $status);
+    }
+
+    // -----------------------------------------------------------------------
+    // Quotes (transcript, candidates, CRUD)
+    // -----------------------------------------------------------------------
+
+    public function getTranscript(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $date = (string) $request->get_param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return new \WP_REST_Response(['message' => 'Invalid date.'], 400);
+        }
+        $bounds = QuoteLogic::houseDayBounds($date);
+        $posts  = SocialStore::postsForDay($bounds['from'], $bounds['to']);
+        foreach ($posts as &$p) {
+            $p['text'] = html_entity_decode((string) $p['text'], ENT_QUOTES, 'UTF-8');
+        }
+        return new \WP_REST_Response(['date' => $date, 'posts' => $posts], 200);
+    }
+
+    public function getQuoteCandidates(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $date = (string) $request->get_param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return new \WP_REST_Response(['message' => 'Invalid date.'], 400);
+        }
+        $stored = QuoteService::storedCandidates($date);
+        return new \WP_REST_Response($stored ?? ['date' => $date, 'candidates' => null], 200);
+    }
+
+    public function generateQuoteCandidates(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $date = (string) $request->get_param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return new \WP_REST_Response(['message' => 'Invalid date.'], 400);
+        }
+        $out = QuoteService::candidates($date);
+        return new \WP_REST_Response($out, empty($out['success']) ? 502 : 200);
+    }
+
+    public function getQuotes(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $player = (int) $request->get_param('player');
+        $season = (int) $request->get_param('season');
+        if ($player > 0) {
+            return new \WP_REST_Response(['quotes' => QuoteStore::forPlayer($player)], 200);
+        }
+        if ($season <= 0) {
+            $season = (int) get_option('bbj_v2_current_season', 0);
+        }
+        return new \WP_REST_Response(['quotes' => QuoteStore::forSeason($season)], 200);
+    }
+
+    public function createQuote(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $quote = trim((string) $request->get_param('quote_text'));
+        $saidOn = (string) $request->get_param('said_on');
+        $season = (int) ($request->get_param('season_id') ?: get_option('bbj_v2_current_season', 0));
+        if ($quote === '' || $season <= 0 || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $saidOn)) {
+            return new \WP_REST_Response(['message' => 'quote_text, valid said_on and a season are required.'], 400);
+        }
+        $id = QuoteStore::insert([
+            'season_id'    => $season,
+            'player_id'    => (int) $request->get_param('player_id'),
+            'quote_text'   => $quote,
+            'context'      => (string) $request->get_param('context'),
+            'said_on'      => $saidOn,
+            'source_count' => (int) ($request->get_param('source_count') ?: 1),
+        ]);
+        if (!$id) {
+            return new \WP_REST_Response(['message' => 'Insert failed.'], 500);
+        }
+        $this->purgeQuoteSurfaces($season, (int) $request->get_param('player_id'));
+        return new \WP_REST_Response(['success' => true, 'id' => $id], 200);
+    }
+
+    public function deleteQuote(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $row = QuoteStore::get((int) $request->get_param('id'));
+        if (!$row) {
+            return new \WP_REST_Response(['message' => 'Not found.'], 404);
+        }
+        QuoteStore::delete($row['id']);
+        $this->purgeQuoteSurfaces($row['season_id'], (int) ($row['player_id'] ?? 0));
+        return new \WP_REST_Response(['success' => true], 200);
+    }
+
+    /** Targeted purge: exactly the season page + (optionally) one player page. */
+    private function purgeQuoteSurfaces(int $seasonId, int $playerId): void
+    {
+        $season = $seasonId > 0 ? get_post($seasonId) : null;
+        if ($season) {
+            \BigBrotherJunkies\Data\Utils\Revalidation::revalidateSeason($season->post_name);
+        }
+        $player = $playerId > 0 ? get_post($playerId) : null;
+        if ($player) {
+            \BigBrotherJunkies\Data\Utils\Revalidation::revalidatePlayer($player->post_name);
+        }
     }
 
     // -----------------------------------------------------------------------
