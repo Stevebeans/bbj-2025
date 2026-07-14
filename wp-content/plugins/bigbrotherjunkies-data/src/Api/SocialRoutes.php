@@ -172,6 +172,11 @@ class SocialRoutes
         return new WP_REST_Response([
             'success'  => true,
             'settings' => SocialStore::settingsForApi(),
+            'current_season' => (function () {
+                $id = (int) get_option('bbj_v2_current_season', 0);
+                $post = $id > 0 ? get_post($id) : null;
+                return $post ? ['id' => $id, 'slug' => $post->post_name] : null;
+            })(),
         ], 200);
     }
 
