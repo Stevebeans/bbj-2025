@@ -89,7 +89,7 @@ class BeanBotLogic
      * reset, bot re-enabled after a gap). Digests/drafts keep their own wider
      * windows — this only bounds the every-cycle bot.
      */
-    public const FRESH_HOURS = 3;
+    public const FRESH_HOURS = 1;
 
     /** UTC 'Y-m-d H:i:s' cutoff: source posts older than this are ignored. */
     public static function freshnessCutoff(\DateTimeImmutable $now): string

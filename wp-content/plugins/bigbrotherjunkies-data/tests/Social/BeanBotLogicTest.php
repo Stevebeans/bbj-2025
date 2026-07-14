@@ -67,13 +67,13 @@ class BeanBotLogicTest extends TestCase
         );
     }
 
-    public function test_freshness_cutoff_is_three_hours_back_in_utc(): void
+    public function test_freshness_cutoff_is_one_hour_back_in_utc(): void
     {
         $now = new \DateTimeImmutable('2026-07-14 20:00:00', new \DateTimeZone('UTC'));
-        $this->assertSame('2026-07-14 17:00:00', BeanBotLogic::freshnessCutoff($now));
-        // Non-UTC input converts: 1pm PDT = 20:00 UTC → cutoff 17:00 UTC
+        $this->assertSame('2026-07-14 19:00:00', BeanBotLogic::freshnessCutoff($now));
+        // Non-UTC input converts: 1pm PDT = 20:00 UTC → cutoff 19:00 UTC
         $pt = new \DateTimeImmutable('2026-07-14 13:00:00', new \DateTimeZone('America/Los_Angeles'));
-        $this->assertSame('2026-07-14 17:00:00', BeanBotLogic::freshnessCutoff($pt));
+        $this->assertSame('2026-07-14 19:00:00', BeanBotLogic::freshnessCutoff($pt));
     }
 
     public function test_quiet_suppression_only_when_both_brief(): void
