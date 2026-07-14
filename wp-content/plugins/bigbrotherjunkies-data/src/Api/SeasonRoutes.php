@@ -315,6 +315,7 @@ class SeasonRoutes
             'category_id' => $categoryId,
             'article_count' => $articleCount,
             'weeks' => \BigBrotherJunkies\Data\Weekly\WeeklyData::getSeasonWeeks((int) $post->ID),
+            'quote_board' => \BigBrotherJunkies\Data\Social\QuoteStore::forSeason((int) $post->ID),
         ], 200);
     }
 

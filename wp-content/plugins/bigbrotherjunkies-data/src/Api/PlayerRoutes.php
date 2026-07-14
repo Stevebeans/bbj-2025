@@ -276,6 +276,7 @@ class PlayerRoutes
                 'awards' => $awards,
                 'stats' => $careerStats,
                 'seasons' => $formattedSeasons,
+                'quotes' => \BigBrotherJunkies\Data\Social\QuoteStore::forPlayer((int) $post->ID),
             ],
             'related_posts' => $relatedPosts,
             'related_players' => $relatedPlayers,
