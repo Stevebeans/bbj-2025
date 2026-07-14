@@ -495,6 +495,22 @@ class SocialStore
         ];
     }
 
+    /** All posts (both sources) inside a UTC window, chronological. Transcript read. */
+    public static function postsForDay(string $fromUtc, string $toUtc, int $limit = 1000): array
+    {
+        global $wpdb;
+        $table = SocialSchema::table(SocialSchema::TABLE_POSTS);
+        $limit = max(1, min(2000, $limit));
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT id, source, handle, display_name, text, posted_at FROM {$table}
+              WHERE posted_at >= %s AND posted_at < %s
+              ORDER BY posted_at ASC, id ASC LIMIT %d",
+            $fromUtc,
+            $toUtc,
+            $limit
+        ), ARRAY_A) ?: [];
+    }
+
     /**
      * Trusted-source rows past a cursor id, oldest first, for the Bean Bot
      * cycle. Only id/handle/text/posted_at (text stays entity-encoded; the
