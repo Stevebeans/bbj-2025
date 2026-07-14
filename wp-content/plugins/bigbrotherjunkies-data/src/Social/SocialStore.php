@@ -557,7 +557,9 @@ class SocialStore
     /**
      * Store a generated summary or draft. Content is emoji-encoded
      * (utf8mb3-safe). `kind` defaults to 'digest' (the summarizer's row shape,
-     * kept byte-identical) but Task 3's DraftService passes 'facebook'/'blog'.
+     * kept byte-identical) but Task 3's DraftService passes 'facebook'/'blog',
+     * and QuoteService passes 'quote_cand' (shortened from "quote_candidates"
+     * to fit the kind column's VARCHAR(12); see QuoteService::KIND).
      *
      * @param array{kind?:string,window_from?:?string,window_to?:?string,model?:string,post_count?:int,trusted_count?:int,content?:string} $row
      * @return int inserted summary id
@@ -569,7 +571,7 @@ class SocialStore
         $now   = current_time('mysql', true);
 
         $kind = (string) ($row['kind'] ?? 'digest');
-        if (!in_array($kind, ['digest', 'facebook', 'blog'], true)) {
+        if (!in_array($kind, ['digest', 'facebook', 'blog', 'quote_cand'], true)) {
             $kind = 'digest';
         }
 

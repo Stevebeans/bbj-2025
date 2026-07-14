@@ -113,6 +113,8 @@ PROMPT;
             $summaryRow['content'] = html_entity_decode((string) $summaryRow['content'], ENT_QUOTES, 'UTF-8');
         }
 
+        QuoteService::storeDaily();
+
         return ['success' => true, 'summary' => $summaryRow];
     }
 
