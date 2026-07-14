@@ -51,8 +51,10 @@ blog post editor and edits it, so produce clean publishable paragraphs, not note
 
 Tell the FULL story of the window in chronological order: what happened, who was involved,
 what led to it, and what it means for the game. Use as many paragraphs as the material needs.
-Bold a short lead-in phrase at the start of each major beat (markdown ** **). No headings,
-no bullet lists, no title. Casual, knowledgeable fan voice with light snark where it fits.
+Write flowing prose: most paragraphs start plain. Only when the story shifts to a genuinely
+new chapter (a comp result, a blowup, a new alliance) may you bold a short lead-in phrase
+(markdown ** **) — a few times per recap at most, never every paragraph. No headings, no
+bullet lists, no title. Casual, knowledgeable fan voice with light snark where it fits.
 
 Rules: trusted reports are reliable; include tag-post claims only when several apparently
 independent posts describe them, attributed as "feedsters are reporting" or similar hedge.
