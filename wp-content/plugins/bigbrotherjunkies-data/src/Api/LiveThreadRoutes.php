@@ -154,13 +154,20 @@ class LiveThreadRoutes
 
         $start = (int) get_post_meta($threadId, LiveThreadState::META_LIVE_START, true);
         $end   = (int) get_post_meta($threadId, LiveThreadState::META_LIVE_END, true);
+        if ($start <= 0) {
+            // No stored window start (thread predates openThread stamping) —
+            // never fall back to 1970 (returns the full archive). Publish - 2h.
+            $start = (int) get_post_time('U', true, $thread) - 2 * HOUR_IN_SECONDS;
+        }
 
         // Bound the lower edge: never return updates before the thread opened.
         $effectiveSince = max($sinceTs, $start);
 
-        // date_query uses post_date_gmt and compares against UTC datetime strings.
+        // Compare against UTC — WP_Date_Query defaults to LOCAL post_date, which
+        // is 7h off (site gmt_offset -7); 'column' makes it truly post_date_gmt.
         // 'after' is exclusive (>) by default in WP_Date_Query.
         $dateQuery = [
+            'column'    => 'post_date_gmt',
             'after'     => gmdate('Y-m-d H:i:s', $effectiveSince),
             'inclusive' => false,  // strict >  (we want updates strictly after the client's last ts)
         ];
@@ -209,9 +216,16 @@ class LiveThreadRoutes
 
         $start = (int) get_post_meta($threadId, LiveThreadState::META_LIVE_START, true);
         $end   = (int) get_post_meta($threadId, LiveThreadState::META_LIVE_END, true);
+        if ($start <= 0) {
+            // No stored window start (thread predates openThread stamping) —
+            // never fall back to 1970 (returns the full archive). Publish - 2h.
+            $start = (int) get_post_time('U', true, $thread) - 2 * HOUR_IN_SECONDS;
+        }
 
-        // date_query uses post_date_gmt; 'inclusive' => true gives us >= $start.
+        // Compare against UTC — WP_Date_Query defaults to LOCAL post_date, which
+        // is 7h off (site gmt_offset -7); 'column' makes it truly post_date_gmt.
         $dateQuery = [
+            'column'    => 'post_date_gmt',
             'after'     => gmdate('Y-m-d H:i:s', max($start - 1, 0)), // subtract 1s so inclusive=true catches $start exactly
             'inclusive' => true,
         ];
@@ -280,13 +294,15 @@ class LiveThreadRoutes
                 'UTF-8'
             ),
             'raw_content'    => $update->post_content,
+            'content'        => apply_filters('the_content', $update->post_content),
             'permalink'      => get_permalink($update),
             'date'           => get_the_date('c', $update),
             'date_formatted' => get_the_date('M j, Y', $update),
             'time'           => get_the_time('g:i a', $update),
+            'time_unix'      => (int) get_post_time('U', true, $update),
             'modified'       => get_the_modified_date('c', $update),
             'time_ago'       => human_time_diff(get_the_modified_time('U', $update), current_time('timestamp')) . ' ago',
-            'thumbnail'      => get_the_post_thumbnail_url($update->ID, 'medium') ?: null,
+            'thumbnail'      => get_the_post_thumbnail_url($update->ID, 'medium_large') ?: null, // matches homepage cards — 'medium' (300px) upscaled blurry
             'comment_count'  => (int) get_comments_number($update),
             'mode'           => get_post_meta($update->ID, '_feed_update_mode', true) ?: 'feed',
             'votes'          => [

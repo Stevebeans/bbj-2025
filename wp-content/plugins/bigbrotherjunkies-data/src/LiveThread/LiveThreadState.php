@@ -102,6 +102,14 @@ class LiveThreadState
             update_post_meta($newPostId, self::META_LIVE_UPDATES, 1);
             delete_post_meta($newPostId, self::META_CLOSED_AT);
 
+            // Stamp the window start if the editor didn't set one. Without this
+            // the updates query falls back to 1970 and returns the full archive.
+            // 2h lookback captures updates posted shortly before go-live.
+            $existingStart = (int) get_post_meta($newPostId, self::META_LIVE_START, true);
+            if ($existingStart <= 0) {
+                update_post_meta($newPostId, self::META_LIVE_START, $now - 2 * HOUR_IN_SECONDS);
+            }
+
             update_option(self::OPTION_ACTIVE, $newPostId, false);
 
             $wpdb->query('COMMIT');
