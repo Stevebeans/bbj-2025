@@ -23,6 +23,22 @@ class AnthropicClient
             $model = 'claude-sonnet-5';
         }
 
+        $payload = [
+            'model'      => $model,
+            'max_tokens' => 8000,
+            'system'     => $system,
+            'messages'   => [['role' => 'user', 'content' => $userMessage]],
+        ];
+        // Sonnet 5 runs ADAPTIVE THINKING when `thinking` is omitted, and
+        // max_tokens caps thinking + text combined. On a heavy feed window the
+        // model can spend the whole budget thinking and return zero text blocks
+        // ("Empty response from model", 2026-07-14 digest failure). These are
+        // deterministic summarization calls — disable thinking so the budget is
+        // all text. Other allowed models run without thinking when omitted.
+        if ($model === 'claude-sonnet-5') {
+            $payload['thinking'] = ['type' => 'disabled'];
+        }
+
         $response = wp_remote_post(self::ENDPOINT, [
             'timeout' => 120,
             'headers' => [
@@ -30,12 +46,7 @@ class AnthropicClient
                 'anthropic-version' => '2023-06-01',
                 'content-type'      => 'application/json',
             ],
-            'body' => wp_json_encode([
-                'model'      => $model,
-                'max_tokens' => 4000,
-                'system'     => $system,
-                'messages'   => [['role' => 'user', 'content' => $userMessage]],
-            ]),
+            'body' => wp_json_encode($payload),
         ]);
 
         if (is_wp_error($response)) {
@@ -57,6 +68,9 @@ class AnthropicClient
             }
         }
         if ($text === '') {
+            if (($data['stop_reason'] ?? '') === 'max_tokens') {
+                return ['error' => 'Model hit the token limit before producing text — try a smaller window or retry.'];
+            }
             return ['error' => 'Empty response from model'];
         }
         return ['text' => $text];
