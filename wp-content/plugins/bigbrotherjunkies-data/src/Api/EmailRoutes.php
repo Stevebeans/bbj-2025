@@ -198,6 +198,13 @@ class EmailRoutes
             'callback' => [$this, 'getLists'],
             'permission_callback' => [$this, 'requireAdmin'],
         ]);
+
+        // Admin: list-hygiene flags for one list (the list-detail "problems" callout)
+        register_rest_route(self::NAMESPACE, '/email/lists/(?P<slug>[a-z0-9_-]+)/problems', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getListProblems'],
+            'permission_callback' => [$this, 'requireAdmin'],
+        ]);
     }
 
     /**
@@ -666,6 +673,94 @@ class EmailRoutes
         return new WP_REST_Response([
             'success' => true,
             'lists' => $lists,
+        ], 200);
+    }
+
+    /**
+     * List-hygiene flags for one list. Categories mirror the frontend
+     * ProblemCallout copy exactly:
+     *   hard_bounced  — ≥1 hard bounce on record
+     *   soft_bouncing — ≥3 soft bounces
+     *   never_opened  — ≥5 sends, zero opens
+     *   dormant       — opened in the past, nothing in the last 90 days
+     * Each subscriber lands in ONE category (first match, in that order) so
+     * summary counts and bulk-action id lists never overlap.
+     */
+    public function getListProblems(WP_REST_Request $request): WP_REST_Response
+    {
+        global $wpdb;
+
+        $slug = $request->get_param('slug');
+
+        $listTable = EmailSchema::table(EmailSchema::TABLE_LISTS);
+        $lsTable = EmailSchema::table(EmailSchema::TABLE_LIST_SUBSCRIBERS);
+        $subTable = EmailSchema::table(EmailSchema::TABLE_SUBSCRIBERS);
+        $sendsTable = EmailSchema::table(EmailSchema::TABLE_SENDS);
+
+        $list = $wpdb->get_row(
+            $wpdb->prepare("SELECT id, slug, name FROM {$listTable} WHERE slug = %s", $slug),
+            ARRAY_A
+        );
+        if (!$list) {
+            return new WP_REST_Response(['success' => false, 'message' => 'List not found'], 404);
+        }
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT s.id,
+                COUNT(e.id) AS sends,
+                SUM(CASE WHEN e.bounce_type = 'hard' THEN 1 ELSE 0 END) AS hard_bounces,
+                SUM(CASE WHEN e.bounce_type = 'soft' THEN 1 ELSE 0 END) AS soft_bounces,
+                SUM(CASE WHEN e.opened_at IS NOT NULL THEN 1 ELSE 0 END) AS opens,
+                MAX(e.opened_at) AS last_open
+             FROM {$subTable} s
+             INNER JOIN {$lsTable} ls ON ls.subscriber_id = s.id
+             LEFT JOIN {$sendsTable} e ON e.subscriber_id = s.id
+             WHERE ls.list_id = %d AND s.status = 'subscribed'
+             GROUP BY s.id",
+            (int) $list['id']
+        ), ARRAY_A);
+
+        $byCategory = [
+            'hard_bounced' => [],
+            'soft_bouncing' => [],
+            'never_opened' => [],
+            'dormant' => [],
+        ];
+        $dormantCutoff = strtotime('-90 days', current_time('timestamp'));
+
+        // Open-based flags are only meaningful if opens are being recorded AT
+        // ALL. With Resend open-tracking off, every reader looks "never opened"
+        // — flagging 95% of the list for unsubscribe. Guard against that.
+        $opensTracked = array_sum(array_map(fn($r) => (int) $r['opens'], $rows ?: [])) > 0;
+
+        foreach ($rows ?: [] as $row) {
+            $id = (int) $row['id'];
+            $sends = (int) $row['sends'];
+            $opens = (int) $row['opens'];
+            $lastOpen = $row['last_open'] ? strtotime($row['last_open']) : null;
+
+            if ((int) $row['hard_bounces'] >= 1) {
+                $byCategory['hard_bounced'][] = $id;
+            } elseif ((int) $row['soft_bounces'] >= 3) {
+                $byCategory['soft_bouncing'][] = $id;
+            } elseif ($opensTracked && $sends >= 5 && $opens === 0) {
+                $byCategory['never_opened'][] = $id;
+            } elseif ($opensTracked && $lastOpen !== null && $lastOpen < $dormantCutoff) {
+                $byCategory['dormant'][] = $id;
+            }
+        }
+
+        $summary = ['total_flagged' => 0];
+        foreach ($byCategory as $key => $ids) {
+            $summary[$key] = count($ids);
+            $summary['total_flagged'] += count($ids);
+        }
+
+        return new WP_REST_Response([
+            'success' => true,
+            'list' => ['slug' => $list['slug'], 'name' => $list['name']],
+            'summary' => $summary,
+            'by_category' => $byCategory,
         ], 200);
     }
 

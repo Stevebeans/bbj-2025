@@ -27,6 +27,17 @@ class AnalyticsRoutes
 {
     private const CACHE_TTL = 15 * MINUTE_IN_SECONDS;
 
+    /** Rank-tracker keyword list (admin-editable). GSC data is daily, so cache long. */
+    private const TRACKED_KEYWORDS_OPTION = 'bbjd_tracked_keywords';
+    private const RANK_CACHE_TTL = 6 * HOUR_IN_SECONDS;
+    private const DEFAULT_TRACKED_KEYWORDS = [
+        'big brother 28',
+        'big brother',
+        'big brother 28 spoilers',
+        'big brother spoilers',
+        'big brother live feeds',
+    ];
+
     public function register(): void
     {
         add_action('rest_api_init', [$this, 'registerRoutes']);
@@ -60,6 +71,26 @@ class AnalyticsRoutes
                 'args' => $dateArgs,
             ]);
         }
+
+        // Rank tracker: per-keyword daily position from Search Console
+        register_rest_route($namespace, '/admin/analytics/rank-tracker', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getRankTracker'],
+            'permission_callback' => [$this, 'checkAnalyticsAccess'],
+            'args' => $dateArgs,
+        ]);
+        register_rest_route($namespace, '/admin/analytics/tracked-keywords', [
+            [
+                'methods' => 'GET',
+                'callback' => [$this, 'getTrackedKeywords'],
+                'permission_callback' => [$this, 'checkAnalyticsAccess'],
+            ],
+            [
+                'methods' => 'POST',
+                'callback' => [$this, 'saveTrackedKeywords'],
+                'permission_callback' => [$this, 'checkAnalyticsAccess'],
+            ],
+        ]);
     }
 
     // ========================================
@@ -539,6 +570,160 @@ class AnalyticsRoutes
         }
 
         return $data['rows'] ?? [];
+    }
+
+    /**
+     * Rank tracker: daily average position per tracked keyword (Search Console).
+     * One GSC query per keyword, filtered to the exact query string. Heavily
+     * cached — GSC data only updates daily (and lags ~2 days).
+     */
+    public function getRankTracker(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $startDate = $request->get_param('start_date');
+        $endDate = $request->get_param('end_date');
+        $keywords = $this->trackedKeywords();
+
+        $cacheKey = 'bbjd_gsc_rank_' . md5($startDate . $endDate . implode('|', $keywords));
+        $cached = get_transient($cacheKey);
+        if ($cached !== false) {
+            return new \WP_REST_Response($cached, 200);
+        }
+
+        $accessToken = $this->getSearchConsoleToken();
+        if (is_wp_error($accessToken)) {
+            return new \WP_REST_Response(['error' => $accessToken->get_error_message()], 500);
+        }
+
+        $encodedSite = urlencode('sc-domain:bigbrotherjunkies.com');
+        $apiBase = "https://www.googleapis.com/webmasters/v3/sites/{$encodedSite}/searchAnalytics/query";
+
+        try {
+            $series = [];
+            foreach ($keywords as $keyword) {
+                $rows = $this->fetchKeywordTimeseries($apiBase, $accessToken, $startDate, $endDate, $keyword);
+                $points = [];
+                foreach ($rows as $row) {
+                    $points[] = [
+                        'date' => $row['keys'][0],
+                        'position' => round($row['position'], 1),
+                        'clicks' => (int) $row['clicks'],
+                        'impressions' => (int) $row['impressions'],
+                    ];
+                }
+                $series[] = [
+                    'keyword' => $keyword,
+                    'points' => $points,
+                    'summary' => $this->summarizeRankSeries($points),
+                ];
+            }
+
+            $data = ['series' => $series, 'keywords' => $keywords];
+            set_transient($cacheKey, $data, self::RANK_CACHE_TTL);
+            return new \WP_REST_Response($data, 200);
+        } catch (\Exception $e) {
+            return new \WP_REST_Response(['error' => $e->getMessage()], 500);
+        }
+    }
+
+    public function getTrackedKeywords(): \WP_REST_Response
+    {
+        return new \WP_REST_Response(['keywords' => $this->trackedKeywords()], 200);
+    }
+
+    public function saveTrackedKeywords(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $raw = $request->get_json_params()['keywords'] ?? [];
+        if (!is_array($raw)) {
+            $raw = [];
+        }
+        $keywords = [];
+        foreach ($raw as $kw) {
+            $kw = strtolower(trim(sanitize_text_field((string) $kw)));
+            if ($kw !== '' && !in_array($kw, $keywords, true)) {
+                $keywords[] = $kw;
+            }
+            if (count($keywords) >= 10) {
+                break; // one GSC call per keyword per range — keep it bounded
+            }
+        }
+        if (empty($keywords)) {
+            return new \WP_REST_Response(['success' => false, 'message' => 'Provide at least one keyword.'], 400);
+        }
+        update_option(self::TRACKED_KEYWORDS_OPTION, $keywords, false);
+        return new \WP_REST_Response(['success' => true, 'keywords' => $keywords], 200);
+    }
+
+    private function trackedKeywords(): array
+    {
+        $keywords = get_option(self::TRACKED_KEYWORDS_OPTION, self::DEFAULT_TRACKED_KEYWORDS);
+        return is_array($keywords) && !empty($keywords) ? $keywords : self::DEFAULT_TRACKED_KEYWORDS;
+    }
+
+    /**
+     * GSC daily timeseries for one exact query string.
+     */
+    private function fetchKeywordTimeseries(string $apiBase, string $accessToken, string $startDate, string $endDate, string $keyword): array
+    {
+        $response = wp_remote_post($apiBase, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $accessToken,
+                'Content-Type' => 'application/json',
+            ],
+            'body' => wp_json_encode([
+                'startDate' => $startDate,
+                'endDate' => $endDate,
+                'dimensions' => ['date'],
+                'dimensionFilterGroups' => [[
+                    'filters' => [[
+                        'dimension' => 'query',
+                        'operator' => 'equals',
+                        'expression' => $keyword,
+                    ]],
+                ]],
+                'rowLimit' => 500,
+                'searchType' => 'web',
+            ]),
+            'timeout' => 30,
+        ]);
+
+        if (is_wp_error($response)) {
+            throw new \Exception("rank query '{$keyword}' failed: " . $response->get_error_message());
+        }
+
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        $httpCode = wp_remote_retrieve_response_code($response);
+        if ($httpCode !== 200) {
+            $errMsg = $data['error']['message'] ?? "HTTP {$httpCode}";
+            throw new \Exception('Search Console API error: ' . $errMsg);
+        }
+
+        return $data['rows'] ?? [];
+    }
+
+    /**
+     * Latest position (3-day average — daily GSC positions are noisy) plus the
+     * change vs a week earlier. Negative delta = climbed (positions count down).
+     */
+    private function summarizeRankSeries(array $points): array
+    {
+        if (empty($points)) {
+            return ['position' => null, 'delta' => null, 'clicks' => 0, 'impressions' => 0];
+        }
+
+        $clicks = array_sum(array_column($points, 'clicks'));
+        $impressions = array_sum(array_column($points, 'impressions'));
+
+        $recent = array_slice($points, -3);
+        $latest = round(array_sum(array_column($recent, 'position')) / count($recent), 1);
+
+        $delta = null;
+        if (count($points) >= 10) {
+            $prior = array_slice($points, -10, 3);
+            $priorAvg = array_sum(array_column($prior, 'position')) / count($prior);
+            $delta = round($latest - $priorAvg, 1);
+        }
+
+        return ['position' => $latest, 'delta' => $delta, 'clicks' => $clicks, 'impressions' => $impressions];
     }
 
     // ========================================
