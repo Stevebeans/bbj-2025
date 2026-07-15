@@ -30,7 +30,10 @@ class FanVoteStore
     }
 
     /** Vote-weight multipliers by role slug; a user's weight = max across their roles. */
-    public const ROLE_WEIGHTS = ['full_bean' => 3.0, 'supporter' => 2.0, 'lifetime' => 2.0];
+    // Trimmed 7/15 from 3.0/2.0 — with ~12 weighted voters of 100 the old
+    // multipliers put ~22% of the vote in paying hands; verified the cut
+    // changes zero current standings before shipping.
+    public const ROLE_WEIGHTS = ['full_bean' => 2.0, 'supporter' => 1.5, 'lifetime' => 1.5];
 
     /** Tracker windows whose caches we invalidate after any write. */
     public const CACHE_DAYS = [7, 30, 120];
