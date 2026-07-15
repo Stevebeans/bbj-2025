@@ -14,6 +14,44 @@ class TranscriptLogic
     public const MAX_TIME_LEN    = 20;
     public const KINDS           = ['verbatim', 'paraphrase'];
 
+    /**
+     * Deterministic roster enforcement: the prompt asks the model to stick to
+     * the cast, but tag noise (podcasters, other shows) still leaks. Drop any
+     * line whose speaker isn't a roster name; clear (null) non-roster
+     * listeners. Names match on any name token or nickname — houseguests go
+     * by first OR last names on the feeds ("Devens", "Thog[martin]").
+     * Empty roster = passthrough.
+     *
+     * @param array<int,array<string,mixed>> $lines
+     * @param string[] $rosterNames full names and/or nicknames
+     */
+    public static function filterToRoster(array $lines, array $rosterNames): array
+    {
+        if (empty($rosterNames)) {
+            return $lines;
+        }
+        $allowed = [];
+        foreach ($rosterNames as $name) {
+            foreach (preg_split('/\s+/', trim((string) $name)) ?: [] as $token) {
+                if ($token !== '') {
+                    $allowed[mb_strtolower($token)] = true;
+                }
+            }
+        }
+
+        $out = [];
+        foreach ($lines as $line) {
+            if (!isset($allowed[mb_strtolower(trim((string) $line['speaker']))])) {
+                continue;
+            }
+            if ($line['to'] !== null && !isset($allowed[mb_strtolower(trim((string) $line['to']))])) {
+                $line['to'] = null;
+            }
+            $out[] = $line;
+        }
+        return $out;
+    }
+
     public static function parseLinesJson(string $raw): array
     {
         $trimmed = trim((string) preg_replace('/^```[a-z]*\s*|\s*```$/i', '', trim($raw)));

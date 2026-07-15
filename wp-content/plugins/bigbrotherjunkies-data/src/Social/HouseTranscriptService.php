@@ -90,6 +90,7 @@ PROMPT;
         if (isset($parsed['error'])) {
             return ['success' => false, 'message' => 'Model returned an unparseable transcript.'];
         }
+        $parsed['lines'] = TranscriptLogic::filterToRoster($parsed['lines'], $roster);
 
         SocialStore::insertSummary([
             'kind'        => self::KIND,

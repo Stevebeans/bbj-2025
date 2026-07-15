@@ -49,6 +49,29 @@ class TranscriptLogicTest extends TestCase
         $this->assertSame('ok', $out['lines'][0]['quote']);
     }
 
+    public function test_filter_to_roster_drops_phantom_speakers_and_clears_bad_listeners(): void
+    {
+        $lines = [
+            ['time' => '1', 'speaker' => 'Barrett', 'to' => 'Angela', 'quote' => 'a', 'kind' => 'verbatim', 'source' => 'x'],
+            ['time' => '2', 'speaker' => 'Devens', 'to' => 'Taran', 'quote' => 'b', 'kind' => 'verbatim', 'source' => 'x'],
+            ['time' => '3', 'speaker' => 'Maggie', 'to' => null, 'quote' => 'c', 'kind' => 'verbatim', 'source' => 'x'],
+            ['time' => '4', 'speaker' => 'haley', 'to' => 'Thogmartin', 'quote' => 'd', 'kind' => 'verbatim', 'source' => 'x'],
+        ];
+        $roster = ['Barrett Pfeiffer', 'Angela Devens', 'Haley Thogmartin'];
+        $out = TranscriptLogic::filterToRoster($lines, $roster);
+        $this->assertCount(3, $out); // Maggie dropped
+        $this->assertSame('Barrett', $out[0]['speaker']);
+        $this->assertSame('Angela', $out[0]['to']);
+        $this->assertNull($out[1]['to']); // Taran (podcaster) cleared, Devens (last name) kept
+        $this->assertSame('Thogmartin', $out[2]['to']); // last names count as roster names
+    }
+
+    public function test_filter_to_roster_passthrough_when_roster_empty(): void
+    {
+        $lines = [['time' => '1', 'speaker' => 'Anyone', 'to' => null, 'quote' => 'a', 'kind' => 'verbatim', 'source' => 'x']];
+        $this->assertSame($lines, TranscriptLogic::filterToRoster($lines, []));
+    }
+
     public function test_parse_rejects_garbage(): void
     {
         $this->assertArrayHasKey('error', TranscriptLogic::parseLinesJson('not json'));
