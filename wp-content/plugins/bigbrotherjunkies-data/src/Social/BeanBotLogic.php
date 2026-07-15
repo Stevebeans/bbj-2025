@@ -60,6 +60,9 @@ class BeanBotLogic
         $to = $now->setTimezone($utc);
 
         switch ($window) {
+            case '1h':
+                $from = $now->sub(new \DateInterval('PT1H'))->setTimezone($utc);
+                break;
             case '12h':
                 $from = $now->sub(new \DateInterval('PT12H'))->setTimezone($utc);
                 break;
