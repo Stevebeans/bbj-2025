@@ -263,7 +263,13 @@ class SocialRoutes
         $posts  = SocialStore::postsForDay($bounds['from'], $bounds['to']);
         foreach ($posts as &$p) {
             $p['text'] = html_entity_decode((string) $p['text'], ENT_QUOTES, 'UTF-8');
+            // display_name is wp_encode_emoji'd at rest too. Undecoded, an
+            // emoji-heavy name becomes one huge unbroken &#x...; entity string
+            // that blows the nowrap handle column out to ~900px and shoves the
+            // text column off-screen (Kali's zodiac garland, 2026-07-14).
+            $p['display_name'] = html_entity_decode((string) $p['display_name'], ENT_QUOTES, 'UTF-8');
         }
+        unset($p);
         return new WP_REST_Response(['date' => $date, 'posts' => $posts], 200);
     }
 
