@@ -32,13 +32,18 @@ Rules:
 No prose, no markdown fences.
 PROMPT;
 
+    /** Posts per Claude call: keeps each call's output well under max_tokens. */
+    private const CHUNK_POSTS = 600;
+
     /**
      * Generate for a Pacific day, persist (latest wins), return the lines.
-     * $roster (houseguest names, optional) pins speaker/listener attribution
-     * to the actual cast — without it, #bb28 tag noise (other shows, feedsters
-     * quoting themselves) leaks in as phantom speakers.
+     * Busy days exceed one call's budget in BOTH directions — 1000+ input
+     * posts and more dialogue than one 8K-token response holds — so the day
+     * is processed in chronological chunks and the lines concatenated.
+     * The roster is derived server-side (names + official nicknames) and
+     * enforced deterministically after parsing.
      */
-    public static function generate(string $ymd, array $roster = []): array
+    public static function generate(string $ymd): array
     {
         $settings = SocialStore::settings();
         $key      = (string) ($settings['anthropic_api_key'] ?? '');
@@ -47,50 +52,49 @@ PROMPT;
         }
 
         $bounds = QuoteLogic::houseDayBounds($ymd);
-        $rows   = SocialStore::postsForDay($bounds['from'], $bounds['to']);
+        $rows   = SocialStore::postsForDay($bounds['from'], $bounds['to'], 2000);
         if (empty($rows)) {
             return ['success' => false, 'message' => 'No collected posts for that day.'];
         }
 
-        $input = [];
-        foreach ($rows as $post) {
-            $input[] = sprintf(
-                '[%s] @%s: %s',
-                BeanBotLogic::toHouseTime((string) $post['posted_at']),
-                (string) $post['handle'],
-                html_entity_decode((string) $post['text'], ENT_QUOTES, 'UTF-8')
-            );
-        }
-
         $system = (string) apply_filters('bbjd_house_transcript_prompt', self::PROMPT);
-        $roster = array_values(array_filter(array_map(static function ($n) {
-            return trim((string) $n);
-        }, $roster)));
-        if (empty($roster)) {
-            $roster = self::currentSeasonRoster();
-        }
+        $roster = self::currentSeasonRoster();
         if (!empty($roster)) {
-            $system .= "\nThis season's houseguests: " . implode(', ', array_slice($roster, 0, 30))
-                . ". \"speaker\" MUST be one of them (first name); \"to\" must be one of them or"
+            $system .= "\nThis season's houseguests: " . implode(', ', array_slice($roster, 0, 40))
+                . ". \"speaker\" MUST be one of them; \"to\" must be one of them or"
                 . ' null. Skip lines spoken by anyone else (fans, production, other shows).';
         }
 
         $client = new AnthropicClient();
-        $resp   = $client->complete(
-            $system,
-            implode("\n", $input),
-            (string) $settings['model'],
-            $key
-        );
-        if (isset($resp['error'])) {
-            return ['success' => false, 'message' => (string) $resp['error']];
-        }
+        $lines  = [];
+        foreach (array_chunk($rows, self::CHUNK_POSTS) as $chunk) {
+            $input = [];
+            foreach ($chunk as $post) {
+                $input[] = sprintf(
+                    '[%s] @%s: %s',
+                    BeanBotLogic::toHouseTime((string) $post['posted_at']),
+                    (string) $post['handle'],
+                    html_entity_decode((string) $post['text'], ENT_QUOTES, 'UTF-8')
+                );
+            }
 
-        $parsed = TranscriptLogic::parseLinesJson((string) ($resp['text'] ?? ''));
-        if (isset($parsed['error'])) {
-            return ['success' => false, 'message' => 'Model returned an unparseable transcript.'];
+            $resp = $client->complete($system, implode("\n", $input), (string) $settings['model'], $key);
+            if (isset($resp['error'])) {
+                // Keep earlier chunks if a later one fails; fail only when empty-handed.
+                if (empty($lines)) {
+                    return ['success' => false, 'message' => (string) $resp['error']];
+                }
+                break;
+            }
+            $parsed = TranscriptLogic::parseLinesJson((string) ($resp['text'] ?? ''));
+            if (isset($parsed['error'])) {
+                if (empty($lines)) {
+                    return ['success' => false, 'message' => 'Model returned an unparseable transcript.'];
+                }
+                break;
+            }
+            $lines = array_merge($lines, TranscriptLogic::filterToRoster($parsed['lines'], $roster));
         }
-        $parsed['lines'] = TranscriptLogic::filterToRoster($parsed['lines'], $roster);
 
         SocialStore::insertSummary([
             'kind'        => self::KIND,
@@ -98,13 +102,17 @@ PROMPT;
             'window_to'   => $bounds['to'],
             'model'       => (string) $settings['model'],
             'post_count'  => count($rows),
-            'content'     => wp_json_encode($parsed['lines']),
+            'content'     => wp_json_encode($lines),
         ]);
 
-        return ['success' => true, 'date' => $ymd, 'lines' => $parsed['lines']];
+        return ['success' => true, 'date' => $ymd, 'lines' => $lines];
     }
 
-    /** Current season's houseguest names, server-side (no client round-trip). */
+    /**
+     * Current season's houseguest names + official nicknames, server-side.
+     * Nicknames matter: the house runs on them ("Lala" = LaTrice), and the
+     * roster filter would otherwise drop real dialogue as phantom speakers.
+     */
     public static function currentSeasonRoster(): array
     {
         if (!function_exists('bbj_v2_get_season_players')) {
@@ -120,6 +128,10 @@ PROMPT;
             $name = trim(trim((string) ($p['first_name'] ?? '')) . ' ' . trim((string) ($p['last_name'] ?? '')));
             if ($name !== '') {
                 $names[] = $name;
+            }
+            $nick = trim((string) ($p['official_nickname'] ?? ''));
+            if ($nick !== '' && mb_strlen($nick) >= 2) {
+                $names[] = $nick;
             }
         }
         return $names;

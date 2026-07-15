@@ -321,9 +321,7 @@ class SocialRoutes
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
             return new WP_REST_Response(['message' => 'Invalid date.'], 400);
         }
-        $roster = $request->get_param('roster');
-        $roster = is_array($roster) ? array_map('sanitize_text_field', $roster) : [];
-        $out    = HouseTranscriptService::generate($date, $roster);
+        $out = HouseTranscriptService::generate($date);
         return new WP_REST_Response($out, empty($out['success']) ? 502 : 200);
     }
 
