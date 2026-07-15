@@ -571,7 +571,7 @@ class SocialStore
         $now   = current_time('mysql', true);
 
         $kind = (string) ($row['kind'] ?? 'digest');
-        if (!in_array($kind, ['digest', 'facebook', 'blog', 'quote_cand'], true)) {
+        if (!in_array($kind, ['digest', 'facebook', 'blog', 'quote_cand', 'house_tx'], true)) {
             $kind = 'digest';
         }
 

@@ -4,6 +4,7 @@ namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Social\BeanBotService;
 use BigBrotherJunkies\Data\Social\DraftService;
+use BigBrotherJunkies\Data\Social\HouseTranscriptService;
 use BigBrotherJunkies\Data\Social\QuoteLogic;
 use BigBrotherJunkies\Data\Social\QuoteService;
 use BigBrotherJunkies\Data\Social\QuoteStore;
@@ -109,6 +110,19 @@ class SocialRoutes
             'permission_callback' => [$this, 'checkAccess'],
             'args'                => [
                 'date' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field'],
+            ],
+        ]);
+        register_rest_route(self::NAMESPACE, '/social/house-transcript', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'getHouseTranscript'],
+                'permission_callback' => [$this, 'checkAccess'],
+                'args'                => ['date' => ['type' => 'string', 'required' => true, 'sanitize_callback' => 'sanitize_text_field']],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'generateHouseTranscript'],
+                'permission_callback' => [$this, 'checkAccess'],
             ],
         ]);
         register_rest_route(self::NAMESPACE, '/social/quotes/candidates', [
@@ -271,6 +285,26 @@ class SocialRoutes
         }
         unset($p);
         return new WP_REST_Response(['date' => $date, 'posts' => $posts], 200);
+    }
+
+    public function getHouseTranscript(WP_REST_Request $request): WP_REST_Response
+    {
+        $date = (string) $request->get_param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return new WP_REST_Response(['message' => 'Invalid date.'], 400);
+        }
+        $stored = HouseTranscriptService::storedForDay($date);
+        return new WP_REST_Response($stored ?? ['date' => $date, 'lines' => null], 200);
+    }
+
+    public function generateHouseTranscript(WP_REST_Request $request): WP_REST_Response
+    {
+        $date = (string) $request->get_param('date');
+        if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+            return new WP_REST_Response(['message' => 'Invalid date.'], 400);
+        }
+        $out = HouseTranscriptService::generate($date);
+        return new WP_REST_Response($out, empty($out['success']) ? 502 : 200);
     }
 
     public function getQuoteCandidates(WP_REST_Request $request): WP_REST_Response
