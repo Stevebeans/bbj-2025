@@ -27,8 +27,9 @@ Rules:
   Missing lines are fine; invented lines are not.
 - "to" = the named listener, or null. "time" = the report's house time (as given).
   "source" = the reporting account's handle. speaker/to are first names only.
-- Order lines chronologically. If the day is long, keep the ~200 clearest, most
-  game-relevant or entertaining lines. If nothing qualifies, return {"lines":[]}.
+- Order lines chronologically. Return AT MOST 120 lines per response — when there is
+  more, keep the clearest, most game-relevant or entertaining lines spread across the
+  whole window. If nothing qualifies, return {"lines":[]}.
 No prose, no markdown fences.
 PROMPT;
 
@@ -65,9 +66,21 @@ PROMPT;
                 . ' null. Skip lines spoken by anyone else (fans, production, other shows).';
         }
 
-        $client = new AnthropicClient();
-        $lines  = [];
-        foreach (array_chunk($rows, self::CHUNK_POSTS) as $chunk) {
+        $client   = new AnthropicClient();
+        $lines    = [];
+        $started  = time();
+        $chunks   = array_chunk($rows, self::CHUNK_POSTS);
+        foreach ($chunks as $i => $chunk) {
+            // Rapid sequential 60K-token calls trip the API's per-minute token
+            // throttle; space the chunks and retry a failed one once.
+            if ($i > 0) {
+                sleep(5);
+            }
+            if (time() - $started > 240) {
+                error_log('[bbjd house_tx] wall-clock guard hit at chunk ' . $i . '/' . count($chunks));
+                break;
+            }
+
             $input = [];
             foreach ($chunk as $post) {
                 $input[] = sprintf(
@@ -77,23 +90,34 @@ PROMPT;
                     html_entity_decode((string) $post['text'], ENT_QUOTES, 'UTF-8')
                 );
             }
+            $userMessage = implode("\n", $input);
 
-            $resp = $client->complete($system, implode("\n", $input), (string) $settings['model'], $key);
-            if (isset($resp['error'])) {
-                // Keep earlier chunks if a later one fails; fail only when empty-handed.
-                if (empty($lines)) {
-                    return ['success' => false, 'message' => (string) $resp['error']];
+            $chunkLines = null;
+            for ($attempt = 0; $attempt < 2 && $chunkLines === null; $attempt++) {
+                if ($attempt > 0) {
+                    sleep(20); // give the rate-limit window room before the retry
                 }
-                break;
-            }
-            $parsed = TranscriptLogic::parseLinesJson((string) ($resp['text'] ?? ''));
-            if (isset($parsed['error'])) {
-                if (empty($lines)) {
-                    return ['success' => false, 'message' => 'Model returned an unparseable transcript.'];
+                $resp = $client->complete($system, $userMessage, (string) $settings['model'], $key);
+                if (isset($resp['error'])) {
+                    error_log('[bbjd house_tx] chunk ' . $i . ' attempt ' . $attempt . ': ' . $resp['error']);
+                    continue;
                 }
-                break;
+                $parsed = TranscriptLogic::parseLinesJson((string) ($resp['text'] ?? ''));
+                if (isset($parsed['error'])) {
+                    error_log('[bbjd house_tx] chunk ' . $i . ' attempt ' . $attempt . ': unparseable');
+                    continue;
+                }
+                $chunkLines = $parsed['lines'];
             }
-            $lines = array_merge($lines, TranscriptLogic::filterToRoster($parsed['lines'], $roster));
+
+            if ($chunkLines !== null) {
+                $lines = array_merge($lines, TranscriptLogic::filterToRoster($chunkLines, $roster));
+            }
+            // A twice-failed chunk is skipped; later chunks still run.
+        }
+
+        if (empty($lines)) {
+            return ['success' => false, 'message' => 'Transcript generation failed for every chunk — try again.'];
         }
 
         SocialStore::insertSummary([
