@@ -285,6 +285,7 @@ class FeedUpdateRoutes
             ], 404);
         }
 
+        $slug = $post->post_name;
         $result = wp_delete_post($id, true);
         if (!$result) {
             return new \WP_REST_Response([
@@ -294,6 +295,12 @@ class FeedUpdateRoutes
         }
 
         do_action('breeze_clear_all_cache');
+
+        // wp_delete_post never fires transition_post_status, so the publish-time
+        // revalidation hook (Plugin.php) doesn't run — without this the deleted
+        // update lingers on the cached homepage/hub until the next publish.
+        delete_transient(HomeRoutes::RECENT_TRANSIENT);
+        \BigBrotherJunkies\Data\Utils\Revalidation::revalidateFeedUpdate($slug);
 
         return new \WP_REST_Response(null, 204);
     }

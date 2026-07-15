@@ -327,6 +327,8 @@ class HomeRoutes
         $ratingsTable = $wpdb->prefix . 'bbj_feed_ratings';
         $currentUserId = get_current_user_id();
 
+        $includeRaw = \BigBrotherJunkies\Data\Permissions\PermissionChecker::userCan('feed_updates');
+
         while ($query->have_posts()) {
             $query->the_post();
             $postId = get_the_ID();
@@ -369,7 +371,7 @@ class HomeRoutes
                 ];
             }, $recentComments);
 
-            $updates[] = [
+            $update = [
                 'id' => $postId,
                 'slug' => get_post_field('post_name', $postId),
                 'title' => html_entity_decode(get_the_title(), ENT_QUOTES, 'UTF-8'),
@@ -398,6 +400,15 @@ class HomeRoutes
                     'avatar' => AvatarUploader::getAvatarUrl($authorId, 64),
                 ],
             ];
+
+            // Unfiltered post_content for the admin editor — only exposed to
+            // users who can edit feed updates (anonymous/public gets no field,
+            // so cached public payloads are unchanged).
+            if ($includeRaw) {
+                $update['raw_content'] = get_post_field('post_content', $postId);
+            }
+
+            $updates[] = $update;
         }
 
         wp_reset_postdata();
