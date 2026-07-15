@@ -32,8 +32,13 @@ Rules:
 No prose, no markdown fences.
 PROMPT;
 
-    /** Generate for a Pacific day, persist (latest wins), return the lines. */
-    public static function generate(string $ymd): array
+    /**
+     * Generate for a Pacific day, persist (latest wins), return the lines.
+     * $roster (houseguest names, optional) pins speaker/listener attribution
+     * to the actual cast — without it, #bb28 tag noise (other shows, feedsters
+     * quoting themselves) leaks in as phantom speakers.
+     */
+    public static function generate(string $ymd, array $roster = []): array
     {
         $settings = SocialStore::settings();
         $key      = (string) ($settings['anthropic_api_key'] ?? '');
@@ -57,9 +62,19 @@ PROMPT;
             );
         }
 
+        $system = (string) apply_filters('bbjd_house_transcript_prompt', self::PROMPT);
+        $roster = array_values(array_filter(array_map(static function ($n) {
+            return trim((string) $n);
+        }, $roster)));
+        if (!empty($roster)) {
+            $system .= "\nThis season's houseguests: " . implode(', ', array_slice($roster, 0, 30))
+                . ". \"speaker\" MUST be one of them (first name); \"to\" must be one of them or"
+                . ' null. Skip lines spoken by anyone else (fans, production, other shows).';
+        }
+
         $client = new AnthropicClient();
         $resp   = $client->complete(
-            (string) apply_filters('bbjd_house_transcript_prompt', self::PROMPT),
+            $system,
             implode("\n", $input),
             (string) $settings['model'],
             $key
