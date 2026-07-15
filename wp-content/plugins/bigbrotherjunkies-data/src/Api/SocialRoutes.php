@@ -190,7 +190,22 @@ class SocialRoutes
             'current_season' => (function () {
                 $id = (int) get_option('bbj_v2_current_season', 0);
                 $post = $id > 0 ? get_post($id) : null;
-                return $post ? ['id' => $id, 'slug' => $post->post_name] : null;
+                if (!$post) {
+                    return null;
+                }
+                // Roster rides the config so the admin card never needs the
+                // public season endpoint (CORS-blocked for browser fetches).
+                $players = [];
+                if (function_exists('bbj_v2_get_season_players')) {
+                    foreach ((array) bbj_v2_get_season_players($id, 'thumbnail') as $p) {
+                        $players[] = [
+                            'id'       => (int) ($p['id'] ?? 0),
+                            'name'     => (string) ($p['name'] ?? $p['title'] ?? ''),
+                            'nickname' => (string) ($p['nickname'] ?? $p['official_nickname'] ?? ''),
+                        ];
+                    }
+                }
+                return ['id' => $id, 'slug' => $post->post_name, 'players' => $players];
             })(),
         ], 200);
     }

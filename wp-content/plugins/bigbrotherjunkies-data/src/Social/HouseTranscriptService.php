@@ -66,6 +66,9 @@ PROMPT;
         $roster = array_values(array_filter(array_map(static function ($n) {
             return trim((string) $n);
         }, $roster)));
+        if (empty($roster)) {
+            $roster = self::currentSeasonRoster();
+        }
         if (!empty($roster)) {
             $system .= "\nThis season's houseguests: " . implode(', ', array_slice($roster, 0, 30))
                 . ". \"speaker\" MUST be one of them (first name); \"to\" must be one of them or"
@@ -98,6 +101,26 @@ PROMPT;
         ]);
 
         return ['success' => true, 'date' => $ymd, 'lines' => $parsed['lines']];
+    }
+
+    /** Current season's houseguest names, server-side (no client round-trip). */
+    public static function currentSeasonRoster(): array
+    {
+        if (!function_exists('bbj_v2_get_season_players')) {
+            return [];
+        }
+        $seasonId = (int) get_option('bbj_v2_current_season', 0);
+        if ($seasonId <= 0) {
+            return [];
+        }
+        $names = [];
+        foreach ((array) bbj_v2_get_season_players($seasonId, 'thumbnail') as $p) {
+            $name = trim((string) ($p['name'] ?? $p['title'] ?? ''));
+            if ($name !== '') {
+                $names[] = $name;
+            }
+        }
+        return $names;
     }
 
     /** Latest stored transcript covering the given Pacific day, else null. */
