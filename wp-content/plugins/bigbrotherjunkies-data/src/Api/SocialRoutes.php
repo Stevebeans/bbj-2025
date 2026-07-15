@@ -199,9 +199,11 @@ class SocialRoutes
                 if (function_exists('bbj_v2_get_season_players')) {
                     foreach ((array) bbj_v2_get_season_players($id, 'thumbnail') as $p) {
                         $players[] = [
-                            'id'       => (int) ($p['id'] ?? 0),
-                            'name'     => (string) ($p['name'] ?? $p['title'] ?? ''),
-                            'nickname' => (string) ($p['nickname'] ?? $p['official_nickname'] ?? ''),
+                            // The quote flow keys players by WP POST id (QuoteStore
+                            // player_id + payload embeds), not the bbj_players row id.
+                            'id'       => (int) ($p['post_id'] ?? 0),
+                            'name'     => trim(trim((string) ($p['first_name'] ?? '')) . ' ' . trim((string) ($p['last_name'] ?? ''))),
+                            'nickname' => (string) ($p['official_nickname'] ?? ''),
                         ];
                     }
                 }

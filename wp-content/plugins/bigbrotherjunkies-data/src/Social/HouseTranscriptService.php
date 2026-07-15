@@ -115,7 +115,8 @@ PROMPT;
         }
         $names = [];
         foreach ((array) bbj_v2_get_season_players($seasonId, 'thumbnail') as $p) {
-            $name = trim((string) ($p['name'] ?? $p['title'] ?? ''));
+            // Rows come from wp_bbj_players: first_name / last_name / official_nickname.
+            $name = trim(trim((string) ($p['first_name'] ?? '')) . ' ' . trim((string) ($p['last_name'] ?? '')));
             if ($name !== '') {
                 $names[] = $name;
             }
