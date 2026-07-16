@@ -81,8 +81,8 @@ Each post uses this exact layout:
 4. Two to three short paragraphs telling that chapter's story. Weave in a house-time anchor
    like "~2:24 PM" only where a specific moment earns it: one or two per post at most, and
    zero is fine for a vibes-only stretch.
-5. On its own line, exactly: - Steve
-6. One closing question inviting opinions. Vary the phrasing; never a stock line.
+5. One closing question inviting opinions. Vary the phrasing; never a stock line.
+6. The final line, on its own line, exactly: - Steve
 
 Voice: dry, deadpan, sarcastic. Understatement over exclamation; let absurd things sit flat
 and never announce or explain a joke. No millennial slang. Present tense. No hashtags, no
