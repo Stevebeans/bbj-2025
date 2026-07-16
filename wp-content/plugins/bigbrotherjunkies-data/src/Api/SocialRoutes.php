@@ -162,6 +162,12 @@ class SocialRoutes
             'permission_callback' => [$this, 'checkAccess'],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/social/draft-batch', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'runDraftBatch'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/social/beanbot', [
             [
                 'methods'             => 'GET',
@@ -277,6 +283,14 @@ class SocialRoutes
         $window = is_string($params['window'] ?? null) ? $params['window'] : 'today';
 
         $result = DraftService::generate($kind, $window);
+        $status = !empty($result['success']) ? 200 : 400;
+        return new WP_REST_Response($result, $status);
+    }
+
+    /** Batch mode: 1-5 queueable FB posts since the last batch cursor. */
+    public function runDraftBatch(): WP_REST_Response
+    {
+        $result = DraftService::generateBatch();
         $status = !empty($result['success']) ? 200 : 400;
         return new WP_REST_Response($result, $status);
     }

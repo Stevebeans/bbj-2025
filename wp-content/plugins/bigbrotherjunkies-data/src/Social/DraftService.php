@@ -62,6 +62,102 @@ When reports conflict, say so. Never invent events, dialogue, or motives. No han
 em-dashes. Quote at most a short phrase from any single report. Respond with the recap only.
 PROMPT;
 
+    /** Where the last batch's coverage ended (UTC 'Y-m-d H:i:s'). */
+    public const BATCH_CURSOR_OPTION = 'bbjd_fb_draft_cursor';
+
+    public const BATCH_PROMPT = <<<'PROMPT'
+You write Facebook posts for the Big Brother Junkies Facebook page. Steve pastes each post
+into Facebook's scheduler manually.
+
+You receive every feed report since the last batch. Split the period into 1 to 5 posts: one
+post per coherent chapter of house events, roughly one per 1-2 hours of real activity. Quiet
+stretches fold into a neighboring post. Never pad: if the whole period is one story, return
+one post.
+
+Each post uses this exact layout:
+1. One dry opening sentence teasing that chapter's biggest development without giving it away.
+2. On its own line: (feed spoilers below)
+3. Then four blank lines, so Facebook's "See more" fold hides everything that follows.
+4. Two to three short paragraphs telling that chapter's story. Weave in a house-time anchor
+   like "~2:24 PM" only where a specific moment earns it: one or two per post at most, and
+   zero is fine for a vibes-only stretch.
+5. One closing question inviting opinions. Vary the phrasing; never a stock line.
+
+Voice: dry, deadpan, sarcastic. Understatement over exclamation; let absurd things sit flat
+and never announce or explain a joke. No millennial slang. Present tense. No hashtags, no
+emojis, no handles, no em-dashes. Never tell readers to like, comment, or share. Never invent
+events. Trusted reports are reliable; include a tag-post claim only when several apparently
+independent posts describe it, hedged as "feedsters are reporting".
+
+Respond with ONLY this JSON (no other text):
+{"posts":[{"covers":"~12:30-2:45 PM","text":"<full post text with real newlines>"}]}
+Posts in chronological order. "covers" is the house-time range the post spans.
+PROMPT;
+
+    /**
+     * Batch mode: everything since the last batch cursor, split by the model
+     * into 1-5 queueable FB posts. Each post is stored as its own 'facebook'
+     * summary row (so History shows them); the cursor advances only on success.
+     *
+     * @return array{success:true,posts:list<array<string,mixed>>,window:array{from:string,to:string}}|array{success:false,message:string}
+     */
+    public static function generateBatch(): array
+    {
+        $cursor = (string) get_option(self::BATCH_CURSOR_OPTION, '');
+        $bounds = DraftBatchLogic::windowFor($cursor, new \DateTimeImmutable('now', new \DateTimeZone('UTC')));
+
+        $posts   = SocialStore::postsInWindow($bounds['from'], $bounds['to']);
+        $trusted = $posts['trusted'];
+        $tag     = $posts['tag'];
+
+        if (empty($trusted)) {
+            return [
+                'success' => false,
+                'message' => 'No trusted reports since ' . BeanBotLogic::toHouseTime($bounds['from']) . ' PT.',
+            ];
+        }
+
+        $settings = SocialStore::settings();
+        $client   = new AnthropicClient();
+        $result   = $client->complete(
+            (string) apply_filters('bbjd_fb_batch_prompt', self::BATCH_PROMPT),
+            self::buildUserMessage($bounds, $trusted, $tag),
+            (string) $settings['model'],
+            (string) $settings['anthropic_api_key']
+        );
+
+        if (isset($result['error'])) {
+            return ['success' => false, 'message' => (string) $result['error']];
+        }
+
+        $parsed = DraftBatchLogic::parseModelJson((string) $result['text']);
+        if (isset($parsed['error'])) {
+            return ['success' => false, 'message' => 'Model returned unusable output: ' . $parsed['error']];
+        }
+
+        $out = [];
+        foreach ($parsed['posts'] as $post) {
+            $id = SocialStore::insertSummary([
+                'kind'          => 'facebook',
+                'window_from'   => $bounds['from'],
+                'window_to'     => $bounds['to'],
+                'model'         => (string) $settings['model'],
+                'post_count'    => count($trusted) + count($tag),
+                'trusted_count' => count($trusted),
+                'content'       => $post['text'],
+            ]);
+            $out[] = [
+                'id'      => $id,
+                'covers'  => $post['covers'],
+                'content' => $post['text'],
+            ];
+        }
+
+        update_option(self::BATCH_CURSOR_OPTION, $bounds['to'], false);
+
+        return ['success' => true, 'posts' => $out, 'window' => $bounds];
+    }
+
     /**
      * @return array{success:true,draft:?array<string,mixed>}|array{success:false,message:string}
      */
