@@ -62,4 +62,40 @@ class DraftBatchLogicTest extends TestCase
         $this->assertArrayHasKey('error', DraftBatchLogic::parseModelJson('{"posts":[]}'));
         $this->assertArrayHasKey('error', DraftBatchLogic::parseModelJson('{"posts":[{"text":""}]}'));
     }
+
+    public function test_parse_repairs_literal_newlines_in_text(): void
+    {
+        // The real failure: the model emits a raw newline (the FB fold) inside
+        // the JSON string, which strict json_decode rejects. It must be salvaged.
+        $raw = "{\"posts\":[{\"covers\":\"~2 PM\",\"text\":\"Opening line.\n\n\n\nThe payoff paragraph.\"}]}";
+        $out = DraftBatchLogic::parseModelJson($raw);
+        $this->assertArrayNotHasKey('error', $out, 'literal newlines should be repaired, not rejected');
+        $this->assertCount(1, $out['posts']);
+        $this->assertStringContainsString('The payoff paragraph.', $out['posts'][0]['text']);
+        $this->assertStringContainsString("\n", $out['posts'][0]['text'], 'newlines preserved in the decoded text');
+    }
+
+    public function test_parse_strips_prose_around_json(): void
+    {
+        $raw = "Sure! Here are the posts:\n{\"posts\":[{\"covers\":\"h\",\"text\":\"Body.\"}]}\nHope that helps.";
+        $out = DraftBatchLogic::parseModelJson($raw);
+        $this->assertArrayNotHasKey('error', $out);
+        $this->assertSame('Body.', $out['posts'][0]['text']);
+    }
+
+    public function test_parse_accepts_bare_array_envelope(): void
+    {
+        $raw = "[{\"covers\":\"h1\",\"text\":\"One.\"},{\"covers\":\"h2\",\"text\":\"Two.\"}]";
+        $out = DraftBatchLogic::parseModelJson($raw);
+        $this->assertArrayNotHasKey('error', $out);
+        $this->assertCount(2, $out['posts']);
+        $this->assertSame('Two.', $out['posts'][1]['text']);
+    }
+
+    public function test_parse_reports_error_on_truncated_json(): void
+    {
+        // Cut off mid-string (no closing quote/brace) => genuinely unrecoverable.
+        $raw = "{\"posts\":[{\"covers\":\"h\",\"text\":\"This got cut off mid sen";
+        $this->assertArrayHasKey('error', DraftBatchLogic::parseModelJson($raw));
+    }
 }
