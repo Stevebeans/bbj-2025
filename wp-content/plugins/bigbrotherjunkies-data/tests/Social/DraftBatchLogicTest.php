@@ -92,6 +92,23 @@ class DraftBatchLogicTest extends TestCase
         $this->assertSame('Two.', $out['posts'][1]['text']);
     }
 
+    public function test_parse_repairs_trailing_comma(): void
+    {
+        $raw = "{\"posts\":[{\"covers\":\"h\",\"text\":\"Body.\"},]}";
+        $out = DraftBatchLogic::parseModelJson($raw);
+        $this->assertArrayNotHasKey('error', $out);
+        $this->assertSame('Body.', $out['posts'][0]['text']);
+    }
+
+    public function test_parse_repairs_invalid_escape_sequence(): void
+    {
+        // \' is not a legal JSON escape; models slip these in occasionally.
+        $raw = "{\"posts\":[{\"covers\":\"h\",\"text\":\"It\\'s a mess in there.\"}]}";
+        $out = DraftBatchLogic::parseModelJson($raw);
+        $this->assertArrayNotHasKey('error', $out);
+        $this->assertStringContainsString('s a mess', $out['posts'][0]['text']);
+    }
+
     public function test_parse_reports_error_on_truncated_json(): void
     {
         // Cut off mid-string (no closing quote/brace) => genuinely unrecoverable.

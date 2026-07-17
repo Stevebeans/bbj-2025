@@ -126,11 +126,12 @@ class DraftBatchLogic
         $attempts = [
             $text,
             self::escapeControlCharsInStrings($text),
+            self::repairCommonJsonFaults(self::escapeControlCharsInStrings($text)),
         ];
         foreach ([['{', '}'], ['[', ']']] as [$open, $close]) {
             $slice = self::sliceBetween($text, $open, $close);
             if ($slice !== null) {
-                $attempts[] = self::escapeControlCharsInStrings($slice);
+                $attempts[] = self::repairCommonJsonFaults(self::escapeControlCharsInStrings($slice));
             }
         }
         foreach ($attempts as $candidate) {
@@ -140,6 +141,18 @@ class DraftBatchLogic
             }
         }
         return null;
+    }
+
+    /**
+     * Late-stage repairs for model-typical JSON faults (applied only after
+     * stricter attempts fail): trailing commas before } or ], and invalid
+     * escape sequences like \' or \— (backslash kept, escaped as data).
+     */
+    private static function repairCommonJsonFaults(string $json): string
+    {
+        $json = (string) preg_replace('/,\s*([\]}])/', '$1', $json);
+        $json = (string) preg_replace('/\\\\(?!["\\\\\/bfnrtu])/', '\\\\\\\\', $json);
+        return $json;
     }
 
     /** Escape raw newlines/tabs/etc. that sit INSIDE JSON string literals. */
