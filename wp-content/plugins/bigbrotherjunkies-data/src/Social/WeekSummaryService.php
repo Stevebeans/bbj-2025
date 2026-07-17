@@ -142,8 +142,21 @@ PROMPT;
             $lines[] = 'Veto not used.';
         }
 
-        $finalNoms = array_values(array_filter($noms, static fn ($id) => $id !== $savedId));
-        if ($finalNoms && $savedId) {
+        // A nominee who won an "other comp" (Block Buster, AI Arena…) was
+        // saved from the block at the live show — mirrors the editor's rule.
+        $compSaved = [];
+        foreach ((array) ($payload['misc_comps'] ?? []) as $mc) {
+            $winner = (int) ($mc['player_id'] ?? 0);
+            if ($winner && (int) ($mc['comp_type_id'] ?? 0) && in_array($winner, $noms, true)) {
+                $compSaved[] = $winner;
+            }
+        }
+
+        $finalNoms = array_values(array_filter(
+            $noms,
+            static fn ($id) => $id !== $savedId && !in_array($id, $compSaved, true)
+        ));
+        if ($finalNoms && ($savedId || $compSaved)) {
             $lines[] = 'Final nominees at the vote: ' . $list($finalNoms);
         }
 
@@ -165,7 +178,13 @@ PROMPT;
                 continue;
             }
             $notes   = trim((string) ($mc['notes'] ?? ''));
-            $lines[] = sprintf('%s won by %s%s', $ctName, $name($winner), $notes !== '' ? ' (' . $notes . ')' : '');
+            $lines[] = sprintf(
+                '%s won by %s%s%s',
+                $ctName,
+                $name($winner),
+                in_array($winner, $compSaved, true) ? ', saving them from the block before the vote' : '',
+                $notes !== '' ? ' (' . $notes . ')' : ''
+            );
         }
 
         return "=== CONFIRMED WEEK FACTS (authoritative) ===\n" . implode("\n", $lines);
