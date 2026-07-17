@@ -111,6 +111,8 @@ juicy is happening. Just report that feeds went down.
 Respond with ONLY this JSON (no other text):
 {"posts":[{"covers":"~12:30-2:45 PM","text":"<full post text with real newlines>"}]}
 Posts in chronological order. "covers" is the house-time range the post spans.
+Inside "text", use curly quotes (“ ”) for any quoted word or phrase — the only straight
+double quotes anywhere in your output are the JSON syntax itself.
 PROMPT;
 
     /**

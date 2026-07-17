@@ -75,6 +75,15 @@ class DraftBatchLogic
         }
 
         if ($list === null) {
+            // Last resort: the model sometimes emits UNESCAPED double quotes
+            // inside post text (confirmed 7/17: "lines drawn", "dicey"),
+            // which no JSON decoder can survive. Exploit the known envelope
+            // instead: covers/text pairs delimited by the "} that closes each
+            // post — a sequence prose never contains.
+            $list = self::salvagePosts((string) $text);
+        }
+
+        if ($list === null) {
             // Log enough to tell the failure modes apart next time (truncation
             // ends mid-string; prose wraps the JSON; refusal is plain text).
             $flat = preg_replace('/\s+/', ' ', $raw);
@@ -181,6 +190,46 @@ class DraftBatchLogic
             return null;
         }
         return substr($text, $start, $end - $start + 1);
+    }
+
+    /**
+     * Schema-aware extraction for JSON that decoders reject (unescaped inner
+     * quotes). Each post is matched structurally: `{"covers":"..","text":"..`
+     * up to the `"}` that is followed by `,` or `]`. Text may contain raw
+     * quotes freely; JSON escapes (\n, \", \\) are then decoded by hand.
+     *
+     * @return list<array{covers:string,text:string}>|null null when no post matches
+     */
+    private static function salvagePosts(string $text): ?array
+    {
+        $matched = preg_match_all(
+            '/\{\s*"covers"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*"text"\s*:\s*"(.*?)"\s*\}\s*(?=,|\])/s',
+            $text,
+            $m,
+            PREG_SET_ORDER
+        );
+        if (!$matched) {
+            return null;
+        }
+        $posts = [];
+        foreach ($m as $hit) {
+            $posts[] = [
+                'covers' => self::unescapeJsonString($hit[1]),
+                'text'   => self::unescapeJsonString($hit[2]),
+            ];
+        }
+        return $posts;
+    }
+
+    /** Decode JSON string escapes by hand (\n, \", \\, \t, \r, \/). */
+    private static function unescapeJsonString(string $s): string
+    {
+        $map = ['n' => "\n", 'r' => "\r", 't' => "\t", '"' => '"', '\\' => '\\', '/' => '/'];
+        return (string) preg_replace_callback(
+            '/\\\\(.)/s',
+            static fn (array $m): string => $map[$m[1]] ?? $m[1],
+            $s
+        );
     }
 
     /** True for a 0-indexed sequential array (array_is_list, PHP 7.4-safe). */

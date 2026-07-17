@@ -109,6 +109,23 @@ class DraftBatchLogicTest extends TestCase
         $this->assertStringContainsString('s a mess', $out['posts'][0]['text']);
     }
 
+    public function test_parse_salvages_unescaped_inner_quotes(): void
+    {
+        // The CONFIRMED 7/17 prod failure: the model escaped quotes in post 1
+        // but emitted raw ones later ("lines drawn", "dicey"), killing decode.
+        $raw = '{"posts":[' .
+            '{"covers":"~5-6 PM","text":"Ashley\'s reaction to hearing \\"14-0\\" out loud.\\n- Steve"},' .
+            '{"covers":"~9:45 PM","text":"The ordeal left "lines drawn" between camps, things are about to get "dicey" in there.\\n- Steve"}' .
+            ']}';
+        $out = DraftBatchLogic::parseModelJson($raw);
+        $this->assertArrayNotHasKey('error', $out, 'unescaped inner quotes must be salvaged');
+        $this->assertCount(2, $out['posts']);
+        $this->assertStringContainsString('"14-0"', $out['posts'][0]['text']);
+        $this->assertStringContainsString('"lines drawn"', $out['posts'][1]['text']);
+        $this->assertStringContainsString("\n- Steve", $out['posts'][1]['text']);
+        $this->assertSame('~9:45 PM', $out['posts'][1]['covers']);
+    }
+
     public function test_parse_reports_error_on_truncated_json(): void
     {
         // Cut off mid-string (no closing quote/brace) => genuinely unrecoverable.
