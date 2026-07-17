@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
+use BigBrotherJunkies\Data\Social\WeekSummaryService;
 use BigBrotherJunkies\Data\Utils\Revalidation;
 use BigBrotherJunkies\Data\Weekly\WeeklyAdmin;
 use WP_REST_Request;
@@ -53,6 +54,13 @@ class WeeklyRoutes
                 'permission_callback' => [$this, 'checkAccess'],
                 'args' => ['week_id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
             ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/weeks/(?P<week_id>\d+)/summary-draft', [
+            'methods' => 'POST',
+            'callback' => [$this, 'draftSummary'],
+            'permission_callback' => [$this, 'checkAccess'],
+            'args' => ['week_id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
         ]);
     }
 
@@ -109,6 +117,24 @@ class WeeklyRoutes
         }
         $this->revalidateChanged($result['season_id'], $result['changed_player_ids']);
         return new WP_REST_Response(['success' => true, 'changed' => count($result['changed_player_ids'])], 200);
+    }
+
+    /**
+     * AI-draft the season-page week summary from the editor's CURRENT form
+     * payload (unsaved edits included). Returns text for the textarea only;
+     * nothing is saved until the user hits Save Week.
+     */
+    public function draftSummary(WP_REST_Request $request): WP_REST_Response
+    {
+        $result = WeekSummaryService::generate(
+            (int) $request->get_param('week_id'),
+            $request->get_json_params() ?: []
+        );
+        if (empty($result['success'])) {
+            $status = ($result['message'] ?? '') === 'Week not found.' ? 404 : 502;
+            return new WP_REST_Response($result, $status);
+        }
+        return new WP_REST_Response($result, 200);
     }
 
     public function deleteWeek(WP_REST_Request $request): WP_REST_Response

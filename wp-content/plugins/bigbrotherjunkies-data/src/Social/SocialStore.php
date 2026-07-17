@@ -612,4 +612,33 @@ class SocialStore
             $limit
         ), ARRAY_A) ?: [];
     }
+
+    /**
+     * Summaries whose window OVERLAPS [$fromUtc, $toUtc), oldest first, so a
+     * caller can replay a date range (e.g. the week-summary generator feeding
+     * a week's digests/recaps to Claude) in chronological order.
+     *
+     * @param list<string> $kinds subset of the kind enum; empty = all kinds
+     */
+    public static function summariesInWindow(string $fromUtc, string $toUtc, array $kinds = [], int $limit = 20): array
+    {
+        global $wpdb;
+        $table = SocialSchema::table(SocialSchema::TABLE_SUMMARIES);
+        $limit = max(1, min(100, $limit));
+
+        $kindSql = '';
+        $params  = [$toUtc, $fromUtc];
+        if ($kinds !== []) {
+            $kindSql  = ' AND kind IN (' . implode(',', array_fill(0, count($kinds), '%s')) . ')';
+            $params   = array_merge($params, array_map('strval', $kinds));
+        }
+        $params[] = $limit;
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$table}
+              WHERE window_from < %s AND window_to > %s{$kindSql}
+              ORDER BY window_from ASC, id ASC LIMIT %d",
+            $params
+        ), ARRAY_A) ?: [];
+    }
 }
