@@ -401,6 +401,8 @@ class WeeklyAdmin
                 WeeklyData::recomputeSeasonTotals($seasonId);
                 self::recomputeHavenotTotals($seasonId);
                 self::recomputeVetoPlayedTotals($seasonId);
+                self::recomputeSavedTotals($seasonId);
+                self::recomputeVotesReceivedTotals($seasonId);
             }
             $wpdb->query('COMMIT');
         } catch (\Throwable $e) {
@@ -448,6 +450,8 @@ class WeeklyAdmin
             WeeklyData::recomputeSeasonTotals($seasonId);
             self::recomputeHavenotTotals($seasonId);
             self::recomputeVetoPlayedTotals($seasonId);
+            self::recomputeSavedTotals($seasonId);
+            self::recomputeVotesReceivedTotals($seasonId);
         }
         $wpdb->query('COMMIT');
         if (self::recomputeEnabled()) {
@@ -519,6 +523,57 @@ class WeeklyAdmin
     public static function recomputeVetoPlayedTotals(int $seasonId): int
     {
         return self::recomputeFlagTotals($seasonId, 'veto_played', 'bbj_veto_played');
+    }
+
+    /** Weeks where a veto pulled the player off the block. */
+    public static function recomputeSavedTotals(int $seasonId): int
+    {
+        return self::recomputeFlagTotals($seasonId, '(saved_by_player_id IS NOT NULL)', 'bbj_total_saved');
+    }
+
+    /**
+     * bbj_votes_received = eviction votes cast against the player across the
+     * season's weekly rows. Same partial-season guard as recomputeFlagTotals:
+     * historical seasons whose votes came only from the importer (no weekly
+     * voted_for rows) are left untouched.
+     */
+    public static function recomputeVotesReceivedTotals(int $seasonId): int
+    {
+        global $wpdb;
+        $wplayers = self::t(WeeklySchema::TABLE_WEEKS_PLAYERS);
+        $pseason  = self::t('bbj_v2_player_season');
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT wp.player_id, COALESCE(v.votes, 0) AS votes
+               FROM (SELECT DISTINCT player_id FROM {$wplayers} WHERE season_id = %d) wp
+               LEFT JOIN (SELECT voted_for, COUNT(*) AS votes
+                            FROM {$wplayers}
+                           WHERE season_id = %d AND voted_for > 0
+                           GROUP BY voted_for) v ON v.voted_for = wp.player_id",
+            $seasonId,
+            $seasonId
+        ), ARRAY_A) ?: [];
+
+        $seasonHasData = false;
+        foreach ($rows as $r) {
+            if ((int) $r['votes'] > 0) {
+                $seasonHasData = true;
+                break;
+            }
+        }
+        if (!$seasonHasData) {
+            return 0;
+        }
+
+        $updated = 0;
+        foreach ($rows as $r) {
+            $updated += (int) $wpdb->update(
+                $pseason,
+                ['bbj_votes_received' => (int) $r['votes']],
+                ['bbj_player' => (int) $r['player_id'], 'bbj_season' => $seasonId]
+            );
+        }
+        return $updated;
     }
 
     /**
