@@ -29,6 +29,10 @@ You receive two sets of Bluesky posts about the current Big Brother season:
 2. TAG POSTS from the public hashtag. Unvetted: jokes, spam, and hot takes mixed with
    genuinely valuable reports from cameras nobody else covered.
 
+The Big Brother house is in Los Angeles. Both sets come from fans posting from their own
+homes anywhere in the world; a post about weather, local news, or the poster's personal life
+is about THEIR city, not the show — ignore it entirely.
+
 Produce exactly three sections, in this order, using these exact markdown headings:
 
 ## Confirmed timeline

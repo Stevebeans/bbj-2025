@@ -79,8 +79,11 @@ Respond with ONLY a JSON object: {"mode": "post" or "skip", "text": "...", "blue
 Rules:
 - mode "post" with 1-4 sentences (under 900 characters) covering what is actually happening
   on the feeds right now per the reports. Present tense. Plain text only.
-- If the reports are only jokes, opinions, or episode commentary with no real house events,
-  use mode "skip" with empty text.
+- The Big Brother house is in Los Angeles. The reporting accounts are fans posting from their
+  own homes anywhere in the world; a report about weather, local news, or the poster's personal
+  life is about THEIR city, not the show — ignore it.
+- If the reports are only jokes, opinions, episode commentary, or off-topic posts with no real
+  house events, use mode "skip" with empty text.
 - If the house is awake but nothing notable is happening, a single short sentence is perfect.
 - "bluesky": true only when the update covers a genuinely notable event (a fight, a flip,
   a comp result, a showmance development). Routine updates get false.
