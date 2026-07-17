@@ -42,4 +42,22 @@ class BeanMemory
         $t = BeanSchema::table(BeanSchema::TABLE_MEMORY);
         $wpdb->delete($t, ['user_id' => $userId], ['%d']);
     }
+
+    /**
+     * Shared "site facts" note — Steve's admin-curated knowledge injected into
+     * EVERY user's Bean chats. Lives in the same table as the reserved row
+     * user_id = 0 (no real WP user has id 0), written only via the admin-gated
+     * facts endpoint.
+     */
+    public const SHARED_ID = 0;
+
+    public static function getShared(): string
+    {
+        return self::get(self::SHARED_ID);
+    }
+
+    public static function setShared(string $facts): void
+    {
+        self::set(self::SHARED_ID, $facts);
+    }
 }

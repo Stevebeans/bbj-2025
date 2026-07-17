@@ -33,6 +33,19 @@ class BeanRoutes
             'permission_callback' => [$this, 'loggedIn'],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/bean/facts', [
+            [
+                'methods'             => 'GET',
+                'callback'            => [$this, 'factsGet'],
+                'permission_callback' => [$this, 'loggedIn'],
+            ],
+            [
+                'methods'             => 'POST',
+                'callback'            => [$this, 'factsSet'],
+                'permission_callback' => [$this, 'isAdmin'],
+            ],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/bean/memory', [
             [
                 'methods'             => 'GET',
@@ -55,6 +68,31 @@ class BeanRoutes
     public function loggedIn(): bool
     {
         return is_user_logged_in();
+    }
+
+    public function isAdmin(): bool
+    {
+        return current_user_can('manage_options');
+    }
+
+    /**
+     * Shared fact sheet: read by the chat route on every turn (all tiers).
+     * canEdit tells the chat route whether THIS user may trigger the
+     * conversational "save that to memory for others" write path.
+     */
+    public function factsGet(): \WP_REST_Response
+    {
+        return new \WP_REST_Response([
+            'facts'   => BeanMemory::getShared(),
+            'canEdit' => current_user_can('manage_options'),
+        ], 200);
+    }
+
+    public function factsSet(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $facts = sanitize_textarea_field((string) $request->get_param('facts'));
+        BeanMemory::setShared($facts);
+        return new \WP_REST_Response(['ok' => true, 'facts' => BeanMemory::getShared()], 200);
     }
 
     public function check(): \WP_REST_Response
