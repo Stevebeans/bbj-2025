@@ -93,6 +93,9 @@ class WeeklyAdmin
                 'slug' => null,
                 'comp_type_id' => $ctid,
                 'notes' => $notes === '' ? null : substr($notes, 0, 140),
+                // "Eviction safe": this win pulled the player off the block
+                // at the live show (Block Buster, AI Arena…).
+                'saved' => empty($mc['saved']) ? 0 : 1,
             ];
         }
 
@@ -246,7 +249,7 @@ class WeeklyAdmin
                 ];
             }
             $compRows = $wpdb->get_results(
-                "SELECT wc.week_id, wc.player_id, wc.comp_type_id, wc.notes, ct.slug
+                "SELECT wc.week_id, wc.player_id, wc.comp_type_id, wc.notes, wc.saved, ct.slug
                    FROM {$wcomps} wc
                    INNER JOIN {$ctypes} ct ON ct.id = wc.comp_type_id
                   WHERE wc.week_id IN ({$in})",
@@ -258,6 +261,7 @@ class WeeklyAdmin
                     'comp_type_id' => (int) $r['comp_type_id'],
                     'slug'         => (string) $r['slug'],
                     'notes'        => $r['notes'],
+                    'saved'        => (int) $r['saved'],
                 ];
             }
         }
@@ -364,9 +368,9 @@ class WeeklyAdmin
                 $ctid = $c['comp_type_id']
                     ?? self::compTypeId($c['slug'], $c['slug'] === 'hoh' ? 'HOH' : 'Power of Veto');
                 $wpdb->query($wpdb->prepare(
-                    "INSERT IGNORE INTO {$wcomps} (week_id, player_id, comp_type_id, notes)
-                     VALUES (%d, %d, %d, %s)",
-                    $weekId, $c['player_id'], $ctid, (string) ($c['notes'] ?? '')
+                    "INSERT IGNORE INTO {$wcomps} (week_id, player_id, comp_type_id, notes, saved)
+                     VALUES (%d, %d, %d, %s, %d)",
+                    $weekId, $c['player_id'], $ctid, (string) ($c['notes'] ?? ''), (int) ($c['saved'] ?? 0)
                 ));
             }
 

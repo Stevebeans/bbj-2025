@@ -5,7 +5,7 @@ namespace BigBrotherJunkies\Data\Weekly;
 class WeeklyMigrator
 {
     public const DB_VERSION_OPTION = 'bbj_weekly_db_version';
-    public const CURRENT_VERSION = '1.3.0'; // 1.2.0: havenot; 1.3.0: hoh_played on bbj_weeks_players
+    public const CURRENT_VERSION = '1.4.0'; // 1.3.0: hoh_played on bbj_weeks_players; 1.4.0: saved on bbj_week_comps
 
     public static function needsMigration(): bool
     {

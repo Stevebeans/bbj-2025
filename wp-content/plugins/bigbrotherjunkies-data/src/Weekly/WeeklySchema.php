@@ -102,6 +102,7 @@ class WeeklySchema
             comp_type_id BIGINT(20) NOT NULL,
             opponents_count INT(11) DEFAULT NULL,
             notes VARCHAR(140) DEFAULT NULL,
+            saved TINYINT(1) NOT NULL DEFAULT 0,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
             UNIQUE KEY uniq_week_player_type (week_id, player_id, comp_type_id),

@@ -142,12 +142,12 @@ PROMPT;
             $lines[] = 'Veto not used.';
         }
 
-        // A nominee who won an "other comp" (Block Buster, AI Arena…) was
-        // saved from the block at the live show — mirrors the editor's rule.
+        // "Eviction safe" comp wins (Block Buster, AI Arena…) pulled the
+        // nominee off the block at the live show — mirrors the editor's flag.
         $compSaved = [];
         foreach ((array) ($payload['misc_comps'] ?? []) as $mc) {
             $winner = (int) ($mc['player_id'] ?? 0);
-            if ($winner && (int) ($mc['comp_type_id'] ?? 0) && in_array($winner, $noms, true)) {
+            if ($winner && !empty($mc['saved']) && in_array($winner, $noms, true)) {
                 $compSaved[] = $winner;
             }
         }
