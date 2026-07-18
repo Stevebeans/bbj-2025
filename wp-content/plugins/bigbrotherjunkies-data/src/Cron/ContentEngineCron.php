@@ -81,23 +81,48 @@ class ContentEngineCron
             return;
         }
 
-        // Determine if photo or text post
+        // Photo posts go to /photos, everything else to /feed.
         $hasImage = !empty($post->image_url) || !empty($post->image_data);
         $endpoint = $hasImage ? "/{$post->target_page}/photos" : "/{$post->target_page}/feed";
 
-        $body = [
-            'message' => $post->body,
-            'access_token' => $token,
-        ];
+        if (!empty($post->image_data)) {
+            // Base64 image bytes (quickie cards, pasted images): Facebook
+            // needs a multipart file upload, not a URL.
+            $decoded  = base64_decode((string) $post->image_data);
+            $boundary = wp_generate_password(24, false);
+            $payload  = "--{$boundary}\r\n"
+                . "Content-Disposition: form-data; name=\"message\"\r\n\r\n{$post->body}\r\n"
+                . "--{$boundary}\r\n"
+                . "Content-Disposition: form-data; name=\"access_token\"\r\n\r\n{$token}\r\n"
+                . "--{$boundary}\r\n"
+                . "Content-Disposition: form-data; name=\"source\"; filename=\"card.png\"\r\n"
+                . "Content-Type: image/png\r\n\r\n"
+                . $decoded . "\r\n--{$boundary}--\r\n";
 
-        if (!empty($post->image_url)) {
-            $body['url'] = $post->image_url;
+            $response = wp_remote_post("https://graph.facebook.com/v21.0{$endpoint}", [
+                'headers' => ['Content-Type' => "multipart/form-data; boundary={$boundary}"],
+                'body'    => $payload,
+                'timeout' => 60,
+            ]);
+        } else {
+            $body = [
+                'message'      => $post->body,
+                'access_token' => $token,
+            ];
+            if (!empty($post->image_url)) {
+                $body['url'] = $post->image_url;
+            } elseif ($post->source === 'feed_update_share' && !empty($post->source_url)) {
+                // Feed-update drips are link posts. Gated on source so legacy
+                // news_scan rows (which also carry source_url) keep their
+                // existing text-only behavior.
+                $body['link'] = $post->source_url;
+            }
+
+            $response = wp_remote_post("https://graph.facebook.com/v21.0{$endpoint}", [
+                'body'    => $body,
+                'timeout' => 30,
+            ]);
         }
-
-        $response = wp_remote_post("https://graph.facebook.com/v21.0{$endpoint}", [
-            'body' => $body,
-            'timeout' => 30,
-        ]);
 
         if (is_wp_error($response)) {
             $wpdb->update($table, ['status' => 'failed', 'posted_at' => current_time('mysql')], ['id' => $post->id]);

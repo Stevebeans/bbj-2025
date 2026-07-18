@@ -6,6 +6,7 @@ use BigBrotherJunkies\Data\Social\BeanBotService;
 use BigBrotherJunkies\Data\Social\DraftService;
 use BigBrotherJunkies\Data\Social\HouseTranscriptService;
 use BigBrotherJunkies\Data\Social\PromptContext;
+use BigBrotherJunkies\Data\Social\QueueBridge;
 use BigBrotherJunkies\Data\Social\QuickieCaption;
 use BigBrotherJunkies\Data\Social\QuoteLogic;
 use BigBrotherJunkies\Data\Social\QuoteService;
@@ -118,6 +119,24 @@ class SocialRoutes
         register_rest_route(self::NAMESPACE, '/social/quickie-caption', [
             'methods'             => 'POST',
             'callback'            => [$this, 'quickieCaption'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/quickie-queue', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'quickieQueue'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/feed-updates-recent', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'feedUpdatesRecent'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/feed-share-queue', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'feedShareQueue'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
 
@@ -302,6 +321,44 @@ class SocialRoutes
         }
         $result = QuickieCaption::generate($text, $handle);
         return new WP_REST_Response($result, empty($result['success']) ? 502 : 200);
+    }
+
+    public function quickieQueue(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $pageId = trim((string) ($params['page_id'] ?? ''));
+        $message = (string) ($params['message'] ?? '');
+        $imageData = (string) ($params['image_data'] ?? '');
+        if ($pageId === '' || $message === '' || $imageData === '') {
+            return new WP_REST_Response(['success' => false, 'message' => 'page_id, message and image_data are required.'], 400);
+        }
+        $result = QueueBridge::enqueueQuickie([
+            'page_id'    => $pageId,
+            'page_name'  => (string) ($params['page_name'] ?? ''),
+            'message'    => $message,
+            'image_data' => $imageData,
+        ]);
+        return new WP_REST_Response(array_merge(['success' => true], $result), 200);
+    }
+
+    public function feedUpdatesRecent(): WP_REST_Response
+    {
+        return new WP_REST_Response([
+            'success' => true,
+            'updates' => QueueBridge::recentFeedUpdates(),
+        ], 200);
+    }
+
+    public function feedShareQueue(WP_REST_Request $request): WP_REST_Response
+    {
+        $params  = $request->get_json_params() ?: [];
+        $pageId  = trim((string) ($params['page_id'] ?? ''));
+        $postIds = array_map('intval', (array) ($params['post_ids'] ?? []));
+        if ($pageId === '' || $postIds === []) {
+            return new WP_REST_Response(['success' => false, 'message' => 'page_id and post_ids are required.'], 400);
+        }
+        $queued = QueueBridge::enqueueFeedShares($postIds, $pageId, (string) ($params['page_name'] ?? ''));
+        return new WP_REST_Response(['success' => true, 'queued' => $queued], 200);
     }
 
     public function getSummaries(WP_REST_Request $request): WP_REST_Response
