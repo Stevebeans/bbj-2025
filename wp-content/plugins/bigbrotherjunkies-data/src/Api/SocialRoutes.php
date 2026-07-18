@@ -113,6 +113,7 @@ class SocialRoutes
             'args'                => [
                 'hours' => ['type' => 'integer', 'default' => 24, 'sanitize_callback' => 'absint'],
                 'limit' => ['type' => 'integer', 'default' => 25, 'sanitize_callback' => 'absint'],
+                'sort'  => ['type' => 'string', 'default' => 'top', 'sanitize_callback' => 'sanitize_text_field'],
             ],
         ]);
 
@@ -302,7 +303,10 @@ class SocialRoutes
 
     public function getTopPosts(WP_REST_Request $request): WP_REST_Response
     {
-        $posts = SocialStore::topPosts((int) $request->get_param('hours'), (int) $request->get_param('limit'));
+        $limit = (int) $request->get_param('limit');
+        $posts = $request->get_param('sort') === 'trending'
+            ? SocialStore::trendingPosts($limit)
+            : SocialStore::topPosts((int) $request->get_param('hours'), $limit);
         foreach ($posts as &$p) {
             $p['text']         = html_entity_decode((string) $p['text'], ENT_QUOTES, 'UTF-8');
             $p['display_name'] = html_entity_decode((string) $p['display_name'], ENT_QUOTES, 'UTF-8');

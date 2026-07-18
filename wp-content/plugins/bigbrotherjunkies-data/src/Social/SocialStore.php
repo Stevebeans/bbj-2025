@@ -602,6 +602,47 @@ class SocialStore
     }
 
     /**
+     * Trending: posts from the last 2 hours ranked by engagement VELOCITY
+     * (score per minute of age, 10-minute floor so brand-new posts with a
+     * couple of likes don't dominate; >=5 interactions to clear noise).
+     * Surfaces young-but-climbing posts before they win the day board.
+     * Airing-window posts are flagged and downweighted like topPosts().
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function trendingPosts(int $limit): array
+    {
+        global $wpdb;
+        $table  = SocialSchema::table(SocialSchema::TABLE_POSTS);
+        $limit  = max(1, min(50, $limit));
+        $cutoff = gmdate('Y-m-d H:i:s', time() - 2 * HOUR_IN_SECONDS);
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT *, (likes + 2 * reposts) AS score,
+                    (likes + 2 * reposts) / GREATEST(TIMESTAMPDIFF(MINUTE, posted_at, UTC_TIMESTAMP()), 10) AS velocity
+               FROM {$table}
+              WHERE posted_at >= %s AND (likes + 2 * reposts) >= 5
+              ORDER BY velocity DESC, posted_at DESC LIMIT %d",
+            $cutoff,
+            $limit * 3
+        ), ARRAY_A) ?: [];
+
+        $utc = new \DateTimeZone('UTC');
+        foreach ($rows as &$row) {
+            $in = PromptContext::isCautionWindow(new \DateTimeImmutable((string) $row['posted_at'], $utc));
+            $row['score']            = (int) $row['score'];
+            $row['velocity']         = round((float) $row['velocity'], 2);
+            $row['in_airing_window'] = $in;
+            $row['effective_score']  = (float) $row['velocity'] * ($in ? 0.3 : 1.0);
+        }
+        unset($row);
+        usort($rows, static function (array $a, array $b): int {
+            return $b['effective_score'] <=> $a['effective_score'];
+        });
+        return array_slice($rows, 0, $limit);
+    }
+
+    /**
      * Engagement-ranked posts for the Top Posts board. Raw score =
      * likes + 2*reposts. Posts inside a CBS caution window are flagged and
      * downweighted to 30% so episode-reaction spikes don't bury feed intel;
