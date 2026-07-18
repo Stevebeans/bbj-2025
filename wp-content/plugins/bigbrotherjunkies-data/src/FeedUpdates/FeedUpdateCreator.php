@@ -61,6 +61,7 @@ class FeedUpdateCreator
         $updateType     = $args['update_type'] ?? null;
         $postToFacebook = (bool) ($args['post_to_facebook'] ?? false);
         $imageFile      = $args['image_file'] ?? null;
+        $videoFile      = $args['video_file'] ?? null;
 
         // Default (nothing posted) social result — also the failure return shape.
         $socialResults = [
@@ -131,6 +132,18 @@ class FeedUpdateCreator
             set_post_thumbnail($postId, $imageId);
         }
 
+        // Handle video clip: same never-fail-the-post contract as images.
+        $videoError = null;
+        if ($videoFile !== null && !empty($videoFile)) {
+            $uploadedVideo = self::handleVideoUpload($videoFile, $postId);
+            if (is_wp_error($uploadedVideo)) {
+                error_log('BBJD feed video upload failed: ' . $uploadedVideo->get_error_message());
+                $videoError = $uploadedVideo->get_error_message();
+            } elseif ($uploadedVideo) {
+                update_post_meta($postId, '_feed_update_video_id', (int) $uploadedVideo);
+            }
+        }
+
         // Apply update_type taxonomy term if provided
         if (!empty($updateType)) {
             if (is_numeric($updateType)) {
@@ -195,7 +208,91 @@ class FeedUpdateCreator
             'message'        => null,
             'social_results' => $socialResults,
             'image_error'    => $imageError,
+            'video_error'    => $videoError,
         ];
+    }
+
+    /**
+     * Shared API-serializer fragments — feed updates are shaped in THREE
+     * places (FeedUpdateRoutes, HomeRoutes, LiveThreadRoutes); keep the
+     * video and bot-author fields identical everywhere.
+     */
+    public static function videoField(int $postId): ?array
+    {
+        $vid = (int) get_post_meta($postId, '_feed_update_video_id', true);
+        if (!$vid) {
+            return null;
+        }
+        return [
+            'url'  => wp_get_attachment_url($vid) ?: null,
+            'mime' => get_post_mime_type($vid) ?: 'video/mp4',
+        ];
+    }
+
+    /** Bean Bot posts as the dedicated `bean-bot` WP user. */
+    public static function isBotAuthor(int $authorId): bool
+    {
+        if ($authorId <= 0) {
+            return false;
+        }
+        $user = get_userdata($authorId);
+        return $user && $user->user_login === 'bean-bot';
+    }
+
+    /** Video clip limits: CF proxies cap request bodies around 100MB, so stay under. */
+    public const VIDEO_MAX_BYTES = 80 * 1024 * 1024;
+    public const VIDEO_MIMES = [
+        'mp4'  => 'video/mp4',
+        'm4v'  => 'video/x-m4v',
+        'mov'  => 'video/quicktime',
+        'webm' => 'video/webm',
+    ];
+
+    /**
+     * Handle a video clip upload: size + REAL mime validation (finfo, not the
+     * browser's claim), then a normal WP attachment parented to the post and
+     * referenced from _feed_update_video_id meta.
+     */
+    private static function handleVideoUpload(array $file, int $postId): int|\WP_Error
+    {
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+        if (!empty($file['error']) && $file['error'] !== UPLOAD_ERR_OK) {
+            return new \WP_Error('upload_error', 'Video upload failed (error ' . (int) $file['error'] . ').');
+        }
+        if ((int) ($file['size'] ?? 0) > self::VIDEO_MAX_BYTES) {
+            return new \WP_Error('too_large', 'Video is over the ' . (self::VIDEO_MAX_BYTES / 1024 / 1024) . 'MB limit.');
+        }
+        if (!empty($file['tmp_name']) && function_exists('finfo_open')) {
+            $finfo    = finfo_open(FILEINFO_MIME_TYPE);
+            $realMime = $finfo ? finfo_file($finfo, $file['tmp_name']) : '';
+            if ($finfo) {
+                finfo_close($finfo);
+            }
+            if ($realMime && !in_array($realMime, self::VIDEO_MIMES, true)) {
+                return new \WP_Error('bad_type', 'Only MP4, MOV, or WebM clips are supported (got ' . $realMime . ').');
+            }
+        }
+
+        $upload = wp_handle_upload($file, ['test_form' => false, 'mimes' => self::VIDEO_MIMES]);
+        if (isset($upload['error'])) {
+            return new \WP_Error('upload_error', $upload['error']);
+        }
+
+        $attachId = wp_insert_attachment([
+            'post_mime_type' => $upload['type'],
+            'post_title'     => preg_replace('/\.[^.]+$/', '', basename($upload['file'])),
+            'post_content'   => '',
+            'post_status'    => 'inherit',
+        ], $upload['file'], $postId);
+        if (!$attachId || is_wp_error($attachId)) {
+            return new \WP_Error('attach_error', 'Could not create video attachment');
+        }
+        wp_update_attachment_metadata($attachId, wp_generate_attachment_metadata($attachId, $upload['file']));
+
+        return $attachId;
     }
 
     /**

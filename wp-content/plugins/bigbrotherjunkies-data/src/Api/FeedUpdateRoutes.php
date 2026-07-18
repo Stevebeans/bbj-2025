@@ -164,6 +164,7 @@ class FeedUpdateRoutes
             'post_to_bluesky'  => $postToBluesky,
             'post_to_facebook' => $postToFacebook,
             'image_file'       => $files['image'] ?? null,
+            'video_file'       => $files['video'] ?? null,
         ]);
 
         if (empty($result['success'])) {
@@ -184,6 +185,7 @@ class FeedUpdateRoutes
             'update' => $this->formatFeedUpdate($post),
             'social_results' => $result['social_results'],
             'image_error' => $result['image_error'],
+            'video_error' => $result['video_error'] ?? null,
         ], 201);
     }
 
@@ -506,6 +508,7 @@ class FeedUpdateRoutes
             // medium_large (768w): this site's 'medium' is configured at 200px,
             // which upscales blurry in the ~350-520px feed cards.
             'thumbnail' => get_the_post_thumbnail_url($post, 'medium_large') ?: null,
+            'video' => FeedUpdateCreator::videoField($post->ID),
             'comment_count' => (int) get_comments_number($post),
             'recent_comments' => $formattedComments,
             'thread' => LiveThreadState::threadSummaryForUpdate($post->ID),
@@ -518,9 +521,8 @@ class FeedUpdateRoutes
                 'id' => $authorId,
                 'name' => get_the_author_meta('display_name', $authorId),
                 'avatar' => AvatarUploader::getAvatarUrl($authorId, 64),
-                // Bean Bot posts as the dedicated `bean-bot` WP user; the
-                // frontend badges its updates with the bot disclaimer.
-                'is_bot' => (($user = get_userdata($authorId)) ? $user->user_login : '') === 'bean-bot',
+                // Frontend badges bot updates with the Bean Bot disclaimer.
+                'is_bot' => FeedUpdateCreator::isBotAuthor($authorId),
             ],
         ];
 

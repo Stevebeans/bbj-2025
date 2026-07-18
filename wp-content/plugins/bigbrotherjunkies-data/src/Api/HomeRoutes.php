@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
+use BigBrotherJunkies\Data\FeedUpdates\FeedUpdateCreator;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 
 /**
@@ -386,6 +387,7 @@ class HomeRoutes
                 // medium_large (768w): this site's 'medium' is configured at 200px,
                 // which upscales blurry in the ~350-520px feed cards.
                 'thumbnail' => get_the_post_thumbnail_url($postId, 'medium_large') ?: null,
+                'video' => FeedUpdateCreator::videoField($postId),
                 'comment_count' => (int) get_comments_number(),
                 'recent_comments' => $formattedComments,
                 'thread' => LiveThreadState::threadSummaryForUpdate($postId),
@@ -398,6 +400,7 @@ class HomeRoutes
                     'id' => $authorId,
                     'name' => get_the_author_meta('display_name'),
                     'avatar' => AvatarUploader::getAvatarUrl($authorId, 64),
+                    'is_bot' => FeedUpdateCreator::isBotAuthor($authorId),
                 ],
             ];
 
@@ -1047,10 +1050,12 @@ class HomeRoutes
                 'time' => get_the_time('g:i a'),
                 'time_ago' => human_time_diff(get_the_time('U'), current_time('timestamp')) . ' ago',
                 'thumbnail' => get_the_post_thumbnail_url($postId, 'large') ?: null,
+                'video' => FeedUpdateCreator::videoField($postId),
                 'author' => [
                     'id' => $authorId,
                     'name' => get_the_author_meta('display_name'),
                     'avatar' => AvatarUploader::getAvatarUrl($authorId, 32),
+                    'is_bot' => FeedUpdateCreator::isBotAuthor($authorId),
                 ],
             ];
         }

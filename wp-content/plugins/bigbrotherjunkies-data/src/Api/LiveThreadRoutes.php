@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
+use BigBrotherJunkies\Data\FeedUpdates\FeedUpdateCreator;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 use WP_REST_Request;
@@ -303,6 +304,7 @@ class LiveThreadRoutes
             'modified'       => get_the_modified_date('c', $update),
             'time_ago'       => human_time_diff(get_the_modified_time('U', $update), current_time('timestamp')) . ' ago',
             'thumbnail'      => get_the_post_thumbnail_url($update->ID, 'medium_large') ?: null, // matches homepage cards — 'medium' (300px) upscaled blurry
+            'video'          => FeedUpdateCreator::videoField($update->ID),
             'comment_count'  => (int) get_comments_number($update),
             'mode'           => get_post_meta($update->ID, '_feed_update_mode', true) ?: 'feed',
             'votes'          => [
@@ -313,6 +315,7 @@ class LiveThreadRoutes
                 'id'     => $authorId,
                 'name'   => get_the_author_meta('display_name', $authorId),
                 'avatar' => AvatarUploader::getAvatarUrl($authorId, 64),
+                'is_bot' => FeedUpdateCreator::isBotAuthor($authorId),
             ],
         ];
     }
