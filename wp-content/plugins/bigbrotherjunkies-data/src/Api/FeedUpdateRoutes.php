@@ -518,6 +518,9 @@ class FeedUpdateRoutes
                 'id' => $authorId,
                 'name' => get_the_author_meta('display_name', $authorId),
                 'avatar' => AvatarUploader::getAvatarUrl($authorId, 64),
+                // Bean Bot posts as the dedicated `bean-bot` WP user; the
+                // frontend badges its updates with the bot disclaimer.
+                'is_bot' => (($user = get_userdata($authorId)) ? $user->user_login : '') === 'bean-bot',
             ],
         ];
 
