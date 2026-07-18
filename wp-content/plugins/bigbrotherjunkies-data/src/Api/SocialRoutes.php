@@ -104,6 +104,16 @@ class SocialRoutes
             ],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/social/top-posts', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'getTopPosts'],
+            'permission_callback' => [$this, 'checkAccess'],
+            'args'                => [
+                'hours' => ['type' => 'integer', 'default' => 24, 'sanitize_callback' => 'absint'],
+                'limit' => ['type' => 'integer', 'default' => 25, 'sanitize_callback' => 'absint'],
+            ],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/social/summaries', [
             'methods'             => 'GET',
             'callback'            => [$this, 'getSummaries'],
@@ -262,6 +272,17 @@ class SocialRoutes
         ]);
 
         return new WP_REST_Response(array_merge(['success' => true], $result), 200);
+    }
+
+    public function getTopPosts(WP_REST_Request $request): WP_REST_Response
+    {
+        $posts = SocialStore::topPosts((int) $request->get_param('hours'), (int) $request->get_param('limit'));
+        foreach ($posts as &$p) {
+            $p['text']         = html_entity_decode((string) $p['text'], ENT_QUOTES, 'UTF-8');
+            $p['display_name'] = html_entity_decode((string) $p['display_name'], ENT_QUOTES, 'UTF-8');
+        }
+        unset($p);
+        return new WP_REST_Response(['success' => true, 'posts' => $posts], 200);
     }
 
     public function getSummaries(WP_REST_Request $request): WP_REST_Response

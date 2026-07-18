@@ -552,6 +552,44 @@ class SocialStore
     }
 
     /**
+     * Engagement-ranked posts for the Top Posts board. Raw score =
+     * likes + 2*reposts. Posts inside a CBS caution window are flagged and
+     * downweighted to 30% so episode-reaction spikes don't bury feed intel;
+     * we fetch 3x the limit by raw score, re-rank, then slice.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function topPosts(int $hours, int $limit): array
+    {
+        global $wpdb;
+        $table  = SocialSchema::table(SocialSchema::TABLE_POSTS);
+        $hours  = in_array($hours, [6, 12, 24], true) ? $hours : 24;
+        $limit  = max(1, min(50, $limit));
+        $cutoff = gmdate('Y-m-d H:i:s', time() - $hours * HOUR_IN_SECONDS);
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT *, (likes + 2 * reposts) AS score FROM {$table}
+              WHERE posted_at >= %s
+              ORDER BY score DESC, posted_at DESC LIMIT %d",
+            $cutoff,
+            $limit * 3
+        ), ARRAY_A) ?: [];
+
+        $utc = new \DateTimeZone('UTC');
+        foreach ($rows as &$row) {
+            $in = PromptContext::isCautionWindow(new \DateTimeImmutable((string) $row['posted_at'], $utc));
+            $row['score']             = (int) $row['score'];
+            $row['in_airing_window']  = $in;
+            $row['effective_score']   = $row['score'] * ($in ? 0.3 : 1.0);
+        }
+        unset($row);
+        usort($rows, static function (array $a, array $b): int {
+            return $b['effective_score'] <=> $a['effective_score'];
+        });
+        return array_slice($rows, 0, $limit);
+    }
+
+    /**
      * Trusted-source rows past a cursor id, oldest first, for the Bean Bot
      * cycle. Only id/handle/text/posted_at (text stays entity-encoded; the
      * caller decodes before sending to Claude).
