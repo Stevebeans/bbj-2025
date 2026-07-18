@@ -47,6 +47,8 @@ class SocialStore
         'model'             => 'claude-sonnet-5',
         'anthropic_api_key' => '',
         'cbs_slots'         => [],
+        // Minutes between queued FB posts (quickies + feed-update shares).
+        'queue_spacing_minutes' => 20,
     ];
 
     // -----------------------------------------------------------------------
@@ -124,6 +126,10 @@ class SocialStore
         }
         if (array_key_exists('cbs_slots', $patch)) {
             $current['cbs_slots'] = self::normalizeCbsSlots($patch['cbs_slots']);
+        }
+        if (array_key_exists('queue_spacing_minutes', $patch)) {
+            $mins = (int) $patch['queue_spacing_minutes'];
+            $current['queue_spacing_minutes'] = $mins > 0 ? max(5, min(180, $mins)) : 20;
         }
 
         update_option(self::OPTION, $current);

@@ -17,8 +17,19 @@ use BigBrotherJunkies\Data\Utils\FrontendUrl;
  */
 class QueueBridge
 {
+    /** Default minutes between queued posts; admin-adjustable via settings. */
     public const SLOT_MINUTES = 20;
     private const ENUM_FLAG   = 'bbjd_content_queue_source_v2';
+
+    /**
+     * Minutes between queued posts: the queue_spacing_minutes setting
+     * (bbjd_social_monitor), clamped 5-180, falling back to SLOT_MINUTES.
+     */
+    public static function spacingMinutes(): int
+    {
+        $mins = (int) (SocialStore::settings()['queue_spacing_minutes'] ?? 0);
+        return $mins > 0 ? max(5, min(180, $mins)) : self::SLOT_MINUTES;
+    }
 
     /**
      * One-time enum widening for installs created before this feature.
@@ -50,7 +61,7 @@ class QueueBridge
         update_option(self::ENUM_FLAG, 1, false);
     }
 
-    /** Next open slot: SLOT_MINUTES after the last scheduled item, floor NOW()+5min. */
+    /** Next open slot: spacingMinutes() after the last scheduled item, floor NOW()+5min. */
     public static function nextFreeSlot(): string
     {
         global $wpdb;
@@ -58,7 +69,7 @@ class QueueBridge
         return (string) $wpdb->get_var(
             "SELECT DATE_FORMAT(GREATEST(
                 COALESCE(
-                    (SELECT MAX(scheduled_at) FROM {$table} WHERE status = 'scheduled') + INTERVAL " . self::SLOT_MINUTES . " MINUTE,
+                    (SELECT MAX(scheduled_at) FROM {$table} WHERE status = 'scheduled') + INTERVAL " . self::spacingMinutes() . " MINUTE,
                     NOW()
                 ),
                 NOW() + INTERVAL 5 MINUTE
@@ -98,7 +109,7 @@ class QueueBridge
 
     /**
      * Queue text+link FB shares of published feed updates, chained
-     * SLOT_MINUTES apart from the next free slot. Already-queued/posted
+     * spacingMinutes() apart from the next free slot. Already-queued/posted
      * updates (by wp_post_id) are skipped.
      *
      * Failed inserts are skipped (not counted toward the returned rows, slot
@@ -113,9 +124,10 @@ class QueueBridge
         self::ensureSourceEnum();
         global $wpdb;
         $table  = Schema::table(Schema::TABLE_CONTENT_QUEUE);
-        $out    = [];
-        $errors = [];
-        $slot   = self::nextFreeSlot();
+        $out     = [];
+        $errors  = [];
+        $slot    = self::nextFreeSlot();
+        $spacing = self::spacingMinutes();
         foreach ($postIds as $postId) {
             $post = get_post((int) $postId);
             if (!$post || $post->post_status !== 'publish' || $post->post_type !== 'live-feed-updates') {
@@ -146,7 +158,7 @@ class QueueBridge
                 continue;
             }
             $out[] = ['id' => (int) $wpdb->insert_id, 'post_id' => (int) $post->ID, 'scheduled_at' => $slot];
-            $slot  = gmdate('Y-m-d H:i:s', strtotime($slot) + self::SLOT_MINUTES * MINUTE_IN_SECONDS);
+            $slot  = gmdate('Y-m-d H:i:s', strtotime($slot) + $spacing * MINUTE_IN_SECONDS);
         }
         return ['queued' => $out, 'errors' => $errors];
     }
