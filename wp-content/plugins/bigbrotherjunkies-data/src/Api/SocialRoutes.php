@@ -5,6 +5,7 @@ namespace BigBrotherJunkies\Data\Api;
 use BigBrotherJunkies\Data\Social\BeanBotService;
 use BigBrotherJunkies\Data\Social\DraftService;
 use BigBrotherJunkies\Data\Social\HouseTranscriptService;
+use BigBrotherJunkies\Data\Social\PromptContext;
 use BigBrotherJunkies\Data\Social\QuoteLogic;
 use BigBrotherJunkies\Data\Social\QuoteService;
 use BigBrotherJunkies\Data\Social\QuoteStore;
@@ -49,6 +50,20 @@ class SocialRoutes
         // Bean Bot cycle callback + idempotent init-time scheduling.
         add_action(BeanBotService::CYCLE_HOOK, [BeanBotService::class, 'cron']);
         add_action('init', [BeanBotService::class, 'ensureScheduled']);
+        // CBS air-window notice: one callback, every AI prompt hook. The
+        // services themselves stay untouched.
+        foreach ([
+            'bbjd_social_summary_prompt',
+            'bbjd_bean_bot_fb_prompt',
+            'bbjd_bean_bot_blog_prompt',
+            'bbjd_fb_batch_prompt',
+            'bbjd_bean_bot_feed_prompt',
+            'bbjd_quote_candidates_prompt',
+            'bbjd_house_transcript_prompt',
+            'bbjd_week_summary_prompt',
+        ] as $hook) {
+            add_filter($hook, [PromptContext::class, 'appendNotice'], 20);
+        }
     }
 
     public function checkAccess(): bool

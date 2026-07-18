@@ -46,6 +46,7 @@ class SocialStore
         'poll_minutes'      => 10,
         'model'             => 'claude-sonnet-5',
         'anthropic_api_key' => '',
+        'cbs_slots'         => [],
     ];
 
     // -----------------------------------------------------------------------
@@ -121,6 +122,9 @@ class SocialStore
                 $current['anthropic_api_key'] = $key;
             }
         }
+        if (array_key_exists('cbs_slots', $patch)) {
+            $current['cbs_slots'] = self::normalizeCbsSlots($patch['cbs_slots']);
+        }
 
         update_option(self::OPTION, $current);
         return $current;
@@ -157,6 +161,33 @@ class SocialStore
             }
         }
         return $out;
+    }
+
+    /**
+     * Whitelist CBS slots: day 0-6 (0=Sunday), time_et HH:MM 24h, duration
+     * clamped 30-180 min (default 60). Max 7 slots.
+     *
+     * @param mixed $slots
+     */
+    private static function normalizeCbsSlots($slots): array
+    {
+        if (!is_array($slots)) {
+            return [];
+        }
+        $out = [];
+        foreach ($slots as $slot) {
+            if (!is_array($slot)) {
+                continue;
+            }
+            $day  = (int) ($slot['day'] ?? -1);
+            $time = trim((string) ($slot['time_et'] ?? ''));
+            $dur  = (int) ($slot['duration_min'] ?? 0);
+            if ($day < 0 || $day > 6 || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time)) {
+                continue;
+            }
+            $out[] = ['day' => $day, 'time_et' => $time, 'duration_min' => max(30, min(180, $dur ?: 60))];
+        }
+        return array_slice($out, 0, 7);
     }
 
     // -----------------------------------------------------------------------
