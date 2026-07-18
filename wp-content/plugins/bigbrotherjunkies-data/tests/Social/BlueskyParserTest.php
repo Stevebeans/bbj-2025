@@ -55,4 +55,24 @@ class BlueskyParserTest extends TestCase
         $this->assertSame('', BlueskyParser::toUtc(''));
         $this->assertSame('', BlueskyParser::toUtc('   '));
     }
+
+    public function test_normalize_captures_engagement_counts(): void
+    {
+        $rows = BlueskyParser::fromSearch(['posts' => [$this->post([
+            'likeCount' => 12, 'repostCount' => 3, 'replyCount' => 5, 'quoteCount' => 1,
+        ])]]);
+        $this->assertSame(12, $rows[0]['likes']);
+        $this->assertSame(3, $rows[0]['reposts']);
+        $this->assertSame(5, $rows[0]['replies']);
+        $this->assertSame(1, $rows[0]['quotes']);
+    }
+
+    public function test_missing_counts_default_to_zero(): void
+    {
+        $rows = BlueskyParser::fromSearch(['posts' => [$this->post()]]);
+        $this->assertSame(0, $rows[0]['likes']);
+        $this->assertSame(0, $rows[0]['reposts']);
+        $this->assertSame(0, $rows[0]['replies']);
+        $this->assertSame(0, $rows[0]['quotes']);
+    }
 }

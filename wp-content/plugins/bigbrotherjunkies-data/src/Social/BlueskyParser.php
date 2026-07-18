@@ -87,6 +87,10 @@ class BlueskyParser
             'display_name' => is_string($post['author']['displayName'] ?? null) ? $post['author']['displayName'] : '',
             'text' => $text,
             'posted_at' => $postedAt,
+            'likes'    => max(0, (int) ($post['likeCount'] ?? 0)),
+            'reposts'  => max(0, (int) ($post['repostCount'] ?? 0)),
+            'replies'  => max(0, (int) ($post['replyCount'] ?? 0)),
+            'quotes'   => max(0, (int) ($post['quoteCount'] ?? 0)),
         ];
     }
 }

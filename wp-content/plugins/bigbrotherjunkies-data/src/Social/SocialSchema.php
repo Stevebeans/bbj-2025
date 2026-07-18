@@ -46,10 +46,15 @@ class SocialSchema
             posted_at DATETIME NOT NULL,
             fetched_at DATETIME NOT NULL,
             summarized TINYINT(1) NOT NULL DEFAULT 0,
+            likes INT(10) UNSIGNED NOT NULL DEFAULT 0,
+            reposts INT(10) UNSIGNED NOT NULL DEFAULT 0,
+            replies INT(10) UNSIGNED NOT NULL DEFAULT 0,
+            quotes INT(10) UNSIGNED NOT NULL DEFAULT 0,
             PRIMARY KEY (id),
             UNIQUE KEY uniq_uri (uri),
             KEY idx_source_posted (source, posted_at),
-            KEY idx_summarized (summarized)
+            KEY idx_summarized (summarized),
+            KEY idx_posted (posted_at)
         ) " . self::charset() . ";";
     }
 

@@ -19,7 +19,7 @@ class SocialStore
 {
     public const OPTION            = 'bbjd_social_monitor';
     public const DB_VERSION_OPTION = 'bbj_social_db_version';
-    public const DB_VERSION        = '1.2.0';
+    public const DB_VERSION        = '1.3.0';
 
     /** Action Scheduler recurring hook + group for the poller. */
     public const POLL_HOOK = 'bbjd_social_poll';
@@ -235,9 +235,15 @@ class SocialStore
 
             $result = $wpdb->query($wpdb->prepare(
                 "INSERT INTO {$table}
-                    (source, uri, cid, handle, display_name, text, posted_at, fetched_at, summarized)
-                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0)
-                 ON DUPLICATE KEY UPDATE source = IF(VALUES(source) = 'trusted', 'trusted', source)",
+                    (source, uri, cid, handle, display_name, text, posted_at, fetched_at, summarized,
+                     likes, reposts, replies, quotes)
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %d, %d, %d, %d)
+                 ON DUPLICATE KEY UPDATE
+                    source  = IF(VALUES(source) = 'trusted', 'trusted', source),
+                    likes   = VALUES(likes),
+                    reposts = VALUES(reposts),
+                    replies = VALUES(replies),
+                    quotes  = VALUES(quotes)",
                 $source,
                 (string) $row['uri'],
                 (string) ($row['cid'] ?? ''),
@@ -245,11 +251,14 @@ class SocialStore
                 wp_encode_emoji((string) ($row['display_name'] ?? '')),
                 wp_encode_emoji((string) $row['text']),
                 (string) $row['posted_at'],
-                $now
+                $now,
+                (int) ($row['likes'] ?? 0),
+                (int) ($row['reposts'] ?? 0),
+                (int) ($row['replies'] ?? 0),
+                (int) ($row['quotes'] ?? 0)
             ));
 
-            // wpdb->query returns affected rows: 1 = fresh insert, 2 = row
-            // updated (source upgraded), 0 = duplicate no-op. Only 1 is new.
+            // 1 = fresh insert, 2 = existing row updated (source upgrade or count refresh), 0 = identical duplicate. Only 1 is new.
             if ($result === 1) {
                 $inserted++;
             }
