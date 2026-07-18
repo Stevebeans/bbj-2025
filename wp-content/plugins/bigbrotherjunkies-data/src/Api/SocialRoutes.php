@@ -6,6 +6,7 @@ use BigBrotherJunkies\Data\Social\BeanBotService;
 use BigBrotherJunkies\Data\Social\DraftService;
 use BigBrotherJunkies\Data\Social\HouseTranscriptService;
 use BigBrotherJunkies\Data\Social\PromptContext;
+use BigBrotherJunkies\Data\Social\QuickieCaption;
 use BigBrotherJunkies\Data\Social\QuoteLogic;
 use BigBrotherJunkies\Data\Social\QuoteService;
 use BigBrotherJunkies\Data\Social\QuoteStore;
@@ -112,6 +113,12 @@ class SocialRoutes
                 'hours' => ['type' => 'integer', 'default' => 24, 'sanitize_callback' => 'absint'],
                 'limit' => ['type' => 'integer', 'default' => 25, 'sanitize_callback' => 'absint'],
             ],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/social/quickie-caption', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'quickieCaption'],
+            'permission_callback' => [$this, 'checkAccess'],
         ]);
 
         register_rest_route(self::NAMESPACE, '/social/summaries', [
@@ -283,6 +290,18 @@ class SocialRoutes
         }
         unset($p);
         return new WP_REST_Response(['success' => true, 'posts' => $posts], 200);
+    }
+
+    public function quickieCaption(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $text   = trim((string) ($params['text'] ?? ''));
+        $handle = trim((string) ($params['handle'] ?? ''));
+        if ($text === '' || $handle === '') {
+            return new WP_REST_Response(['success' => false, 'message' => 'text and handle are required.'], 400);
+        }
+        $result = QuickieCaption::generate($text, $handle);
+        return new WP_REST_Response($result, empty($result['success']) ? 502 : 200);
     }
 
     public function getSummaries(WP_REST_Request $request): WP_REST_Response
