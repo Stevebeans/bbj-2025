@@ -185,6 +185,7 @@ class SocialStore
             if ($day < 0 || $day > 6 || !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', $time)) {
                 continue;
             }
+            // $dur ?: 60 — a 0/unset duration falls back to the 60-min default.
             $out[] = ['day' => $day, 'time_et' => $time, 'duration_min' => max(30, min(180, $dur ?: 60))];
         }
         return array_slice($out, 0, 7);

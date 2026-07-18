@@ -338,10 +338,7 @@ class SocialRoutes
             'message'    => $message,
             'image_data' => $imageData,
         ]);
-        if (empty($result['success'])) {
-            return new WP_REST_Response($result, 500);
-        }
-        return new WP_REST_Response($result, 200);
+        return new WP_REST_Response($result, empty($result['success']) ? 500 : 200);
     }
 
     public function feedUpdatesRecent(): WP_REST_Response
