@@ -338,7 +338,10 @@ class SocialRoutes
             'message'    => $message,
             'image_data' => $imageData,
         ]);
-        return new WP_REST_Response(array_merge(['success' => true], $result), 200);
+        if (empty($result['success'])) {
+            return new WP_REST_Response($result, 500);
+        }
+        return new WP_REST_Response($result, 200);
     }
 
     public function feedUpdatesRecent(): WP_REST_Response
@@ -357,8 +360,17 @@ class SocialRoutes
         if ($pageId === '' || $postIds === []) {
             return new WP_REST_Response(['success' => false, 'message' => 'page_id and post_ids are required.'], 400);
         }
-        $queued = QueueBridge::enqueueFeedShares($postIds, $pageId, (string) ($params['page_name'] ?? ''));
-        return new WP_REST_Response(['success' => true, 'queued' => $queued], 200);
+        $result = QueueBridge::enqueueFeedShares($postIds, $pageId, (string) ($params['page_name'] ?? ''));
+        $queued = $result['queued'];
+        $errors = $result['errors'];
+        if ($queued === [] && $errors !== []) {
+            return new WP_REST_Response(['success' => false, 'message' => 'All queue inserts failed.', 'errors' => $errors], 500);
+        }
+        $response = ['success' => true, 'queued' => $queued];
+        if ($errors !== []) {
+            $response['errors'] = $errors;
+        }
+        return new WP_REST_Response($response, 200);
     }
 
     public function getSummaries(WP_REST_Request $request): WP_REST_Response

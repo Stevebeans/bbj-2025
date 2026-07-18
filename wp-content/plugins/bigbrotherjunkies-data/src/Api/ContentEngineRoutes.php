@@ -6,6 +6,16 @@ use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 class ContentEngineRoutes
 {
+    /**
+     * Every bbj_content_queue column except image_data (a LONGBLOB that can
+     * hold a base64-encoded PNG) plus a computed has_image flag — list
+     * endpoints only need to know whether an image exists, not fetch it.
+     */
+    private const QUEUE_ROW_COLUMNS = 'id, status, source, content_type, title, body, image_url,
+            (image_data IS NOT NULL AND image_data != \'\') AS has_image,
+            target_page, target_page_name, wp_post_id, scheduled_at, posted_at, fb_post_id,
+            template_type, source_url, ai_variations, author_id, created_at, updated_at';
+
     public function register(): void
     {
         add_action('rest_api_init', [$this, 'registerRoutes']);
@@ -98,7 +108,7 @@ class ContentEngineRoutes
         $where = $status ? $wpdb->prepare("WHERE status = %s", $status) : "";
         $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table} {$where}");
         $items = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$table} {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d",
+            "SELECT " . self::QUEUE_ROW_COLUMNS . " FROM {$table} {$where} ORDER BY created_at DESC LIMIT %d OFFSET %d",
             $perPage, $offset
         ));
 
@@ -134,10 +144,11 @@ class ContentEngineRoutes
             'author_id' => get_current_user_id(),
         ];
 
-        // Handle base64 image data
+        // Stored as-is (base64 string), matching QueueBridge's queue rows —
+        // ContentEngineCron::firePost base64_decode()s at send time.
         $imageData = $request->get_param('image_data');
         if ($imageData) {
-            $data['image_data'] = base64_decode($imageData);
+            $data['image_data'] = $imageData;
         }
 
         if ($data['scheduled_at']) {
@@ -201,7 +212,7 @@ class ContentEngineRoutes
         $table = $wpdb->prefix . 'bbj_content_queue';
 
         $items = $wpdb->get_results(
-            "SELECT * FROM {$table} WHERE status = 'scheduled' ORDER BY scheduled_at ASC"
+            "SELECT " . self::QUEUE_ROW_COLUMNS . " FROM {$table} WHERE status = 'scheduled' ORDER BY scheduled_at ASC"
         );
 
         return new \WP_REST_Response(['items' => $items]);
@@ -233,7 +244,7 @@ class ContentEngineRoutes
             "SELECT COUNT(*) FROM {$table} WHERE status IN ('posted', 'failed')"
         );
         $items = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$table} WHERE status IN ('posted', 'failed') ORDER BY posted_at DESC LIMIT %d OFFSET %d",
+            "SELECT " . self::QUEUE_ROW_COLUMNS . " FROM {$table} WHERE status IN ('posted', 'failed') ORDER BY posted_at DESC LIMIT %d OFFSET %d",
             $perPage, $offset
         ));
 

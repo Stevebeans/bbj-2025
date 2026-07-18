@@ -20,7 +20,13 @@ class QueueBridge
     public const SLOT_MINUTES = 20;
     private const ENUM_FLAG   = 'bbjd_content_queue_source_v2';
 
-    /** One-time enum widening for installs created before this feature. */
+    /**
+     * One-time enum widening for installs created before this feature.
+     * Self-healing: creates the table first (dbDelta) if it doesn't exist
+     * yet, then ALTERs the enum, then VERIFIES both new values landed
+     * before setting the flag — so a failed ALTER never gets silently
+     * treated as done.
+     */
     public static function ensureSourceEnum(): void
     {
         if (get_option(self::ENUM_FLAG)) {
@@ -28,9 +34,19 @@ class QueueBridge
         }
         global $wpdb;
         $table = Schema::table(Schema::TABLE_CONTENT_QUEUE);
+
+        require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+        dbDelta(Schema::getContentQueueTableSchema());
+
         $wpdb->query("ALTER TABLE {$table} MODIFY source
             ENUM('manual','image_paste','news_scan','template','on_this_day','social_quickie','feed_update_share')
             DEFAULT 'manual'");
+
+        $enumRow = $wpdb->get_row("SHOW COLUMNS FROM {$table} LIKE 'source'", ARRAY_A);
+        $type    = (string) ($enumRow['Type'] ?? '');
+        if (strpos($type, 'social_quickie') === false || strpos($type, 'feed_update_share') === false) {
+            return;
+        }
         update_option(self::ENUM_FLAG, 1, false);
     }
 
@@ -54,15 +70,15 @@ class QueueBridge
      * Queue a quickie card (base64 PNG + caption) for the next free slot.
      *
      * @param array{page_id:string,page_name?:string,message:string,image_data:string} $args
-     * @return array{id:int,scheduled_at:string}
+     * @return array{success:bool,id?:int,scheduled_at?:string,message?:string}
      */
     public static function enqueueQuickie(array $args): array
     {
         self::ensureSourceEnum();
         global $wpdb;
-        $table = Schema::table(Schema::TABLE_CONTENT_QUEUE);
-        $slot  = self::nextFreeSlot();
-        $wpdb->insert($table, [
+        $table  = Schema::table(Schema::TABLE_CONTENT_QUEUE);
+        $slot   = self::nextFreeSlot();
+        $result = $wpdb->insert($table, [
             'status'           => 'scheduled',
             'source'           => 'social_quickie',
             'content_type'     => 'facebook_post',
@@ -74,7 +90,10 @@ class QueueBridge
             'scheduled_at'     => $slot,
             'author_id'        => get_current_user_id(),
         ]);
-        return ['id' => (int) $wpdb->insert_id, 'scheduled_at' => $slot];
+        if ($result === false) {
+            return ['success' => false, 'message' => 'Queue insert failed' . ($wpdb->last_error ? ': ' . $wpdb->last_error : '')];
+        }
+        return ['success' => true, 'id' => (int) $wpdb->insert_id, 'scheduled_at' => $slot];
     }
 
     /**
@@ -82,16 +101,21 @@ class QueueBridge
      * SLOT_MINUTES apart from the next free slot. Already-queued/posted
      * updates (by wp_post_id) are skipped.
      *
+     * Failed inserts are skipped (not counted toward the returned rows, slot
+     * not advanced) and noted in the 'errors' key so the route can surface
+     * a partial-failure response.
+     *
      * @param int[] $postIds
-     * @return array<int,array{id:int,post_id:int,scheduled_at:string}>
+     * @return array{queued:array<int,array{id:int,post_id:int,scheduled_at:string}>,errors:array<int,string>}
      */
     public static function enqueueFeedShares(array $postIds, string $pageId, string $pageName = ''): array
     {
         self::ensureSourceEnum();
         global $wpdb;
-        $table = Schema::table(Schema::TABLE_CONTENT_QUEUE);
-        $out   = [];
-        $slot  = self::nextFreeSlot();
+        $table  = Schema::table(Schema::TABLE_CONTENT_QUEUE);
+        $out    = [];
+        $errors = [];
+        $slot   = self::nextFreeSlot();
         foreach ($postIds as $postId) {
             $post = get_post((int) $postId);
             if (!$post || $post->post_status !== 'publish' || $post->post_type !== 'live-feed-updates') {
@@ -100,12 +124,16 @@ class QueueBridge
             if (self::isShared($post->ID)) {
                 continue;
             }
-            $wpdb->insert($table, [
+            // Feed-update titles are stored wp_encode_emoji'd (utf8mb3-safe
+            // wp_posts); decode before the queue row so an emoji-heavy title
+            // doesn't post to Facebook as a literal &#x1f5a4; entity string.
+            $title  = html_entity_decode((string) $post->post_title, ENT_QUOTES, 'UTF-8');
+            $result = $wpdb->insert($table, [
                 'status'           => 'scheduled',
                 'source'           => 'feed_update_share',
                 'content_type'     => 'facebook_post',
-                'title'            => $post->post_title,
-                'body'             => $post->post_title,
+                'title'            => $title,
+                'body'             => $title,
                 'source_url'       => FrontendUrl::forPost($post),
                 'wp_post_id'       => $post->ID,
                 'target_page'      => $pageId,
@@ -113,10 +141,14 @@ class QueueBridge
                 'scheduled_at'     => $slot,
                 'author_id'        => get_current_user_id(),
             ]);
+            if ($result === false) {
+                $errors[] = "Post {$post->ID}: queue insert failed" . ($wpdb->last_error ? ': ' . $wpdb->last_error : '');
+                continue;
+            }
             $out[] = ['id' => (int) $wpdb->insert_id, 'post_id' => (int) $post->ID, 'scheduled_at' => $slot];
             $slot  = gmdate('Y-m-d H:i:s', strtotime($slot) + self::SLOT_MINUTES * MINUTE_IN_SECONDS);
         }
-        return $out;
+        return ['queued' => $out, 'errors' => $errors];
     }
 
     /**
@@ -137,7 +169,7 @@ class QueueBridge
         foreach ($posts as $post) {
             $out[] = [
                 'id'            => (int) $post->ID,
-                'title'         => $post->post_title,
+                'title'         => html_entity_decode((string) $post->post_title, ENT_QUOTES, 'UTF-8'),
                 'published_gmt' => (string) $post->post_date_gmt,
                 'url'           => FrontendUrl::forPost($post),
                 'shared'        => self::isShared((int) $post->ID),

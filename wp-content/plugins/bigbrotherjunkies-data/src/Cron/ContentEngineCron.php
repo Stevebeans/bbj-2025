@@ -140,6 +140,10 @@ class ContentEngineCron
             'status' => 'posted',
             'posted_at' => current_time('mysql'),
             'fb_post_id' => $result['id'] ?? $result['post_id'] ?? null,
+            // Drop the blob once posted — no longer needed and the list
+            // endpoints (getQueue/getDrafts/getPostLog) shouldn't be
+            // fetching it anyway. Left intact on failure for retry/debug.
+            'image_data' => null,
         ], ['id' => $post->id]);
     }
 
