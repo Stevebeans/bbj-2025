@@ -74,7 +74,18 @@ class WeeklyAdminPlannerTest extends TestCase
         $comps = $result['comps'];
         $this->assertContains(['player_id' => 101, 'slug' => 'hoh', 'comp_type_id' => null, 'notes' => null], $comps);
         $this->assertContains(['player_id' => 102, 'slug' => 'pov', 'comp_type_id' => null, 'notes' => null], $comps);
-        $this->assertContains(['player_id' => 106, 'slug' => null, 'comp_type_id' => 9, 'notes' => 'AI Arena'], $comps);
+        $this->assertContains(['player_id' => 106, 'slug' => null, 'comp_type_id' => 9, 'notes' => 'AI Arena', 'saved' => 0], $comps);
+    }
+
+    public function test_misc_comp_saved_flag_rides_through(): void
+    {
+        $payload = $this->basePayload();
+        $payload['misc_comps'][0]['saved'] = true;
+        $result = WeeklyAdmin::planWeekRows($payload, self::ROSTER);
+        $this->assertContains(
+            ['player_id' => 106, 'slug' => null, 'comp_type_id' => 9, 'notes' => 'AI Arena', 'saved' => 1],
+            $result['comps']
+        );
     }
 
     public function test_havenot_off_roster_is_rejected(): void
