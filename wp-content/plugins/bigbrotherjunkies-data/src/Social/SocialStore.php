@@ -559,6 +559,49 @@ class SocialStore
     }
 
     /**
+     * Curated day read for the transcript/quote generators: EVERY trusted
+     * post in the window plus the top $tagTop tag posts by engagement
+     * (likes + 2*reposts), merged back into chronological order.
+     *
+     * Replaces postsForDay() for generation: at BB28-peak volume
+     * (~7.7K posts/day) the old first-N-chronological read filled its cap
+     * by ~4 AM and silently truncated the rest of the day (2026-07-18).
+     * Good quotes travel — high-engagement tag posts carry them without
+     * scanning thousands of dead posts.
+     *
+     * @return array<int,array<string,mixed>> same row shape as postsForDay()
+     */
+    public static function postsForDayCurated(string $fromUtc, string $toUtc, int $tagTop = 500, int $trustedCap = 1500): array
+    {
+        global $wpdb;
+        $table = SocialSchema::table(SocialSchema::TABLE_POSTS);
+
+        $trusted = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, source, handle, display_name, text, posted_at FROM {$table}
+              WHERE source = 'trusted' AND posted_at >= %s AND posted_at < %s
+              ORDER BY posted_at ASC, id ASC LIMIT %d",
+            $fromUtc,
+            $toUtc,
+            max(1, min(3000, $trustedCap))
+        ), ARRAY_A) ?: [];
+
+        $tag = $wpdb->get_results($wpdb->prepare(
+            "SELECT id, source, handle, display_name, text, posted_at FROM {$table}
+              WHERE source = 'tag' AND posted_at >= %s AND posted_at < %s
+              ORDER BY (likes + 2 * reposts) DESC, posted_at ASC, id ASC LIMIT %d",
+            $fromUtc,
+            $toUtc,
+            max(1, min(2000, $tagTop))
+        ), ARRAY_A) ?: [];
+
+        $rows = array_merge($trusted, $tag);
+        usort($rows, static function (array $a, array $b): int {
+            return [$a['posted_at'], (int) $a['id']] <=> [$b['posted_at'], (int) $b['id']];
+        });
+        return $rows;
+    }
+
+    /**
      * Engagement-ranked posts for the Top Posts board. Raw score =
      * likes + 2*reposts. Posts inside a CBS caution window are flagged and
      * downweighted to 30% so episode-reaction spikes don't bury feed intel;

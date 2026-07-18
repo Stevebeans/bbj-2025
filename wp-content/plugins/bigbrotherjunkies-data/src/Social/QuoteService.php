@@ -42,7 +42,9 @@ PROMPT;
         }
 
         $bounds = QuoteLogic::houseDayBounds($ymd);
-        $rows   = SocialStore::postsForDay($bounds['from'], $bounds['to']);
+        // Curated: all trusted + top-500 tag by engagement (good quotes
+        // travel); the old chronological read capped at 1000 by early morning.
+        $rows   = SocialStore::postsForDayCurated($bounds['from'], $bounds['to']);
         if (empty($rows)) {
             return ['success' => false, 'message' => 'No collected posts for that day.'];
         }
@@ -88,7 +90,9 @@ PROMPT;
 
             $bounds   = QuoteLogic::houseDayBounds($ymd);
             $settings = SocialStore::settings();
-            $rows     = SocialStore::postsForDay($bounds['from'], $bounds['to']);
+            // Same curated read as candidates() so post_count metadata
+            // reflects what generation actually scanned.
+            $rows     = SocialStore::postsForDayCurated($bounds['from'], $bounds['to']);
 
             // Mirrors DraftService::generate()'s insertSummary() call, with
             // kind = self::KIND, content = the JSON-encoded candidates, and

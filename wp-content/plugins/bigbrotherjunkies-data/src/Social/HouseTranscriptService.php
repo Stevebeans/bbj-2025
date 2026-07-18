@@ -53,7 +53,9 @@ PROMPT;
         }
 
         $bounds = QuoteLogic::houseDayBounds($ymd);
-        $rows   = SocialStore::postsForDay($bounds['from'], $bounds['to'], 2000);
+        // Curated: all trusted + top-500 tag by engagement. The old
+        // first-2000-chronological read filled up by ~4 AM at peak volume.
+        $rows   = SocialStore::postsForDayCurated($bounds['from'], $bounds['to']);
         if (empty($rows)) {
             return ['success' => false, 'message' => 'No collected posts for that day.'];
         }
