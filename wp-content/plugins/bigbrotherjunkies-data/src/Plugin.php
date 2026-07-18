@@ -685,6 +685,10 @@ class Plugin
         // Admin user-management routes (member support: list, detail, roles, actions)
         $userAdminRoutes = new UserAdminRoutes();
         $userAdminRoutes->register();
+
+        // Admin premium-members routes (subscription list, stats, cancel)
+        $subscriptionAdminRoutes = new \BigBrotherJunkies\Data\Api\SubscriptionAdminRoutes();
+        $subscriptionAdminRoutes->register();
     }
 
     /**

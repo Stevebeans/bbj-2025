@@ -618,4 +618,25 @@ class SubscriptionManager
             'paypal_total' => 0,
         ];
     }
+
+    /**
+     * Rolling activity counts for the admin Premium tab: new subscription
+     * rows in the last 7/30 days and cancellations in the last 30.
+     */
+    public function getTrendStats(): array
+    {
+        global $wpdb;
+        $table = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
+
+        $stats = $wpdb->get_row(
+            "SELECT
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 ELSE 0 END) as joins_7d,
+                SUM(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as joins_30d,
+                SUM(CASE WHEN canceled_at IS NOT NULL AND canceled_at >= DATE_SUB(NOW(), INTERVAL 30 DAY) THEN 1 ELSE 0 END) as cancels_30d
+             FROM {$table}",
+            ARRAY_A
+        );
+
+        return $stats ?: ['joins_7d' => 0, 'joins_30d' => 0, 'cancels_30d' => 0];
+    }
 }
