@@ -620,6 +620,39 @@ class SubscriptionManager
     }
 
     /**
+     * Revenue aggregates for the admin Premium tab, from the amounts each
+     * subscription actually bills (amount_cents). MRR = monthly billers at
+     * face value + annual billers spread across 12 months. Lifetime is
+     * one-time money, reported separately and excluded from MRR.
+     */
+    public function getRevenueStats(): array
+    {
+        global $wpdb;
+        $table = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
+
+        $row = $wpdb->get_row(
+            "SELECT
+                COALESCE(SUM(CASE WHEN status = 'active' AND plan_type = 'monthly' THEN amount_cents END), 0) as monthly_billed_cents,
+                COALESCE(SUM(CASE WHEN status = 'active' AND plan_type = 'annual' THEN amount_cents END), 0) as annual_billed_cents,
+                COALESCE(SUM(CASE WHEN status = 'lifetime' THEN amount_cents END), 0) as lifetime_collected_cents,
+                SUM(CASE WHEN status = 'active' AND amount_cents IS NULL THEN 1 ELSE 0 END) as unpriced_active
+             FROM {$table}",
+            ARRAY_A
+        ) ?: [];
+
+        $monthly = (int) ($row['monthly_billed_cents'] ?? 0);
+        $annual  = (int) ($row['annual_billed_cents'] ?? 0);
+
+        return [
+            'monthly_billed_cents'     => $monthly,
+            'annual_billed_cents'      => $annual,
+            'mrr_cents'                => $monthly + (int) round($annual / 12),
+            'lifetime_collected_cents' => (int) ($row['lifetime_collected_cents'] ?? 0),
+            'unpriced_active'          => (int) ($row['unpriced_active'] ?? 0),
+        ];
+    }
+
+    /**
      * Rolling activity counts for the admin Premium tab: new subscription
      * rows in the last 7/30 days and cancellations in the last 30.
      */

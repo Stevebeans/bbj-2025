@@ -81,6 +81,7 @@ class SubscriptionAdminRoutes
         return new \WP_REST_Response([
             'stats' => array_map('intval', $manager->getStats()),
             'trends' => array_map('intval', $manager->getTrendStats()),
+            'revenue' => $manager->getRevenueStats(),
         ]);
     }
 
