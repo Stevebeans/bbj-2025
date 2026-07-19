@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Bean\BeanMemory;
+use BigBrotherJunkies\Data\Bean\BeanSchema;
 use BigBrotherJunkies\Data\Bean\BeanUsage;
 
 /**
