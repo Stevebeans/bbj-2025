@@ -71,6 +71,7 @@ use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Api\LiveThreadRoutes;
 use BigBrotherJunkies\Data\Api\UserAdminRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
+use BigBrotherJunkies\Data\Cron\BillingExpiryCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadCron;
@@ -428,13 +429,17 @@ class Plugin
         $notificationCleanup = new NotificationCleanup();
         $notificationCleanup->init();
 
-        // Content Engine (FB auto-poster + news aggregator) is not in use, and its
-        // tables (wp_bbj_content_queue / wp_bbj_news_feed) don't exist on prod, so
-        // its every-minute / every-30-min crons flooded debug.log with "table doesn't
-        // exist" errors. Disabled until the feature is actually used again.
-        // Re-enable by uncommenting + redeploying, then the tables self-create.
-        // $contentEngineCron = new ContentEngineCron();
-        // $contentEngineCron->init();
+        // Content Engine cron re-enabled 2026-07-18: the FB quickie pipeline
+        // posts through its queue, and QueueBridge::ensureSourceEnum() now
+        // self-creates the tables on first enqueue (no more missing-table log
+        // spam once anything is queued).
+        $contentEngineCron = new ContentEngineCron();
+        $contentEngineCron->init();
+
+        // Expires cancel-at-period-end subscriptions (the only expiry path
+        // for PayPal period-end cancels; Stripe's webhook usually wins).
+        $billingExpiry = new BillingExpiryCron();
+        $billingExpiry->init();
     }
 
     /**

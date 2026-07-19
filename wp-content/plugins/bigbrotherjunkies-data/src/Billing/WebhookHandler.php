@@ -349,6 +349,20 @@ class WebhookHandler
             return ['success' => true, 'message' => 'Subscription not found'];
         }
 
+        // Fires for our own period-end cancels (moments after the API call)
+        // AND when a member cancels from PayPal's own UI. Either way they've
+        // paid through current_period_end — keep access until it lapses;
+        // BillingExpiryCron handles the expiry.
+        $periodEnd = $existingSub['current_period_end'] ?? null;
+        if ($periodEnd && strtotime($periodEnd) > time()) {
+            $this->subscriptionManager->updateSubscriptionStatus($existingSub['id'], 'active', [
+                'cancel_at_period_end' => 1,
+                'canceled_at' => !empty($existingSub['canceled_at']) ? $existingSub['canceled_at'] : current_time('mysql'),
+            ]);
+            error_log("BBJ Billing: PayPal subscription {$subscription['id']} cancelled - access retained until {$periodEnd}");
+            return ['success' => true];
+        }
+
         $this->subscriptionManager->updateSubscriptionStatus($existingSub['id'], 'canceled', [
             'canceled_at' => current_time('mysql'),
         ]);

@@ -248,7 +248,7 @@ class BillingRoutes
 
         // Check if user already has active subscription
         $manager = SubscriptionManager::getInstance();
-        if ($manager->hasActiveSubscription($userId)) {
+        if ($manager->hasBlockingSubscription($userId)) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'You already have an active subscription',
@@ -300,7 +300,7 @@ class BillingRoutes
         }
 
         $manager = SubscriptionManager::getInstance();
-        if ($manager->hasActiveSubscription($userId)) {
+        if ($manager->hasBlockingSubscription($userId)) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'You already have an active subscription',
@@ -404,7 +404,7 @@ class BillingRoutes
         }
 
         $manager = SubscriptionManager::getInstance();
-        if ($manager->hasActiveSubscription($userId)) {
+        if ($manager->hasBlockingSubscription($userId)) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'You already have an active subscription',

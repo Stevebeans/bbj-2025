@@ -192,7 +192,12 @@ class SubscriptionManager
                 } elseif (in_array($status, ['expired', 'canceled'])) {
                     // Only remove role if subscription actually ended (not cancel_at_period_end)
                     if ($status === 'expired' || !($additionalData['cancel_at_period_end'] ?? false)) {
-                        $this->removeSupporterRole($subscription['user_id']);
+                        // ...and never strip a role a NEWER subscription still
+                        // pays for (member re-subscribed/upgraded before an
+                        // old pending-cancel row lapsed).
+                        if (!$this->getActiveSubscription((int) $subscription['user_id'])) {
+                            $this->removeSupporterRole($subscription['user_id']);
+                        }
                     }
                 }
             }
@@ -278,6 +283,19 @@ class SubscriptionManager
     }
 
     /**
+     * Blocks new checkouts only while a subscription is active AND still
+     * renewing. A cancel-at-period-end member is on the way out — let them
+     * start a new (e.g. Full Bean) subscription without waiting for the
+     * lapse; the role-removal guard keeps the old row's expiry from
+     * stripping the new subscription's role.
+     */
+    public function hasBlockingSubscription(int $userId): bool
+    {
+        $sub = $this->getActiveSubscription($userId);
+        return $sub !== null && empty($sub['cancel_at_period_end']);
+    }
+
+    /**
      * Handle subscription cancellation
      */
     public function cancelSubscription(int $userId, bool $immediate = false): array
@@ -338,14 +356,19 @@ class SubscriptionManager
                 return $result;
             }
 
-            // PayPal always cancels immediately
-            $this->updateSubscriptionStatus($subscription['id'], 'canceled', [
+            // PayPal stops future billing immediately, but the member already
+            // paid through current_period_end — keep access until then, like
+            // Stripe and the FAQ promise. BillingExpiryCron flips the row to
+            // 'expired' (removing the role) once the period lapses.
+            $this->updateSubscriptionStatus($subscription['id'], 'active', [
+                'cancel_at_period_end' => 1,
                 'canceled_at' => current_time('mysql'),
             ]);
 
             return [
                 'success' => true,
-                'message' => 'Subscription has been canceled',
+                'message' => 'Subscription will be canceled at the end of the billing period',
+                'cancel_at' => $subscription['current_period_end'],
             ];
         }
 

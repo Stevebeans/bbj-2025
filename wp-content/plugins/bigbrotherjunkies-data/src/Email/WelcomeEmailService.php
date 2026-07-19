@@ -42,7 +42,7 @@ class WelcomeEmailService
                     . '<li style="margin-bottom:8px;"><strong>Ad-free everywhere</strong> — browse the entire site with zero ads getting in the way.</li>'
                     . '<li style="margin-bottom:8px;"><strong>Interactive Player Map</strong> — heatmaps, state stats, nearest-player finder, and season timelines.</li>'
                     . '<li style="margin-bottom:8px;"><strong>Player Comparisons</strong> — head-to-head stat breakdowns, HoH/PoV charts, and performance analysis.</li>'
-                    . '<li style="margin-bottom:8px;"><strong>Priority push notifications</strong> — breaking feed-update alerts before anyone else.</li>'
+                    . '<li style="margin-bottom:8px;"><strong>Ask the Bean</strong> — {{bean_line}}</li>'
                     . '<li style="margin-bottom:8px;"><strong>Exclusive supporter badge</strong> — a little something next to your name so everyone knows you\'ve got our back.</li>'
                     . '<li style="margin-bottom:8px;"><strong>Independent BB coverage</strong> — you\'re directly keeping quality Big Brother content alive and corporate-free.</li>'
                     . '</ul>'
@@ -97,7 +97,13 @@ class WelcomeEmailService
             $nextBill = 'Never — lifetime access';
         }
 
+        // Tier-aware Bean perk line ({{bean_line}} in the premium template).
+        $beanLine = ($sub['tier'] ?? '') === 'full_bean'
+            ? 'unlimited chats on our smartest model, and he remembers what matters about you between conversations.'
+            : '30 chats a day with our Big Brother AI - he reads every feed report and remembers the whole season.';
+
         return [
+            '{{bean_line}}'    => $beanLine,
             '{{first_name}}'   => esc_html($first),
             '{{display_name}}' => esc_html($user->display_name),
             '{{site_url}}'     => esc_url($frontend),
