@@ -33,6 +33,12 @@ class BeanRoutes
             'permission_callback' => [$this, 'loggedIn'],
         ]);
 
+        register_rest_route(self::NAMESPACE, '/bean/prompts', [
+            'methods'             => 'GET',
+            'callback'            => [$this, 'promptsList'],
+            'permission_callback' => [$this, 'isAdmin'],
+        ]);
+
         register_rest_route(self::NAMESPACE, '/bean/facts', [
             [
                 'methods'             => 'GET',
@@ -100,11 +106,44 @@ class BeanRoutes
         return new \WP_REST_Response(BeanUsage::snapshot(get_current_user_id()), 200);
     }
 
-    public function consume(): \WP_REST_Response
+    public function consume(\WP_REST_Request $request): \WP_REST_Response
     {
         $userId = get_current_user_id();
         BeanUsage::increment($userId);
+
+        // Log the question (admin prompt viewer; questions only, never
+        // answers). Best-effort: a logging hiccup must never block a chat.
+        $question = trim((string) $request->get_param('question'));
+        if ($question !== '') {
+            global $wpdb;
+            $wpdb->insert(BeanSchema::table(BeanSchema::TABLE_PROMPTS), [
+                'user_id'  => $userId,
+                'question' => mb_substr($question, 0, 2000),
+            ]);
+        }
+
         return new \WP_REST_Response(BeanUsage::snapshot($userId), 200);
+    }
+
+    /** Admin-only: recent user questions, newest first. */
+    public function promptsList(\WP_REST_Request $request): \WP_REST_Response
+    {
+        global $wpdb;
+        $page    = max(1, (int) $request->get_param('page'));
+        $perPage = 50;
+        $offset  = ($page - 1) * $perPage;
+        $t       = BeanSchema::table(BeanSchema::TABLE_PROMPTS);
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT p.id, p.user_id, p.question, p.created_at, u.display_name
+               FROM {$t} p LEFT JOIN {$wpdb->users} u ON u.ID = p.user_id
+              ORDER BY p.id DESC LIMIT %d OFFSET %d",
+            $perPage,
+            $offset
+        ), ARRAY_A) ?: [];
+        $total = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$t}");
+
+        return new \WP_REST_Response(['prompts' => $rows, 'total' => $total], 200);
     }
 
     public function memoryGet(): \WP_REST_Response

@@ -9,6 +9,7 @@ class BeanSchema
 {
     public const TABLE_USAGE = 'bbj_bean_usage';
     public const TABLE_MEMORY = 'bbj_bean_memory';
+    public const TABLE_PROMPTS = 'bbj_bean_prompts';
 
     public static function table(string $name): string
     {
@@ -55,6 +56,27 @@ class BeanSchema
             summary TEXT NULL,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (user_id)
+        ) {$charset};";
+    }
+
+    /**
+     * Log of user questions to the Bean (admin visibility into what members
+     * actually ask — product research + FAQ mining). Questions only, never
+     * answers.
+     */
+    public static function getPromptsTableSchema(): string
+    {
+        $table = self::table(self::TABLE_PROMPTS);
+        $charset = self::getCharset();
+
+        return "CREATE TABLE {$table} (
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            user_id BIGINT(20) UNSIGNED NOT NULL,
+            question TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (id),
+            KEY idx_created (created_at),
+            KEY idx_user (user_id)
         ) {$charset};";
     }
 }
