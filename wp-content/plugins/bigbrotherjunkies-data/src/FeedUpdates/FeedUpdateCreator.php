@@ -449,7 +449,14 @@ class FeedUpdateCreator
             if ($body === '') {
                 $body = $title;
             }
-            return "[{$bbt} BBT] {$body} {$hashtag}";
+            // Long updates get a condensed rewrite sized so the prefix and
+            // season tag fit inside Bluesky's 300 — otherwise BlueskyClient
+            // clips the body mid-word.
+            $prefix = "[{$bbt} BBT] ";
+            $suffix = $hashtag !== '' ? " {$hashtag}" : '';
+            $budget = 300 - mb_strlen($prefix) - mb_strlen($suffix);
+            $body   = \BigBrotherJunkies\Data\Social\BlueskyCondenser::condense($body, $budget);
+            return $prefix . $body . $suffix;
         }
 
         // Twitter/legacy: Simple format
