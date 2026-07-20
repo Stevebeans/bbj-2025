@@ -68,6 +68,12 @@ class ContentEngineRoutes
             'permission_callback' => [$this, 'checkAccess'],
         ]);
 
+        register_rest_route($namespace, '/content-engine/queue/(?P<id>\d+)/image', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getQueueImage'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
         // Post Log
         register_rest_route($namespace, '/content-engine/log', [
             'methods' => 'GET',
@@ -216,6 +222,28 @@ class ContentEngineRoutes
         );
 
         return new \WP_REST_Response(['items' => $items]);
+    }
+
+    /**
+     * The list endpoints exclude image_data (LONGBLOB); this fetches one row's
+     * blob on demand so the queue UI can preview the card before it posts.
+     */
+    public function getQueueImage(\WP_REST_Request $request): \WP_REST_Response
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'bbj_content_queue';
+        $id = (int) $request->get_param('id');
+
+        $imageData = $wpdb->get_var($wpdb->prepare(
+            "SELECT image_data FROM {$table} WHERE id = %d",
+            $id
+        ));
+
+        if (!$imageData) {
+            return new \WP_REST_Response(['error' => 'No image for this item'], 404);
+        }
+
+        return new \WP_REST_Response(['image_data' => $imageData]);
     }
 
     public function reschedulePost(\WP_REST_Request $request): \WP_REST_Response
