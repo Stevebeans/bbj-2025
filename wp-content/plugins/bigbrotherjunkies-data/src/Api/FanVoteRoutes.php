@@ -12,6 +12,7 @@ use WP_REST_Response;
  *
  *  - GET  /fan-votes/tracker  public standings + daily history
  *  - POST /fan-vote           cast/move the logged-in user's single vote
+ *  - DELETE /fan-vote         clear the logged-in user's vote (no favorite)
  *  - GET  /fan-vote/mine      the logged-in user's current-season vote
  *  - GET  /fan-vote/ballot    the logged-in user's ranked ballot + vote weight
  *  - POST /fan-vote/ballot    replace the logged-in user's ranked ballot
@@ -42,9 +43,16 @@ class FanVoteRoutes
         ]);
 
         register_rest_route(self::NAMESPACE, '/fan-vote', [
-            'methods' => 'POST',
-            'callback' => [$this, 'castVote'],
-            'permission_callback' => 'is_user_logged_in',
+            [
+                'methods' => 'POST',
+                'callback' => [$this, 'castVote'],
+                'permission_callback' => 'is_user_logged_in',
+            ],
+            [
+                'methods' => 'DELETE',
+                'callback' => [$this, 'removeVote'],
+                'permission_callback' => 'is_user_logged_in',
+            ],
         ]);
 
         register_rest_route(self::NAMESPACE, '/fan-vote/mine', [
@@ -126,6 +134,27 @@ class FanVoteRoutes
         FanVoteStore::bustTrackerCaches();
 
         return new WP_REST_Response(['success' => true, 'player_id' => $result['player_id']], 200);
+    }
+
+    /**
+     * Un-heart: clear the user's vote entirely. Deliberately outside the
+     * cast-vote rate limit — the natural flow is "clicked by accident, click
+     * again to undo", which must work within the same minute.
+     */
+    public function removeVote(WP_REST_Request $request): WP_REST_Response
+    {
+        $result = FanVoteStore::removeVote(get_current_user_id());
+        if (!empty($result['errors'])) {
+            return new WP_REST_Response([
+                'success' => false,
+                'errors' => $result['errors'],
+                'message' => implode('; ', $result['errors']),
+            ], 400);
+        }
+
+        FanVoteStore::bustTrackerCaches();
+
+        return new WP_REST_Response(['success' => true, 'player_id' => null], 200);
     }
 
     public function getMine(WP_REST_Request $request): WP_REST_Response

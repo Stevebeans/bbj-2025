@@ -89,6 +89,31 @@ class FanVoteStore
         return ['season_id' => $seasonId, 'player_id' => $playerId];
     }
 
+    /**
+     * Remove the user's heart vote for the current season (no favorite set).
+     * The ranked ballot is untouched — only the bonus heart goes away.
+     *
+     * @return array{errors:string[]}|array{season_id:int}
+     */
+    public static function removeVote(int $userId): array
+    {
+        global $wpdb;
+
+        $seasonId = self::currentSeason();
+        if (!$seasonId) {
+            return ['errors' => ['No current season configured']];
+        }
+
+        $votes = FanVoteSchema::table(FanVoteSchema::TABLE_VOTES);
+        $wpdb->query($wpdb->prepare(
+            "DELETE FROM {$votes} WHERE user_id = %d AND season_id = %d",
+            $userId,
+            $seasonId
+        ));
+
+        return ['season_id' => $seasonId];
+    }
+
     /** The user's current-season vote (player_id) or null. */
     public static function myVote(int $userId): ?int
     {
