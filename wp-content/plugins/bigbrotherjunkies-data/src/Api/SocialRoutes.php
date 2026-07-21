@@ -64,6 +64,8 @@ class SocialRoutes
             'bbjd_house_transcript_prompt',
             'bbjd_week_summary_prompt',
         ] as $hook) {
+            // Roster + fan-nickname glossary first (15), CBS notice last (20).
+            add_filter($hook, [PromptContext::class, 'appendRoster'], 15);
             add_filter($hook, [PromptContext::class, 'appendNotice'], 20);
         }
     }

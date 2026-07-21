@@ -53,4 +53,41 @@ class PromptContextTest extends TestCase
     {
         $this->assertFalse(PromptContext::inCautionWindow([], $this->utc('2026-07-17 00:30:00')));
     }
+
+    // --- rosterBlock ---
+
+    public function test_roster_block_lists_roster_glossary_and_rule(): void
+    {
+        $block = PromptContext::rosterBlock(['Haley', 'Kamu', 'Lala'], ['Thog = Haley']);
+        $this->assertStringContainsString("This season's houseguests: Haley, Kamu, Lala.", $block);
+        $this->assertStringContainsString('Thog = Haley', $block);
+        $this->assertStringContainsString('SAME person', $block);
+    }
+
+    public function test_roster_block_glossary_only_when_roster_excluded(): void
+    {
+        $block = PromptContext::rosterBlock(['Haley'], ['Thog = Haley'], false);
+        $this->assertStringNotContainsString("This season's houseguests", $block);
+        $this->assertStringContainsString('Thog = Haley', $block);
+    }
+
+    public function test_roster_block_empty_when_nothing_to_say(): void
+    {
+        $this->assertSame('', PromptContext::rosterBlock([], []));
+        $this->assertSame('', PromptContext::rosterBlock(['Haley'], [], false));
+    }
+
+    public function test_roster_block_drops_malformed_glossary_lines(): void
+    {
+        $block = PromptContext::rosterBlock([], ['Thog = Haley', 'garbage line', '   ']);
+        $this->assertStringContainsString('Thog = Haley', $block);
+        $this->assertStringNotContainsString('garbage', $block);
+    }
+
+    public function test_roster_block_decodes_entities(): void
+    {
+        // Stored lines are wp_encode_emoji'd; the block must decode for Claude.
+        $block = PromptContext::rosterBlock([], ['Thog&#039;s = Haley']);
+        $this->assertStringContainsString("Thog's = Haley", $block);
+    }
 }

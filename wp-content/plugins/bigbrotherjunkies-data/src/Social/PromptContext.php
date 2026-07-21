@@ -75,4 +75,57 @@ class PromptContext
         }
         return $prompt . "\n\n" . self::NOTICE;
     }
+
+    /**
+     * Filter callback: season roster + fan-nickname glossary on every
+     * feed-intel prompt. Fan reports run on community nicknames ("Thog" =
+     * Haley) the models can't know, which produced phantom houseguests in
+     * drafts (2026-07-21). The transcript prompt appends its own roster line
+     * after its filters run, so that hook gets the glossary only.
+     */
+    public static function appendRoster($prompt)
+    {
+        if (!is_string($prompt)) {
+            return $prompt;
+        }
+        $block = self::rosterBlock(
+            HouseTranscriptService::currentSeasonRoster(),
+            (array) (SocialStore::settings()['fan_nicknames'] ?? []),
+            current_filter() !== 'bbjd_house_transcript_prompt'
+        );
+        return $block === '' ? $prompt : $prompt . "\n\n" . $block;
+    }
+
+    /**
+     * Pure block builder (no WordPress) so it unit-tests cleanly.
+     *
+     * @param string[] $roster    names (+ official nicknames) for the season
+     * @param string[] $nicknames normalized "Nick = Real Name" lines
+     */
+    public static function rosterBlock(array $roster, array $nicknames, bool $includeRoster = true): string
+    {
+        $lines = [];
+        if ($includeRoster && $roster) {
+            $lines[] = "This season's houseguests: " . implode(', ', array_slice($roster, 0, 40)) . '.';
+        }
+
+        $pairs = [];
+        foreach ($nicknames as $line) {
+            $line = trim(html_entity_decode((string) $line, ENT_QUOTES, 'UTF-8'));
+            if ($line !== '' && str_contains($line, '=')) {
+                $pairs[] = $line;
+            }
+        }
+        if ($pairs) {
+            $lines[] = 'Fan nickname glossary (community nicknames fans use in reports): '
+                . implode('; ', $pairs) . '.';
+        }
+
+        if ($lines) {
+            $lines[] = 'A nickname and its real name are the SAME person - never treat them as two '
+                . 'different people. Always use real names in your output.';
+        }
+
+        return implode("\n", $lines);
+    }
 }

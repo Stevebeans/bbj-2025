@@ -49,6 +49,8 @@ class SocialStore
         'cbs_slots'         => [],
         // Minutes between queued FB posts (quickies + feed-update shares).
         'queue_spacing_minutes' => 20,
+        // "Nick = Real Name" lines mapping community nicknames to houseguests.
+        'fan_nicknames'         => [],
     ];
 
     // -----------------------------------------------------------------------
@@ -131,9 +133,39 @@ class SocialStore
             $mins = (int) $patch['queue_spacing_minutes'];
             $current['queue_spacing_minutes'] = $mins > 0 ? max(5, min(180, $mins)) : 20;
         }
+        if (array_key_exists('fan_nicknames', $patch)) {
+            $current['fan_nicknames'] = self::normalizeFanNicknames($patch['fan_nicknames']);
+        }
 
         update_option(self::OPTION, $current);
         return $current;
+    }
+
+    /**
+     * Normalize fan-nickname entries to "Nick = Real Name" lines. Accepts an
+     * array of lines or one newline-separated string; invalid lines drop.
+     * wp_encode_emoji so an emoji nickname can't fail the whole option write
+     * on utf8mb3 (decoded again at prompt-injection time).
+     */
+    private static function normalizeFanNicknames($raw): array
+    {
+        $lines = is_array($raw) ? $raw : explode("\n", (string) $raw);
+        $out = [];
+        foreach ($lines as $line) {
+            $line = sanitize_text_field((string) $line);
+            if ($line === '' || !str_contains($line, '=')) {
+                continue;
+            }
+            [$nick, $name] = array_map('trim', explode('=', $line, 2));
+            if ($nick === '' || $name === '' || mb_strlen($nick) > 40 || mb_strlen($name) > 60) {
+                continue;
+            }
+            $out[] = wp_encode_emoji("{$nick} = {$name}");
+            if (count($out) >= 100) {
+                break;
+            }
+        }
+        return array_values(array_unique($out));
     }
 
     /** Normalize a tag to a single leading '#'. Empty stays empty. */

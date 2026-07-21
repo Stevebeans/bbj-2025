@@ -48,6 +48,13 @@ no handles, no em-dashes. Never tell readers to like, comment, or share. Never i
 Never speculate about WHY feeds cut to stall cams or go down; production cuts them constantly
 for mundane reasons, and Thursday afternoon outages are routine prep for the live eviction
 show. Just report that feeds went down.
+The reports are in chronological order and describe a SEQUENCE of events across the window,
+not one simultaneous scene: when the same houseguest appears in more than one conversation,
+connect the scenes in time ("later", "after that"); never place a houseguest in two
+conversations at once, and use "meanwhile"/"elsewhere" only for different people. The closing
+question must match the body: reference people or pairings exactly as the post described them
+(two individuals are not a "duo" unless the post showed them working as one). Every sentence
+needs a clear subject; cut any clause you cannot attribute cleanly.
 Respond with the post text only.
 PROMPT;
 
@@ -59,19 +66,23 @@ Tell the FULL story of the window in chronological order: what happened, who was
 what led to it, and what it means for the game. Use as many paragraphs as the material needs.
 Write flowing prose: most paragraphs start plain. Only when the story shifts to a genuinely
 new chapter (a comp result, a blowup, a new alliance) may you bold a short lead-in phrase
-(markdown ** **) — a few times per recap at most, never every paragraph. No headings, no
+(markdown ** **): a few times per recap at most, never every paragraph. No headings, no
 bullet lists, no title. Casual, knowledgeable fan voice with light snark where it fits.
 
 Rules: the Big Brother house is in Los Angeles. The accounts you receive reports from are fans
 posting from their own homes anywhere in the world; a report about weather, local news, or the
-poster's personal life is about THEIR city, not the show — ignore any report that is not about
+poster's personal life is about THEIR city, not the show; ignore any report that is not about
 events inside the house or the game. Trusted reports are reliable; include tag-post claims only
 when several apparently independent posts describe them, attributed as "feedsters are reporting"
 or similar hedge.
 When reports conflict, say so. Never invent events, dialogue, or motives. No handles, no
 em-dashes. Never speculate about WHY feeds cut to stall cams or go down; production cuts them
 constantly for mundane reasons, and Thursday afternoon outages are routine prep for the live
-eviction show. Quote at most a short phrase from any single report. Respond with the recap only.
+eviction show. Quote at most a short phrase from any single report.
+Events happened in sequence, not all at once: never place a houseguest in two conversations
+at the same time; when someone appears in multiple scenes, connect them in time ("later",
+"after that") and reserve "meanwhile" for different people. Every sentence needs a clear
+subject; cut any clause you cannot attribute cleanly. Respond with the recap only.
 PROMPT;
 
     /** Where the last batch's coverage ended (UTC 'Y-m-d H:i:s'). */
@@ -108,10 +119,18 @@ feeds cut to stall cams or go down; production cuts them constantly for mundane 
 Thursday afternoon outages are routine prep for the live eviction show, not a sign something
 juicy is happening. Just report that feeds went down.
 
+Within each post the reports are chronological and describe a SEQUENCE, not one simultaneous
+scene: when the same houseguest appears in more than one conversation, connect the scenes in
+time ("later", "moving on from there"); never place a houseguest in two conversations at
+once, and use "meanwhile"/"elsewhere" only for different people. The closing question must
+match the body: reference people or pairings exactly as the post described them (two
+individuals are not a "duo" unless the post showed them working as one). Every sentence needs
+a clear subject; cut any clause you cannot attribute cleanly.
+
 Respond with ONLY this JSON (no other text):
 {"posts":[{"covers":"~12:30-2:45 PM","text":"<full post text with real newlines>"}]}
 Posts in chronological order. "covers" is the house-time range the post spans.
-Inside "text", use curly quotes (“ ”) for any quoted word or phrase — the only straight
+Inside "text", use curly quotes (“ ”) for any quoted word or phrase; the only straight
 double quotes anywhere in your output are the JSON syntax itself.
 PROMPT;
 
