@@ -115,7 +115,7 @@ class DmStore
             return ['ok' => false, 'reason' => 'no_user'];
         }
 
-        $valid = DmLogic::validBody(html_entity_decode($rawBody, ENT_QUOTES, 'UTF-8'));
+        $valid = DmLogic::validBody(sanitize_textarea_field(html_entity_decode($rawBody, ENT_QUOTES, 'UTF-8')));
         if (!$valid['ok']) {
             return ['ok' => false, 'reason' => $valid['reason']];
         }
