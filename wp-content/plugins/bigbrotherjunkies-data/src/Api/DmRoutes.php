@@ -1,0 +1,177 @@
+<?php
+
+namespace BigBrotherJunkies\Data\Api;
+
+use BigBrotherJunkies\Data\Messages\DmStore;
+use WP_REST_Request;
+use WP_REST_Response;
+
+/**
+ * Direct-message REST routes. All client-fetched, all logged-in-only.
+ * Human-readable refusal copy lives here; DmStore returns machine reasons.
+ */
+class DmRoutes
+{
+    private const NAMESPACE = 'bbjd/v1';
+
+    private const REASON_COPY = [
+        'blocked'        => 'You cannot message this member.',
+        'closed'         => 'This member is not accepting messages.',
+        'not_followed'   => 'This member only accepts messages from people they follow.',
+        'self'           => 'You cannot message yourself.',
+        'no_user'        => 'That member does not exist.',
+        'empty'          => 'Message cannot be empty.',
+        'too_long'       => 'Message is too long (2,000 characters max).',
+        'rate_limited'   => 'You are sending messages too fast. Give it a minute.',
+        'thread_limited' => 'You have started too many new conversations today.',
+        'db'             => 'Could not save the message. Please try again.',
+    ];
+
+    public function init(): void
+    {
+        add_action('rest_api_init', [$this, 'registerRoutes']);
+    }
+
+    public function registerRoutes(): void
+    {
+        $auth = 'is_user_logged_in';
+
+        register_rest_route(self::NAMESPACE, '/dm/threads', [
+            'methods' => 'GET', 'callback' => [$this, 'threads'], 'permission_callback' => $auth,
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/threads/(?P<id>\d+)/messages', [
+            'methods' => 'GET', 'callback' => [$this, 'messages'], 'permission_callback' => $auth,
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/threads/(?P<id>\d+)/read', [
+            'methods' => 'POST', 'callback' => [$this, 'markRead'], 'permission_callback' => $auth,
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/send', [
+            'methods' => 'POST', 'callback' => [$this, 'send'], 'permission_callback' => $auth,
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/unread-count', [
+            'methods' => 'GET', 'callback' => [$this, 'unreadCount'], 'permission_callback' => $auth,
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/blocks', [
+            ['methods' => 'GET',    'callback' => [$this, 'blockList'], 'permission_callback' => $auth],
+            ['methods' => 'POST',   'callback' => [$this, 'block'],     'permission_callback' => $auth],
+            ['methods' => 'DELETE', 'callback' => [$this, 'unblock'],   'permission_callback' => $auth],
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/report', [
+            'methods' => 'POST', 'callback' => [$this, 'report'], 'permission_callback' => $auth,
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/privacy', [
+            ['methods' => 'GET',  'callback' => [$this, 'getPrivacy'],  'permission_callback' => $auth],
+            ['methods' => 'POST', 'callback' => [$this, 'savePrivacy'], 'permission_callback' => $auth],
+        ]);
+    }
+
+    public function threads(WP_REST_Request $request): WP_REST_Response
+    {
+        $page    = max(1, (int) ($request->get_param('page') ?? 1));
+        $perPage = min(50, max(1, (int) ($request->get_param('per_page') ?? 20)));
+        return new WP_REST_Response([
+            'success' => true,
+            'threads' => DmStore::inbox(get_current_user_id(), $page, $perPage),
+        ], 200);
+    }
+
+    public function messages(WP_REST_Request $request): WP_REST_Response
+    {
+        $beforeId = $request->get_param('before_id') ? (int) $request->get_param('before_id') : null;
+        $limit    = min(100, max(1, (int) ($request->get_param('limit') ?? 50)));
+        $rows = DmStore::messages((int) $request->get_param('id'), get_current_user_id(), $beforeId, $limit);
+        if ($rows === null) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Not your conversation.'], 403);
+        }
+        return new WP_REST_Response(['success' => true, 'messages' => $rows], 200);
+    }
+
+    public function markRead(WP_REST_Request $request): WP_REST_Response
+    {
+        $ok = DmStore::markRead((int) $request->get_param('id'), get_current_user_id());
+        return new WP_REST_Response(['success' => $ok], $ok ? 200 : 403);
+    }
+
+    public function send(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $result = DmStore::send(
+            get_current_user_id(),
+            (int) ($params['recipient_id'] ?? 0),
+            (string) ($params['body'] ?? '')
+        );
+        if (!$result['ok']) {
+            $reason = (string) $result['reason'];
+            $status = in_array($reason, ['rate_limited', 'thread_limited'], true) ? 429
+                : ($reason === 'blocked' || $reason === 'closed' || $reason === 'not_followed' ? 403 : 400);
+            return new WP_REST_Response([
+                'success' => false,
+                'reason'  => $reason,
+                'message' => self::REASON_COPY[$reason] ?? 'Could not send.',
+            ], $status);
+        }
+        return new WP_REST_Response([
+            'success' => true, 'thread_id' => $result['thread_id'], 'message' => $result['message'],
+        ], 200);
+    }
+
+    public function unreadCount(WP_REST_Request $request): WP_REST_Response
+    {
+        return new WP_REST_Response(['count' => DmStore::unreadCount(get_current_user_id())], 200);
+    }
+
+    public function blockList(WP_REST_Request $request): WP_REST_Response
+    {
+        return new WP_REST_Response(['blocked' => DmStore::blockedList(get_current_user_id())], 200);
+    }
+
+    public function block(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $target = (int) ($params['user_id'] ?? 0);
+        if ($target <= 0 || $target === get_current_user_id()) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Invalid user.'], 400);
+        }
+        DmStore::block(get_current_user_id(), $target);
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    public function unblock(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        DmStore::unblock(get_current_user_id(), (int) ($params['user_id'] ?? 0));
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    public function report(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $threadId = (int) ($params['thread_id'] ?? 0);
+        if ($threadId <= 0) {
+            return new WP_REST_Response(['success' => false, 'message' => 'thread_id is required.'], 400);
+        }
+        // Reporter must be a participant: reuse the membership check in messages().
+        if (DmStore::messages($threadId, get_current_user_id(), null, 1) === null) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Not your conversation.'], 403);
+        }
+        $ok = DmStore::report(
+            get_current_user_id(),
+            $threadId,
+            isset($params['message_id']) ? (int) $params['message_id'] : null,
+            (string) ($params['note'] ?? '')
+        );
+        return new WP_REST_Response(['success' => $ok], $ok ? 200 : 500);
+    }
+
+    public function getPrivacy(WP_REST_Request $request): WP_REST_Response
+    {
+        return new WP_REST_Response(['privacy' => DmStore::privacyFor(get_current_user_id())], 200);
+    }
+
+    public function savePrivacy(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        $saved = DmStore::savePrivacy(get_current_user_id(), (string) ($params['privacy'] ?? ''));
+        return new WP_REST_Response(['success' => true, 'privacy' => $saved], 200);
+    }
+}

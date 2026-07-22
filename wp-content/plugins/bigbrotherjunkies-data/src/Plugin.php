@@ -36,6 +36,7 @@ use BigBrotherJunkies\Data\Api\SeasonRoutes;
 use BigBrotherJunkies\Data\Api\WeeklyRoutes;
 use BigBrotherJunkies\Data\Api\FanVoteRoutes;
 use BigBrotherJunkies\Data\Api\SocialRoutes;
+use BigBrotherJunkies\Data\Api\DmRoutes;
 use BigBrotherJunkies\Data\Api\ContactRoutes;
 use BigBrotherJunkies\Data\Api\PlayerPhotoRoutes;
 use BigBrotherJunkies\Data\Api\ImportRoutes;
@@ -617,6 +618,8 @@ class Plugin
 
         // Direct messages
         \BigBrotherJunkies\Data\Messages\DmStore::maybeMigrate();
+        $dmRoutes = new DmRoutes();
+        $dmRoutes->init();
 
         // Contact form routes
         $contactRoutes = new ContactRoutes();
