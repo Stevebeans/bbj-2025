@@ -615,6 +615,9 @@ class Plugin
         $socialRoutes = new SocialRoutes();
         $socialRoutes->init();
 
+        // Direct messages
+        \BigBrotherJunkies\Data\Messages\DmStore::maybeMigrate();
+
         // Contact form routes
         $contactRoutes = new ContactRoutes();
         $contactRoutes->register();
