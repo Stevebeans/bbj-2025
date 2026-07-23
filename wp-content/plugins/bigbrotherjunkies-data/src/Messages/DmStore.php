@@ -325,6 +325,92 @@ class DmStore
         ));
     }
 
+    // -----------------------------------------------------------------------
+    // Admin moderation
+    // -----------------------------------------------------------------------
+
+    /**
+     * Reports for the admin screen, newest first: reporter + participant
+     * names, decoded note and reported message, plus a short decoded excerpt
+     * of the thread for context. Reports are rare enough that the per-row
+     * excerpt query is fine.
+     *
+     * @return array<int,array<string,mixed>>
+     */
+    public static function reportsList(bool $openOnly, int $page, int $perPage): array
+    {
+        global $wpdb;
+        $reports  = DmSchema::table(DmSchema::TABLE_REPORTS);
+        $threads  = DmSchema::table(DmSchema::TABLE_THREADS);
+        $messages = DmSchema::table(DmSchema::TABLE_MESSAGES);
+        $offset   = max(0, ($page - 1) * $perPage);
+        $where    = $openOnly ? 'WHERE r.resolved_at IS NULL' : '';
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT r.id, r.reporter_id, r.thread_id, r.message_id, r.note,
+                    r.created_at, r.resolved_at,
+                    ru.user_login AS reporter_username,
+                    lo.user_login AS lo_username, hi.user_login AS hi_username,
+                    rm.body AS reported_body
+               FROM {$reports} r
+               LEFT JOIN {$wpdb->users} ru ON ru.ID = r.reporter_id
+               LEFT JOIN {$threads} t ON t.id = r.thread_id
+               LEFT JOIN {$wpdb->users} lo ON lo.ID = t.user_lo
+               LEFT JOIN {$wpdb->users} hi ON hi.ID = t.user_hi
+               LEFT JOIN {$messages} rm ON rm.id = r.message_id
+               {$where}
+              ORDER BY r.created_at DESC
+              LIMIT %d OFFSET %d",
+            $perPage,
+            $offset
+        ), ARRAY_A) ?: [];
+
+        foreach ($rows as &$r) {
+            $threadId = (int) $r['thread_id'];
+            $excerptRows = $wpdb->get_results($wpdb->prepare(
+                "SELECT m.id, m.sender_id, m.body, m.created_at, u.user_login AS sender_username
+                   FROM {$messages} m LEFT JOIN {$wpdb->users} u ON u.ID = m.sender_id
+                  WHERE m.thread_id = %d ORDER BY m.id DESC LIMIT 10",
+                $threadId
+            ), ARRAY_A) ?: [];
+            $excerpt = [];
+            foreach (array_reverse($excerptRows) as $m) {
+                $excerpt[] = [
+                    'id'              => (int) $m['id'],
+                    'sender_id'       => (int) $m['sender_id'],
+                    'sender_username' => (string) $m['sender_username'],
+                    'body'            => html_entity_decode((string) $m['body'], ENT_QUOTES, 'UTF-8'),
+                    'created_at'      => (string) $m['created_at'],
+                ];
+            }
+
+            $r['id']            = (int) $r['id'];
+            $r['reporter_id']   = (int) $r['reporter_id'];
+            $r['thread_id']     = $threadId;
+            $r['message_id']    = $r['message_id'] !== null ? (int) $r['message_id'] : null;
+            $r['note']          = html_entity_decode((string) $r['note'], ENT_QUOTES, 'UTF-8');
+            $r['reported_body'] = $r['reported_body'] !== null
+                ? html_entity_decode((string) $r['reported_body'], ENT_QUOTES, 'UTF-8')
+                : null;
+            $r['excerpt']       = $excerpt;
+        }
+
+        return $rows;
+    }
+
+    /** Stamp a report resolved. Returns false for an unknown id. */
+    public static function resolveReport(int $reportId): bool
+    {
+        global $wpdb;
+        $reports = DmSchema::table(DmSchema::TABLE_REPORTS);
+        $updated = $wpdb->update(
+            $reports,
+            ['resolved_at' => current_time('mysql', true)],
+            ['id' => $reportId]
+        );
+        return $updated !== false && $updated > 0;
+    }
+
     public static function report(int $reporterId, int $threadId, ?int $messageId, string $note): bool
     {
         global $wpdb;

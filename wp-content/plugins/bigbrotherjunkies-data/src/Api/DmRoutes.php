@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Messages\DmStore;
+use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 use WP_REST_Request;
 use WP_REST_Response;
 
@@ -63,6 +64,40 @@ class DmRoutes
             ['methods' => 'GET',  'callback' => [$this, 'getPrivacy'],  'permission_callback' => $auth],
             ['methods' => 'POST', 'callback' => [$this, 'savePrivacy'], 'permission_callback' => $auth],
         ]);
+
+        // Moderation (admin Users tab), gated like the rest of that tab.
+        register_rest_route(self::NAMESPACE, '/dm/reports', [
+            'methods' => 'GET',
+            'callback' => [$this, 'adminReports'],
+            'permission_callback' => [$this, 'checkModAccess'],
+        ]);
+        register_rest_route(self::NAMESPACE, '/dm/reports/(?P<id>\d+)/resolve', [
+            'methods' => 'POST',
+            'callback' => [$this, 'adminResolveReport'],
+            'permission_callback' => [$this, 'checkModAccess'],
+        ]);
+    }
+
+    public function checkModAccess(): bool
+    {
+        return PermissionChecker::userCan('user_management');
+    }
+
+    public function adminReports(WP_REST_Request $request): WP_REST_Response
+    {
+        $openOnly = $request->get_param('status') !== 'all';
+        $page     = max(1, (int) ($request->get_param('page') ?? 1));
+        $perPage  = min(50, max(1, (int) ($request->get_param('per_page') ?? 20)));
+        return new WP_REST_Response([
+            'success' => true,
+            'reports' => DmStore::reportsList($openOnly, $page, $perPage),
+        ], 200);
+    }
+
+    public function adminResolveReport(WP_REST_Request $request): WP_REST_Response
+    {
+        $ok = DmStore::resolveReport((int) $request->get_param('id'));
+        return new WP_REST_Response(['success' => $ok], $ok ? 200 : 404);
     }
 
     public function threads(WP_REST_Request $request): WP_REST_Response
