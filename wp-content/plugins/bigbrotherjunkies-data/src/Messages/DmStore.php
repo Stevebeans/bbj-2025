@@ -244,7 +244,7 @@ class DmStore
                     'id'       => $otherId,
                     'username' => (string) $r['other_username'],
                     'name'     => (string) $r['other_name'],
-                    'avatar'   => get_avatar_url($otherId, ['size' => 64]),
+                    'avatar'   => get_avatar_url($otherId, ['size' => 64, 'default' => 'mm']),
                 ],
                 'last_message'    => mb_strlen($preview) > 120 ? mb_substr($preview, 0, 120) . '…' : $preview,
                 'last_message_at' => (string) $r['last_message_at'],
