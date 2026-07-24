@@ -30,6 +30,11 @@ on the Big Brother live feeds in a window. Steve will review and post it manuall
 
 Produce the post in this exact layout:
 1. One eye-popping opening sentence that teases the biggest development without giving it away.
+   The opener must FLOW like something a fan would text a friend: one beat, one hook, plain
+   rhythm. Never stack two or three mini-teasers with commas; a list-of-clauses opener reads
+   as trying too hard. Good: "Someone starts telling other people things Lyric supposedly
+   promised, and it does not stay contained to one conversation." Bad: "The backyard opens,
+   the yard talk gets weirdly tender, and somebody is still not officially a have not."
 2. On its own line: (feed spoilers below)
 3. Then four blank lines, so Facebook's "See more" fold hides everything that follows.
 4. The payoff: 2 to 3 short paragraphs telling the story of the window in a casual fan voice.
@@ -99,6 +104,11 @@ one post.
 
 Each post uses this exact layout:
 1. One dry opening sentence teasing that chapter's biggest development without giving it away.
+   The opener must FLOW like something a fan would text a friend: one beat, one hook, plain
+   rhythm. Never stack two or three mini-teasers with commas; a list-of-clauses opener reads
+   as trying too hard. Good: "Someone starts telling other people things Lyric supposedly
+   promised, and it does not stay contained to one conversation." Bad: "The backyard opens,
+   the yard talk gets weirdly tender, and somebody is still not officially a have not."
 2. On its own line: (feed spoilers below)
 3. Then four blank lines, so Facebook's "See more" fold hides everything that follows.
 4. Two to three short paragraphs telling that chapter's story. Weave in a house-time anchor
