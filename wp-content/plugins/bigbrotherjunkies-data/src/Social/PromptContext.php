@@ -89,7 +89,7 @@ class PromptContext
             return $prompt;
         }
         $block = self::rosterBlock(
-            HouseTranscriptService::currentSeasonRoster(),
+            HouseTranscriptService::rosterCallNames(),
             (array) (SocialStore::settings()['fan_nicknames'] ?? []),
             current_filter() !== 'bbjd_house_transcript_prompt'
         );
@@ -123,7 +123,11 @@ class PromptContext
 
         if ($lines) {
             $lines[] = 'A nickname and its real name are the SAME person - never treat them as two '
-                . 'different people. Always use real names in your output.';
+                . 'different people. Name style: call each houseguest what the house calls them - '
+                . 'the name listed FIRST above (official nickname, else first name). Never use '
+                . 'full names in your output, and never use fan-glossary nicknames (write the real '
+                . 'name, not the glossary alias). If two houseguests share a first name, add a '
+                . 'last initial.';
         }
 
         return implode("\n", $lines);

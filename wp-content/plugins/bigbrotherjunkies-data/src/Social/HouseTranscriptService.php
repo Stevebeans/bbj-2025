@@ -163,6 +163,36 @@ PROMPT;
         return $names;
     }
 
+    /**
+     * Roster formatted for prompt display: preferred call name first (official
+     * nickname when set, else first name), full name in parens for identity.
+     * e.g. "Lala (LaTrice Royale)", "Kamu (Kamu Kirk)". Drafts should sound
+     * like the house, and the house never says "Lyric Mederios".
+     */
+    public static function rosterCallNames(): array
+    {
+        if (!function_exists('bbj_v2_get_season_players')) {
+            return [];
+        }
+        $seasonId = (int) get_option('bbj_v2_current_season', 0);
+        if ($seasonId <= 0) {
+            return [];
+        }
+        $out = [];
+        foreach ((array) bbj_v2_get_season_players($seasonId, 'thumbnail') as $p) {
+            $first = trim((string) ($p['first_name'] ?? ''));
+            $last  = trim((string) ($p['last_name'] ?? ''));
+            $nick  = trim((string) ($p['official_nickname'] ?? ''));
+            $call  = $nick !== '' ? $nick : $first;
+            if ($call === '') {
+                continue;
+            }
+            $full = trim($first . ' ' . $last);
+            $out[] = ($full !== '' && $full !== $call) ? "{$call} ({$full})" : $call;
+        }
+        return $out;
+    }
+
     /** Latest stored transcript covering the given Pacific day, else null. */
     public static function storedForDay(string $ymd): ?array
     {
