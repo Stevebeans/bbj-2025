@@ -61,6 +61,38 @@ class QueueBridge
         update_option(self::ENUM_FLAG, 1, false);
     }
 
+    /**
+     * Resolve the target slot for a queued item. An explicit, well-formed,
+     * FUTURE UTC 'Y-m-d H:i:s' request is honored verbatim; anything empty,
+     * malformed, or already in the past falls back to the next auto-slot.
+     */
+    public static function resolveSlot(?string $requested): string
+    {
+        return self::parseFutureUtc((string) ($requested ?? '')) ?? self::nextFreeSlot();
+    }
+
+    /**
+     * Strict UTC 'Y-m-d H:i:s' parse that also requires a future time; returns
+     * the canonical string on success, null on garbage / past. Mirrors
+     * ContentEngineRoutes::parseUtc's round-trip strictness.
+     */
+    private static function parseFutureUtc(string $value): ?string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+        $tz = new \DateTimeZone('UTC');
+        $dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $value, $tz);
+        if ($dt === false || $dt->format('Y-m-d H:i:s') !== $value) {
+            return null;
+        }
+        if ($dt <= new \DateTimeImmutable('now', $tz)) {
+            return null;
+        }
+        return $dt->format('Y-m-d H:i:s');
+    }
+
     /** Next open slot: spacingMinutes() after the last scheduled item, floor NOW()+5min. */
     public static function nextFreeSlot(): string
     {
@@ -78,9 +110,11 @@ class QueueBridge
     }
 
     /**
-     * Queue a quickie card (base64 PNG + caption) for the next free slot.
+     * Queue a quickie card (base64 PNG + caption). Uses the explicit
+     * 'scheduled_at' slot when it's a valid future UTC time, else the next
+     * auto-slot.
      *
-     * @param array{page_id:string,page_name?:string,message:string,image_data:string} $args
+     * @param array{page_id:string,page_name?:string,message:string,image_data:string,scheduled_at?:string} $args
      * @return array{success:bool,id?:int,scheduled_at?:string,message?:string}
      */
     public static function enqueueQuickie(array $args): array
@@ -88,7 +122,7 @@ class QueueBridge
         self::ensureSourceEnum();
         global $wpdb;
         $table  = Schema::table(Schema::TABLE_CONTENT_QUEUE);
-        $slot   = self::nextFreeSlot();
+        $slot   = self::resolveSlot($args['scheduled_at'] ?? null);
         $result = $wpdb->insert($table, [
             'status'           => 'scheduled',
             'source'           => 'social_quickie',

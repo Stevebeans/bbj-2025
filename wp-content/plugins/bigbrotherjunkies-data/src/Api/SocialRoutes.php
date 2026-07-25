@@ -339,10 +339,13 @@ class SocialRoutes
             return new WP_REST_Response(['success' => false, 'message' => 'page_id, message and image_data are required.'], 400);
         }
         $result = QueueBridge::enqueueQuickie([
-            'page_id'    => $pageId,
-            'page_name'  => (string) ($params['page_name'] ?? ''),
-            'message'    => $message,
-            'image_data' => $imageData,
+            'page_id'      => $pageId,
+            'page_name'    => (string) ($params['page_name'] ?? ''),
+            'message'      => $message,
+            'image_data'   => $imageData,
+            // Optional explicit slot (UTC 'Y-m-d H:i:s'); QueueBridge validates
+            // it and falls back to the next auto-slot when absent/invalid/past.
+            'scheduled_at' => (string) ($params['scheduled_at'] ?? ''),
         ]);
         return new WP_REST_Response($result, empty($result['success']) ? 500 : 200);
     }
