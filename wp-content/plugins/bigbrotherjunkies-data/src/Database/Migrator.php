@@ -30,6 +30,38 @@ class Migrator
     }
 
     /**
+     * One-time widen of bbj_content_queue.source: the original ENUM silently
+     * coerced unknown markers to '' (the 'batch' source was being lost).
+     * VARCHAR(32) matches the new Schema definition; init-wired and guarded
+     * by an option so it runs once per site.
+     */
+    public const QUEUE_SOURCE_OPTION = 'bbjd_queue_source_varchar';
+
+    public static function maybeWidenQueueSource(): void
+    {
+        if (get_option(self::QUEUE_SOURCE_OPTION)) {
+            return;
+        }
+        if (!self::tableExists(Schema::TABLE_CONTENT_QUEUE)) {
+            // Table not created yet — first enqueue self-heals with the new
+            // Schema (already VARCHAR), so there is nothing to widen.
+            update_option(self::QUEUE_SOURCE_OPTION, 1);
+            return;
+        }
+        global $wpdb;
+        $table = Schema::table(Schema::TABLE_CONTENT_QUEUE);
+        $type = $wpdb->get_var($wpdb->prepare(
+            "SELECT COLUMN_TYPE FROM information_schema.COLUMNS
+              WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = 'source'",
+            $table
+        ));
+        if ($type !== null && stripos((string) $type, 'enum') === 0) {
+            $wpdb->query("ALTER TABLE {$table} MODIFY source VARCHAR(32) NOT NULL DEFAULT 'manual'");
+        }
+        update_option(self::QUEUE_SOURCE_OPTION, 1);
+    }
+
+    /**
      * Check if a table exists
      */
     public static function tableExists(string $tableName): bool

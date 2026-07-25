@@ -618,6 +618,9 @@ class Plugin
 
         // Direct messages
         \BigBrotherJunkies\Data\Messages\DmStore::maybeMigrate();
+
+        // Queue source ENUM -> VARCHAR (one-time, option-guarded)
+        \BigBrotherJunkies\Data\Database\Migrator::maybeWidenQueueSource();
         $dmRoutes = new DmRoutes();
         $dmRoutes->init();
 

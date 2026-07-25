@@ -109,7 +109,7 @@ class Schema
         return "CREATE TABLE IF NOT EXISTS {$table} (
             id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
             status ENUM('draft','scheduled','posted','failed') DEFAULT 'draft',
-            source ENUM('manual','image_paste','news_scan','template','on_this_day','social_quickie','feed_update_share') DEFAULT 'manual',
+            source VARCHAR(32) NOT NULL DEFAULT 'manual',
             content_type ENUM('facebook_post','blog_post','both') DEFAULT 'facebook_post',
             title VARCHAR(255) DEFAULT NULL,
             body TEXT NOT NULL,
