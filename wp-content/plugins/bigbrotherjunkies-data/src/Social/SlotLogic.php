@@ -38,7 +38,14 @@ class SlotLogic
         // Parse scheduled rows once; drop malformed ones.
         $rows = [];
         foreach ($scheduled as $r) {
-            $ts = strtotime(($r['at'] ?? '') . ' UTC');
+            $raw = trim((string) ($r['at'] ?? ''));
+            if ($raw === '') {
+                // strtotime(' UTC') resolves to the CURRENT time, not false -
+                // an empty at must be dropped explicitly or it would falsely
+                // mark the nearest slot taken.
+                continue;
+            }
+            $ts = strtotime($raw . ' UTC');
             if ($ts !== false && $ts > 0) {
                 $rows[] = ['ts' => $ts, 'source' => (string) ($r['source'] ?? '')];
             }

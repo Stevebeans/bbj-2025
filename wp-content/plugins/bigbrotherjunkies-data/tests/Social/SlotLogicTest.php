@@ -62,10 +62,25 @@ class SlotLogicTest extends TestCase
 
     public function test_malformed_scheduled_rows_ignored(): void
     {
-        $slots = SlotLogic::grid($this->utc('2026-07-25 18:00:00'), [
+        // Empty/missing at rows are dropped explicitly (strtotime(' UTC')
+        // resolves to the real current time, NOT false); prove it with a
+        // real-clock now so an undropped row would land inside the radius.
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $slots = SlotLogic::grid($now, [
             ['at' => 'garbage', 'source' => 'manual'],
             ['source' => 'manual'],
+            ['at' => '', 'source' => 'manual'],
+            ['at' => '   ', 'source' => 'manual'],
         ]);
-        $this->assertFalse($slots[0]['taken']);
+        foreach ($slots as $s) {
+            $this->assertFalse($s['taken']);
+        }
+    }
+
+    public function test_first_slot_when_buffer_lands_exactly_on_boundary(): void
+    {
+        // now+5min = exactly :30 -> "strictly after" means the NEXT boundary.
+        $slots = SlotLogic::grid($this->utc('2026-07-25 18:25:00'), []);
+        $this->assertSame('2026-07-25 19:00:00', $slots[0]['at']);
     }
 }
