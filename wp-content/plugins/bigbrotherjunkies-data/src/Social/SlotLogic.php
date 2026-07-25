@@ -15,9 +15,9 @@ class SlotLogic
     private const BUFFER_MIN = 5;
 
     private const LABELS = [
-        'social_quickie' => 'quickie card',
-        'feed_share'     => 'feed share',
-        'batch'          => 'batch post',
+        'social_quickie'    => 'quickie card',
+        'feed_update_share' => 'feed share',
+        'batch'             => 'batch post',
     ];
 
     public static function labelFor(string $source): string

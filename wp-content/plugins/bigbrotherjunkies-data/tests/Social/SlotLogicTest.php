@@ -45,7 +45,7 @@ class SlotLogicTest extends TestCase
     public function test_exact_slot_hit_is_taken(): void
     {
         $slots = SlotLogic::grid($this->utc('2026-07-25 18:00:00'), [
-            ['at' => '2026-07-25 20:00:00', 'source' => 'feed_share'],
+            ['at' => '2026-07-25 20:00:00', 'source' => 'feed_update_share'],
         ]);
         $this->assertTrue($slots[3]['taken']);
         $this->assertSame('feed share', $slots[3]['label']);
@@ -54,7 +54,7 @@ class SlotLogicTest extends TestCase
     public function test_label_mapping(): void
     {
         $this->assertSame('quickie card', SlotLogic::labelFor('social_quickie'));
-        $this->assertSame('feed share', SlotLogic::labelFor('feed_share'));
+        $this->assertSame('feed share', SlotLogic::labelFor('feed_update_share'));
         $this->assertSame('batch post', SlotLogic::labelFor('batch'));
         $this->assertSame('manual post', SlotLogic::labelFor('manual'));
         $this->assertSame('manual post', SlotLogic::labelFor('image_paste'));
