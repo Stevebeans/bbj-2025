@@ -3,6 +3,9 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
+use BigBrotherJunkies\Data\Social\PromptContext;
+use BigBrotherJunkies\Data\Social\SlotLogic;
+use BigBrotherJunkies\Data\Social\SocialStore;
 
 class ContentEngineRoutes
 {
@@ -71,6 +74,12 @@ class ContentEngineRoutes
         register_rest_route($namespace, '/content-engine/queue/(?P<id>\d+)/image', [
             'methods' => 'GET',
             'callback' => [$this, 'getQueueImage'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route($namespace, '/content-engine/slots', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getSlots'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
 
@@ -222,6 +231,38 @@ class ContentEngineRoutes
         );
 
         return new \WP_REST_Response(['items' => $items]);
+    }
+
+    /**
+     * 30-min scheduling grid for the composer dropdown: next 24h, each slot
+     * free or labeled with what already occupies it, plus a CBS-air-window
+     * flag so nobody schedules into the episode.
+     */
+    public function getSlots(\WP_REST_Request $request): \WP_REST_Response
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'bbj_content_queue';
+        $now   = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT scheduled_at AS at, source FROM {$table}
+              WHERE status = 'scheduled'
+                AND scheduled_at BETWEEN %s AND %s",
+            $now->modify('-30 minutes')->format('Y-m-d H:i:s'),
+            $now->modify('+25 hours')->format('Y-m-d H:i:s')
+        ), ARRAY_A) ?: [];
+
+        $slots = SlotLogic::grid($now, $rows);
+
+        $cbsSlots = (array) (SocialStore::settings()['cbs_slots'] ?? []);
+        foreach ($slots as &$s) {
+            $s['cbs_caution'] = $cbsSlots !== [] && PromptContext::inCautionWindow(
+                $cbsSlots,
+                new \DateTimeImmutable($s['at'], new \DateTimeZone('UTC'))
+            );
+        }
+
+        return new \WP_REST_Response(['success' => true, 'slots' => $slots], 200);
     }
 
     /**
