@@ -25,11 +25,12 @@ class QuoteService
 You extract memorable houseguest quotes from fan reports about the Big Brother live feeds.
 A memorable quote is something a HOUSEGUEST actually said, quoted or closely paraphrased in
 the reports: funny, outrageous, strategic, or era-defining. Return STRICT JSON only:
-{"candidates":[{"quote":"...","speaker":"FirstName","echo_count":N,"source_handles":["handle",...]}]}
+{"candidates":[{"quote":"...","speaker":"FirstName","to":"FirstName or null","echo_count":N,"source_handles":["handle",...]}]}
 Rules: at most 5 candidates, best first. echo_count = number of APPARENTLY INDEPENDENT accounts
 reporting the same line. Never invent or embellish a quote; if reports differ slightly, use the
-most common wording. speaker is the houseguest's first name only; use "" if unclear. If nothing
-is quotable, return {"candidates":[]}. No prose, no markdown fences.
+most common wording. speaker is the houseguest's first name only; use "" if unclear. "to" = the
+named listener when a report clearly states who was being spoken to, else null; never guess.
+If nothing is quotable, return {"candidates":[]}. No prose, no markdown fences.
 PROMPT;
 
     /** Dry generation for a Pacific day. Persists nothing. */
