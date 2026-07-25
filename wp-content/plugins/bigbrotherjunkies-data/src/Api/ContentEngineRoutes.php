@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
+use BigBrotherJunkies\Data\Social\FbInsightsService;
 use BigBrotherJunkies\Data\Social\PromptContext;
 use BigBrotherJunkies\Data\Social\SlotLogic;
 use BigBrotherJunkies\Data\Social\SocialStore;
@@ -81,6 +82,16 @@ class ContentEngineRoutes
             'methods' => 'GET',
             'callback' => [$this, 'getSlots'],
             'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route($namespace, '/content-engine/schedule', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getSchedule'],
+            'permission_callback' => [$this, 'checkAccess'],
+            'args' => [
+                'from' => ['required' => true, 'type' => 'string'],
+                'to'   => ['required' => true, 'type' => 'string'],
+            ],
         ]);
 
         // Post Log
@@ -263,6 +274,95 @@ class ContentEngineRoutes
         }
 
         return new \WP_REST_Response(['success' => true, 'slots' => $slots], 200);
+    }
+
+    /**
+     * Day-by-day schedule view. Future days show the queued timeline; past days
+     * show every page post with FB performance (via FbInsightsService). A window
+     * straddling "now" returns both halves.
+     *
+     * GET /content-engine/schedule?from=&to=  (UTC 'Y-m-d H:i:s')
+     */
+    public function getSchedule(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $from = $this->parseUtc((string) $request->get_param('from'));
+        $to   = $this->parseUtc((string) $request->get_param('to'));
+
+        if ($from === null || $to === null) {
+            return new \WP_REST_Response(['error' => 'Invalid from/to (expect UTC Y-m-d H:i:s)'], 400);
+        }
+        if ($from >= $to) {
+            return new \WP_REST_Response(['error' => 'from must be before to'], 400);
+        }
+
+        $now     = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $fromStr = $from->format('Y-m-d H:i:s');
+        $toStr   = $to->format('Y-m-d H:i:s');
+
+        // Entirely in the past -> posted view with insights.
+        if ($to <= $now) {
+            $posted = (new FbInsightsService())->dayPosts($fromStr, $toStr);
+            return new \WP_REST_Response([
+                'mode'           => 'past',
+                'items'          => $posted['items'],
+                'insights_error' => $posted['insights_error'],
+            ]);
+        }
+
+        // Entirely in the future -> scheduled queue timeline.
+        if ($from >= $now) {
+            return new \WP_REST_Response([
+                'mode'  => 'future',
+                'items' => $this->scheduledRows($fromStr, $toStr),
+            ]);
+        }
+
+        // Straddles now -> split at now.
+        $nowStr = $now->format('Y-m-d H:i:s');
+        $posted = (new FbInsightsService())->dayPosts($fromStr, $nowStr);
+        return new \WP_REST_Response([
+            'mode'      => 'mixed',
+            'scheduled' => $this->scheduledRows($nowStr, $toStr),
+            'posted'    => [
+                'items'          => $posted['items'],
+                'insights_error' => $posted['insights_error'],
+            ],
+        ]);
+    }
+
+    /**
+     * Scheduled queue rows in [$fromUtc, $toUtc), full QUEUE_ROW_COLUMNS shape.
+     */
+    private function scheduledRows(string $fromUtc, string $toUtc): array
+    {
+        global $wpdb;
+        $table = $wpdb->prefix . 'bbj_content_queue';
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT " . self::QUEUE_ROW_COLUMNS . " FROM {$table}
+              WHERE status = 'scheduled'
+                AND scheduled_at >= %s AND scheduled_at < %s
+              ORDER BY scheduled_at ASC",
+            $fromUtc,
+            $toUtc
+        )) ?: [];
+    }
+
+    /**
+     * Strict UTC 'Y-m-d H:i:s' parse; null when malformed.
+     */
+    private function parseUtc(string $value): ?\DateTimeImmutable
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return null;
+        }
+        $tz = new \DateTimeZone('UTC');
+        $dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $value, $tz);
+        if ($dt === false || $dt->format('Y-m-d H:i:s') !== $value) {
+            return null;
+        }
+        return $dt;
     }
 
     /**
