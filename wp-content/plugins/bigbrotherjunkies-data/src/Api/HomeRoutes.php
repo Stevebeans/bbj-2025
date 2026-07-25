@@ -610,6 +610,12 @@ class HomeRoutes
                     'nom' => (int)($player['bbj_total_nom'] ?? 0),
                     'votes_received' => (int)($player['bbj_votes_received'] ?? 0),
                     'days_in_house' => $daysInHouse,
+                    // Points-column inputs (misc = Block Buster/AI Arena wins,
+                    // saved = veto pulled them off the block, on_block = this
+                    // week's unresolved nomination, which earns nothing yet).
+                    'misc' => (int)($player['bbj_total_misc'] ?? 0),
+                    'saved' => (int)($player['bbj_total_saved'] ?? 0),
+                    'on_block' => ((int)($player['current_nom'] ?? 0)) === 1,
                 ],
             ];
         }
