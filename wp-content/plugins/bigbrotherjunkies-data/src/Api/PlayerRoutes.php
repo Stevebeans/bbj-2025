@@ -1076,6 +1076,16 @@ class PlayerRoutes
                 'pov' => (int) ($season['bbj_total_pov'] ?? 0),
                 'nom' => (int) ($season['bbj_total_nom'] ?? 0),
                 'votes_received' => (int) ($season['bbj_votes_received'] ?? 0),
+                // Points-column inputs (mirrors the homepage stats payload).
+                'misc' => (int) ($season['bbj_total_misc'] ?? 0),
+                'saved' => (int) ($season['bbj_total_saved'] ?? 0),
+                'was_evicted' => ((int) ($season['current_evicted'] ?? 0)) === 1
+                    || ((int) ($season['current_jury'] ?? 0)) === 1,
+                // Unresolved nomination only exists on the live season; a
+                // historical current_nom is the frozen final-week state and
+                // its outcome is already captured by was_evicted.
+                'on_block' => $seasonId === (int) get_option('bbj_v2_current_season', 0)
+                    && ((int) ($season['current_nom'] ?? 0)) === 1,
                 'total_days' => $totalDays,
                 'days_in_house' => $daysInHouse,
                 'progress_pct' => $progressPct,
