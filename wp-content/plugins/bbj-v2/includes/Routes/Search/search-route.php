@@ -42,7 +42,10 @@ function bbj_search_results($request)
       $player_id            = get_the_ID();
       $player_title         = get_the_title();
       $player_permalink     = get_the_permalink();
-      $player_image         = rwmb_meta("profile_picture", ["size" => "tiny"], $player_id);
+      // Guarded: rwmb_meta only exists while the Meta Box plugin is active.
+      $player_image         = function_exists('rwmb_meta')
+        ? rwmb_meta("profile_picture", ["size" => "tiny"], $player_id)
+        : null;
       $abbreviation         = '';
       $player_row_id        = (int) get_post_meta( $player_id, 'player_row_id', true );
       if ( ! $player_row_id ) {
