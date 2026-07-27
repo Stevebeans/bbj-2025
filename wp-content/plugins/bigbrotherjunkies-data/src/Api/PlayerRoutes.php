@@ -32,6 +32,13 @@ class PlayerRoutes
      */
     public function registerRoutes(): void
     {
+        // All-time career leaderboard data for the /stats hub
+        register_rest_route(self::NAMESPACE, '/stats/career', [
+            'methods'  => 'GET',
+            'callback' => [$this, 'getCareerStats'],
+            'permission_callback' => '__return_true',
+        ]);
+
         // Get players for map (must be registered before slug route)
         register_rest_route(self::NAMESPACE, '/players/map', [
             'methods'  => 'GET',
@@ -723,6 +730,92 @@ class PlayerRoutes
     }
 
     /**
+     * All-time career totals for every player, aggregated from the
+     * player-season junction (the same store the profile Season History
+     * tables read). One grouped query, cached an hour.
+     *
+     * Eviction counting uses finish_place because imported finale rows mark
+     * winners/runner-ups current_evicted=1; finalists were never evicted, and
+     * the survived-the-block points math needs that distinction.
+     */
+    public function getCareerStats(): array
+    {
+        $cached = get_transient('bbjd_career_stats');
+        if ($cached !== false) {
+            return $cached;
+        }
+
+        global $wpdb;
+        $currentSeason = (int) get_option('bbj_v2_current_season', 0);
+
+        $rows = $wpdb->get_results($wpdb->prepare("
+            SELECT ps.bbj_player AS player_id,
+                   p.post_title AS name,
+                   p.post_name AS slug,
+                   COUNT(*) AS seasons,
+                   SUM(ps.bbj_total_hoh) AS hoh,
+                   SUM(ps.bbj_total_pov) AS pov,
+                   SUM(ps.bbj_total_nom) AS nom,
+                   SUM(ps.bbj_total_misc) AS misc,
+                   SUM(ps.bbj_total_saved) AS saved,
+                   SUM(ps.bbj_votes_received) AS votes_received,
+                   SUM(CASE WHEN (ps.current_evicted = 1 OR ps.current_jury = 1)
+                                 AND COALESCE(ps.finish_place, 99) > 2
+                            THEN 1 ELSE 0 END) AS evictions,
+                   SUM(CASE WHEN ps.bbj_season = %d AND ps.current_nom = 1
+                            THEN 1 ELSE 0 END) AS on_block,
+                   SUM(GREATEST(0, DATEDIFF(
+                       COALESCE(ps.bbj_evicted_date, s.end_date, CURDATE()),
+                       s.start_date) + 1)) AS days,
+                   MIN(COALESCE(ps.finish_place, 99)) AS best_finish
+            FROM {$wpdb->prefix}bbj_v2_player_season ps
+            JOIN {$wpdb->posts} p
+              ON p.ID = ps.bbj_player AND p.post_status = 'publish'
+            LEFT JOIN {$wpdb->prefix}bbj_seasons s
+              ON s.id = ps.bbj_season
+            GROUP BY ps.bbj_player, p.post_title, p.post_name
+        ", $currentSeason), ARRAY_A);
+
+        $players = array_map(static function ($r) {
+            $hoh = (int) $r['hoh'];
+            $pov = (int) $r['pov'];
+            $nom = (int) $r['nom'];
+            $misc = (int) $r['misc'];
+            $saved = (int) $r['saved'];
+            $onBlock = (int) $r['on_block'];
+            $survived = max(0, $nom - $saved - (int) $r['evictions'] - $onBlock);
+            $points = round(
+                $hoh * 2.5 + $pov * 2 + $misc * 1 - $nom
+                + $survived * 1 + $saved * 0.5,
+                1
+            );
+            return [
+                'id' => (int) $r['player_id'],
+                'name' => html_entity_decode(wp_strip_all_tags((string) $r['name']), ENT_QUOTES, 'UTF-8'),
+                'slug' => (string) $r['slug'],
+                'seasons' => (int) $r['seasons'],
+                'hoh' => $hoh,
+                'pov' => $pov,
+                'nom' => $nom,
+                'misc' => $misc,
+                'saved' => $saved,
+                'survived' => $survived,
+                'votes_received' => (int) $r['votes_received'],
+                'days' => (int) $r['days'],
+                'points' => $points,
+                'is_winner' => ((int) $r['best_finish']) === 1,
+            ];
+        }, $rows ?: []);
+
+        $result = [
+            'players' => $players,
+            'generated' => gmdate('Y-m-d H:i:s'),
+        ];
+        set_transient('bbjd_career_stats', $result, HOUR_IN_SECONDS);
+        return $result;
+    }
+
+    /**
      * Get players with lat/lng for the interactive map
      */
     public function getPlayersForMap(WP_REST_Request $request): WP_REST_Response
@@ -1079,8 +1172,11 @@ class PlayerRoutes
                 // Points-column inputs (mirrors the homepage stats payload).
                 'misc' => (int) ($season['bbj_total_misc'] ?? 0),
                 'saved' => (int) ($season['bbj_total_saved'] ?? 0),
-                'was_evicted' => ((int) ($season['current_evicted'] ?? 0)) === 1
-                    || ((int) ($season['current_jury'] ?? 0)) === 1,
+                // Imported finale rows mark winners/runner-ups evicted=1;
+                // finish_place 1-2 means they were never voted out.
+                'was_evicted' => (((int) ($season['current_evicted'] ?? 0)) === 1
+                        || ((int) ($season['current_jury'] ?? 0)) === 1)
+                    && ((int) ($season['finish_place'] ?? 99)) > 2,
                 // Unresolved nomination only exists on the live season; a
                 // historical current_nom is the frozen final-week state and
                 // its outcome is already captured by was_evicted.
