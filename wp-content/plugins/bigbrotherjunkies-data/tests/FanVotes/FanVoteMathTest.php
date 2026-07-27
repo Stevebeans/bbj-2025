@@ -57,8 +57,8 @@ class FanVoteMathTest extends TestCase
             [1 => 101],
             [2 => 3.0]
         );
-        // 101: 15*1 (u1 #1) + 15*1 (u1 heart) + 10*3 (u2 #2) = 60.0
-        $this->assertSame(60.0, $points[101]);
+        // 101: 15*1 (u1 #1) + 5*1 (u1 heart) + 10*3 (u2 #2) = 50.0
+        $this->assertSame(50.0, $points[101]);
         // 102: 10*1 (u1 #2) + 15*3 (u2 #1) = 55.0
         $this->assertSame(55.0, $points[102]);
         // 103: 7*1 = 7.0
@@ -75,7 +75,7 @@ class FanVoteMathTest extends TestCase
     public function test_tally_heart_only_user_counts(): void
     {
         $points = FanVoteMath::tally([], [9 => 101], [9 => 2.0]);
-        $this->assertSame(30.0, $points[101]);
+        $this->assertSame(10.0, $points[101]);
     }
 
     public function test_point_shares_and_zero_total(): void

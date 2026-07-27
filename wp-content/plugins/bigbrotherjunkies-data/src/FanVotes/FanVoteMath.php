@@ -50,7 +50,9 @@ class FanVoteMath
     /** Rank-slot point values (Steve-approved top-heavy decay). */
     public const SLOT_POINTS = [1 => 15.0, 2 => 10.0, 3 => 7.0, 4 => 5.0, 5 => 3.0];
     public const BASE_SLOT_POINTS = 1.0;
-    public const HEART_POINTS = 15.0;
+    // Cut from 15 on 2026-07-27: at 15 the heart was a second #1 vote for the
+    // ~24% of voters who use it; 5 keeps it a bonus, not a ballot.
+    public const HEART_POINTS = 5.0;
 
     /** Points a ballot slot is worth. Rank < 1 scores nothing. */
     public static function slotPoints(int $rank): float
