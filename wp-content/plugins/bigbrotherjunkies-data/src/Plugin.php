@@ -164,6 +164,13 @@ class Plugin
             wp_oembed_add_provider('#https?://(www\.)?x\.com/.*#i', 'https://publish.x.com/oembed', true);
         });
 
+        // Stat Keeper: volunteer role for the weekly-data audit. Read-only WP
+        // caps; all real access flows through the weekly_editing permission.
+        // add_role() is a no-op when the role already exists.
+        add_action('init', function () {
+            add_role('stat_keeper', 'Stat Keeper', ['read' => true]);
+        });
+
         // Revalidate Next.js cache when posts or feed updates are published
         add_action('transition_post_status', function ($new_status, $old_status, $post) {
             if ($new_status !== 'publish') return;

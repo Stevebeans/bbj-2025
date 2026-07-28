@@ -61,6 +61,7 @@ class WeeklySchema
             start_date DATE DEFAULT NULL,
             end_date DATE DEFAULT NULL,
             summary TEXT,
+            verified TINYINT(1) NOT NULL DEFAULT 0,
             PRIMARY KEY (id),
             KEY idx_season (season_id)
         ) " . self::charset() . ";";

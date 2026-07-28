@@ -204,7 +204,7 @@ class WeeklyAdmin
         ) ?: []);
 
         $weekRows = $wpdb->get_results($wpdb->prepare(
-            "SELECT id, week_num, start_date, end_date, summary
+            "SELECT id, week_num, start_date, end_date, summary, verified
                FROM {$weeks} WHERE season_id = %d ORDER BY week_num ASC",
             $seasonId
         ), ARRAY_A) ?: [];
@@ -219,6 +219,7 @@ class WeeklyAdmin
                 'start_date' => $w['start_date'],
                 'end_date'   => $w['end_date'],
                 'summary'    => (string) ($w['summary'] ?? ''),
+                'verified'   => ((int) ($w['verified'] ?? 0)) === 1,
                 'players'    => [],
                 'comps'      => [],
             ];
@@ -377,6 +378,9 @@ class WeeklyAdmin
             $meta = [];
             if (array_key_exists('summary', $payload)) {
                 $meta['summary'] = sanitize_textarea_field((string) $payload['summary']);
+            }
+            if (array_key_exists('verified', $payload)) {
+                $meta['verified'] = empty($payload['verified']) ? 0 : 1;
             }
             // Empty dates are skipped, not nulled — legacy tables have NOT NULL
             // date columns, so "clear a date" isn't supported (re-set it instead).

@@ -90,11 +90,16 @@ class SeasonRoutes
         // ADMIN ENDPOINTS
         // ========================================
 
-        // Admin: list seasons (incl. trashed) for the admin dashboard
+        // Admin: list seasons (incl. trashed) for the admin dashboard.
+        // Read-only, so weekly_editing (Stat Keeper volunteers) may also list —
+        // the weekly editor's season picker needs it. Writes stay admin-only.
         register_rest_route(self::NAMESPACE, '/admin/seasons', [
             'methods' => 'GET',
             'callback' => [$this, 'getAdminSeasons'],
-            'permission_callback' => [$this, 'checkSeasonManagementAccess'],
+            'permission_callback' => static function () {
+                return PermissionChecker::userCan('season_management')
+                    || PermissionChecker::userCan('weekly_editing');
+            },
         ]);
 
         // Admin: create a new season

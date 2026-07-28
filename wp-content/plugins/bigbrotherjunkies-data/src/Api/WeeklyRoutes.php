@@ -66,7 +66,10 @@ class WeeklyRoutes
 
     public function checkAccess(): bool
     {
-        return PermissionChecker::userCan('season_management');
+        // weekly_editing is the volunteer-scoped permission (stat_keeper role);
+        // season_management keeps full-admin access working unchanged.
+        return PermissionChecker::userCan('weekly_editing')
+            || PermissionChecker::userCan('season_management');
     }
 
     /** id=0 means "current season" (bbj_v2_current_season option). */

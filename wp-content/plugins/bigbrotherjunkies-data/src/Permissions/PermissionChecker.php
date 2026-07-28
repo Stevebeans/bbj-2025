@@ -34,6 +34,11 @@ class PermissionChecker
             'description' => 'Add/edit seasons, set current season',
             'roles' => ['administrator'],
         ],
+        'weekly_editing' => [
+            'label' => 'Weekly Data',
+            'description' => 'Enter and verify week-by-week season data (comps, noms, votes)',
+            'roles' => ['administrator', 'stat_keeper'],
+        ],
         'admin_settings' => [
             'label' => 'Admin Settings',
             'description' => 'Configure permissions and notifications',
