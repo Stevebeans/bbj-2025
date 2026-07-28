@@ -171,6 +171,16 @@ class Plugin
             add_role('stat_keeper', 'Stat Keeper', ['read' => true]);
         });
 
+        // Scheduled live threads: the editor's client-side /take-over call
+        // can't happen when WP-cron publishes a 'future' post, so open the
+        // thread here on that transition. openThread is idempotent.
+        add_action('transition_post_status', function ($new_status, $old_status, $post) {
+            if ($old_status !== 'future' || $new_status !== 'publish') return;
+            if ($post->post_type !== 'post') return;
+            if ((int) get_post_meta($post->ID, '_bbjd_live_updates', true) !== 1) return;
+            \BigBrotherJunkies\Data\LiveThread\LiveThreadState::openThread($post->ID);
+        }, 10, 3);
+
         // Revalidate Next.js cache when posts or feed updates are published
         add_action('transition_post_status', function ($new_status, $old_status, $post) {
             if ($new_status !== 'publish') return;

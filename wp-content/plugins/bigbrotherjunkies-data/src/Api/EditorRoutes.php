@@ -302,6 +302,7 @@ class EditorRoutes
             'live_updates' => (int) get_post_meta($postId, '_bbjd_live_updates', true) === 1,
             'live_start' => (int) get_post_meta($postId, '_bbjd_live_start', true),
             'live_end' => (int) get_post_meta($postId, '_bbjd_live_end', true),
+            'scheduled_for' => $post->post_status === 'future' ? $post->post_date_gmt : null,
         ]);
     }
 
@@ -428,22 +429,40 @@ class EditorRoutes
         $params = $request->get_json_params();
         $newStatus = sanitize_text_field($params['status'] ?? '');
 
-        if (!in_array($newStatus, ['pending_review', 'publish'], true)) {
-            return new \WP_REST_Response(['error' => 'Invalid status. Use pending_review or publish.'], 400);
+        if (!in_array($newStatus, ['pending_review', 'publish', 'future', 'draft'], true)) {
+            return new \WP_REST_Response(['error' => 'Invalid status. Use pending_review, publish, future, or draft.'], 400);
         }
 
-        // Publishing requires blog_publishing or blog_review permission
-        if ($newStatus === 'publish' && !$this->canPublish()) {
+        // Publishing (now or scheduled) requires blog_publishing or blog_review
+        if (in_array($newStatus, ['publish', 'future'], true) && !$this->canPublish()) {
             return new \WP_REST_Response(['error' => 'You do not have permission to publish posts.'], 403);
         }
 
-        // Map pending_review to WP's pending status
-        $wpStatus = $newStatus === 'pending_review' ? 'pending' : 'publish';
+        // 'draft' here exists only to UNSCHEDULE — never to unpublish.
+        if ($newStatus === 'draft' && $post->post_status !== 'future') {
+            return new \WP_REST_Response(['error' => 'Only scheduled posts can be reverted to draft.'], 400);
+        }
 
-        $result = wp_update_post([
-            'ID' => $postId,
-            'post_status' => $wpStatus,
-        ], true);
+        // Map pending_review to WP's pending status
+        $wpStatus = $newStatus === 'pending_review' ? 'pending' : $newStatus;
+
+        $update = ['ID' => $postId, 'post_status' => $wpStatus];
+
+        if ($newStatus === 'future') {
+            $ts = strtotime((string) ($params['schedule_at'] ?? ''));
+            if (!$ts) {
+                return new \WP_REST_Response(['error' => 'schedule_at (ISO datetime) is required to schedule.'], 400);
+            }
+            if ($ts <= time() + 60) {
+                return new \WP_REST_Response(['error' => 'Scheduled time must be in the future.'], 400);
+            }
+            $gmt = gmdate('Y-m-d H:i:s', $ts);
+            $update['post_date_gmt'] = $gmt;
+            $update['post_date'] = get_date_from_gmt($gmt);
+            $update['edit_date'] = true;
+        }
+
+        $result = wp_update_post($update, true);
 
         if (is_wp_error($result)) {
             return new \WP_REST_Response(['error' => $result->get_error_message()], 500);
@@ -460,7 +479,11 @@ class EditorRoutes
             \BigBrotherJunkies\Data\Utils\Revalidation::revalidatePost($freshPost->post_name);
         }
 
-        return new \WP_REST_Response(['success' => true, 'status' => $wpStatus]);
+        return new \WP_REST_Response([
+            'success' => true,
+            'status' => $wpStatus,
+            'scheduled_for' => $wpStatus === 'future' ? get_post($postId)->post_date_gmt : null,
+        ]);
     }
 
     // --- Media ---
