@@ -784,9 +784,11 @@ class PlayerRoutes
             $saved = (int) $r['saved'];
             $onBlock = (int) $r['on_block'];
             $survived = max(0, $nom - $saved - (int) $r['evictions'] - $onBlock);
+            // Weights rebalanced 2026-07-27: a save cancels the nom exactly;
+            // surviving an actual vote nets +0.5 (mirrors lib/bbPoints.js).
             $points = round(
                 $hoh * 2.5 + $pov * 2 + $misc * 1 - $nom
-                + $survived * 1 + $saved * 0.5,
+                + $survived * 1.5 + $saved * 1,
                 1
             );
             return [
