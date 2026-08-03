@@ -5,6 +5,9 @@ class Blocklist
 {
     public const OPTION = 'bbjd_brand_safety';
 
+    /** Valid tiers for a term, in escalation order. */
+    public const TIERS = ['censor', 'watch', 'off'];
+
     public const WATCH_DEFAULTS = [
         'ass', 'bet', 'bets', 'betting', 'boob', 'boobs', 'dick',
         'gun', 'guns', 'nude', 'sex', 'sexy', 'suck', 'sucks',
@@ -32,7 +35,7 @@ class Blocklist
         $opt = get_option(self::OPTION, []);
         foreach (($opt['tier_overrides'] ?? []) as $term => $tier) {
             $term = strtolower($term);
-            if (isset($tiers[$term]) && in_array($tier, ['censor', 'watch', 'off'], true)) {
+            if (isset($tiers[$term]) && in_array($tier, self::TIERS, true)) {
                 $tiers[$term] = $tier;
             }
         }

@@ -86,12 +86,7 @@ class BrandSafetyRoutes
 
     public function getSettings(): WP_REST_Response
     {
-        $opt = get_option(Blocklist::OPTION, []);
-        return new WP_REST_Response([
-            'enabled' => (bool) ($opt['enabled'] ?? true),
-            'tiers' => Blocklist::getTiers(),
-            'watch_defaults' => Blocklist::WATCH_DEFAULTS,
-        ], 200);
+        return self::settingsResponse(get_option(Blocklist::OPTION, []));
     }
 
     public function updateSettings(WP_REST_Request $request): WP_REST_Response
@@ -102,7 +97,7 @@ class BrandSafetyRoutes
         if (is_array($overridesInput)) {
             $overrides = $opt['tier_overrides'] ?? [];
             foreach ($overridesInput as $term => $tier) {
-                if (in_array($tier, ['censor', 'watch', 'off'], true)) {
+                if (in_array($tier, Blocklist::TIERS, true)) {
                     $overrides[strtolower((string) $term)] = $tier;
                 }
             }
@@ -111,6 +106,12 @@ class BrandSafetyRoutes
             Blocklist::flushCache();
         }
 
+        return self::settingsResponse($opt);
+    }
+
+    /** Shared GET/PUT settings payload, built from an already-read option array. */
+    private static function settingsResponse(array $opt): WP_REST_Response
+    {
         return new WP_REST_Response([
             'enabled' => (bool) ($opt['enabled'] ?? true),
             'tiers' => Blocklist::getTiers(),

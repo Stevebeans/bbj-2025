@@ -785,11 +785,7 @@ class CommentRoutes
         // Brand safety: censor blocklist terms before storage (Freestar compliance).
         $moderation = \BigBrotherJunkies\Data\BrandSafety\Scanner::censor($content);
         if ($moderation['unmaskable']) {
-            return new \WP_REST_Response([
-                'success' => false,
-                'code' => 'content_blocked',
-                'message' => "Your comment contains a link or content that can't be posted. Please edit and try again.",
-            ], 400);
+            return self::contentBlockedResponse();
         }
         $content = $moderation['html'];
 
@@ -918,11 +914,7 @@ class CommentRoutes
         // Brand safety: censor blocklist terms before storage (Freestar compliance).
         $moderation = \BigBrotherJunkies\Data\BrandSafety\Scanner::censor($content);
         if ($moderation['unmaskable']) {
-            return new \WP_REST_Response([
-                'success' => false,
-                'code' => 'content_blocked',
-                'message' => "Your comment contains a link or content that can't be posted. Please edit and try again.",
-            ], 400);
+            return self::contentBlockedResponse();
         }
         $content = $moderation['html'];
 
@@ -1189,5 +1181,15 @@ class CommentRoutes
             'success' => true,
             'message' => 'Comment unpinned',
         ], 200);
+    }
+
+    /** Rejection returned when brand-safety finds a hit it can't mask (create + edit). */
+    private static function contentBlockedResponse(): \WP_REST_Response
+    {
+        return new \WP_REST_Response([
+            'success' => false,
+            'code' => 'content_blocked',
+            'message' => "Your comment contains a link or content that can't be posted. Please edit and try again.",
+        ], 400);
     }
 }
