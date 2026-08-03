@@ -783,9 +783,12 @@ class CommentRoutes
         $user = get_user_by('ID', $userId);
 
         // Create comment
+        // wp_comments is utf8mb3: raw 4-byte emoji hard-fails the INSERT under
+        // strict mode (wp_insert_comment bypasses core's pre_comment_content
+        // encoding), so encode here like every other plugin write path.
         $commentData = [
             'comment_post_ID' => $postId,
-            'comment_content' => $content,
+            'comment_content' => wp_encode_emoji($content),
             'comment_parent' => $parentId,
             'user_id' => $userId,
             'comment_author' => $user->display_name,
@@ -901,7 +904,7 @@ class CommentRoutes
 
         $result = wp_update_comment([
             'comment_ID' => $commentId,
-            'comment_content' => $content,
+            'comment_content' => wp_encode_emoji($content),
         ]);
 
         if (!$result) {
