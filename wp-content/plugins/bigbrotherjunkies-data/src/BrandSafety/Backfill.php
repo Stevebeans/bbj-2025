@@ -78,8 +78,7 @@ class Backfill
             }
         }
 
-        $dir = WP_CONTENT_DIR . '/bbj-quarantine/reports';
-        wp_mkdir_p($dir);
+        QuarantineGuard::ensureSubDir('reports');
         file_put_contents($file, wp_json_encode([
             'done' => $done,
             'offset' => $offset,

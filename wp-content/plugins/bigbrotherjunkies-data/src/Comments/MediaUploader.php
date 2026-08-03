@@ -2,6 +2,8 @@
 
 namespace BigBrotherJunkies\Data\Comments;
 
+use BigBrotherJunkies\Data\BrandSafety\QuarantineGuard;
+
 /**
  * Handles media uploads for comments
  * Supports JPG/PNG/GIF, 2MB max, 1 per comment
@@ -338,12 +340,7 @@ class MediaUploader
     {
         global $wpdb;
         $table = CommentSchema::table(CommentSchema::TABLE_MEDIA);
-        $dir = WP_CONTENT_DIR . '/bbj-quarantine';
-        if (!file_exists($dir)) {
-            wp_mkdir_p($dir);
-            file_put_contents($dir . '/.htaccess', "Deny from all\n");
-            file_put_contents($dir . '/index.php', '<?php // Silence is golden');
-        }
+        $dir = QuarantineGuard::ensureBaseDir();
         $rows = $wpdb->get_results("SELECT * FROM {$table} WHERE storage_type = 'local'");
         $moved = 0;
         $errors = [];
