@@ -2,6 +2,7 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\BrandSafety\Hooks as BrandSafetyHooks;
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
 use BigBrotherJunkies\Data\FeedUpdates\FeedUpdateCreator;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
@@ -513,6 +514,10 @@ class FeedUpdateRoutes
             'recent_comments' => $formattedComments,
             'thread' => LiveThreadState::threadSummaryForUpdate($post->ID),
             'mode' => get_post_meta($post->ID, '_feed_update_mode', true) ?: 'feed',
+            // Brand safety: same flag/REST field as post/page (BrandSafety\Hooks) —
+            // this endpoint hand-builds its response so register_rest_field() never
+            // reaches it; wired here so the frontend pubfig kill (Task 7) actually fires.
+            'ads_unsafe' => BrandSafetyHooks::isAdsUnsafe($post->ID),
             'votes' => [
                 'total' => $totalVotes,
                 'user_vote' => $userVote,
