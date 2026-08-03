@@ -782,6 +782,17 @@ class CommentRoutes
         // Get user info
         $user = get_user_by('ID', $userId);
 
+        // Brand safety: censor blocklist terms before storage (Freestar compliance).
+        $moderation = \BigBrotherJunkies\Data\BrandSafety\Scanner::censor($content);
+        if ($moderation['unmaskable']) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'code' => 'content_blocked',
+                'message' => "Your comment contains a link or content that can't be posted. Please edit and try again.",
+            ], 400);
+        }
+        $content = $moderation['html'];
+
         // Create comment
         // wp_comments is utf8mb3: raw 4-byte emoji hard-fails the INSERT under
         // strict mode (wp_insert_comment bypasses core's pre_comment_content
@@ -804,6 +815,8 @@ class CommentRoutes
                 'message' => 'Failed to post comment',
             ], 500);
         }
+
+        \BigBrotherJunkies\Data\BrandSafety\Log::record('comment', $commentId, $moderation['hits']);
 
         // Attach media if provided
         $media = null;
@@ -902,6 +915,17 @@ class CommentRoutes
         $commentId = $request->get_param('comment_id');
         $content = $request->get_param('content');
 
+        // Brand safety: censor blocklist terms before storage (Freestar compliance).
+        $moderation = \BigBrotherJunkies\Data\BrandSafety\Scanner::censor($content);
+        if ($moderation['unmaskable']) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'code' => 'content_blocked',
+                'message' => "Your comment contains a link or content that can't be posted. Please edit and try again.",
+            ], 400);
+        }
+        $content = $moderation['html'];
+
         $result = wp_update_comment([
             'comment_ID' => $commentId,
             'comment_content' => wp_encode_emoji($content),
@@ -913,6 +937,8 @@ class CommentRoutes
                 'message' => 'Failed to update comment',
             ], 500);
         }
+
+        \BigBrotherJunkies\Data\BrandSafety\Log::record('comment', $commentId, $moderation['hits']);
 
         return new \WP_REST_Response([
             'success' => true,
