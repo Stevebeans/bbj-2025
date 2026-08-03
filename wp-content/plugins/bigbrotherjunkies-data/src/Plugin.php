@@ -71,6 +71,7 @@ use BigBrotherJunkies\Data\Api\NewsAggregatorRoutes;
 use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Api\LiveThreadRoutes;
 use BigBrotherJunkies\Data\Api\UserAdminRoutes;
+use BigBrotherJunkies\Data\Api\BrandSafetyRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Cron\BillingExpiryCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
@@ -723,6 +724,10 @@ class Plugin
 
         // Brand safety: censor editorial content on save_post, expose ads_unsafe REST field
         (new \BigBrotherJunkies\Data\BrandSafety\Hooks())->register();
+
+        // Brand safety: admin settings, legacy-content backfill, flagged queue, log
+        $brandSafetyRoutes = new BrandSafetyRoutes();
+        $brandSafetyRoutes->register();
     }
 
     /**

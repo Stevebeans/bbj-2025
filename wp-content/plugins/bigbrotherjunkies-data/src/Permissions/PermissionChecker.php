@@ -94,6 +94,11 @@ class PermissionChecker
             'description' => 'Configure the Bluesky feed monitor and view collected posts and summaries',
             'roles' => ['administrator'],
         ],
+        'brand_safety' => [
+            'label' => 'Brand Safety',
+            'description' => 'Configure the blocklist, review flagged content, and run legacy-content backfills',
+            'roles' => ['administrator'],
+        ],
     ];
 
     public static function userCan(string $feature, ?int $userId = null): bool
