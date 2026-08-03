@@ -118,6 +118,12 @@ class BrandSafetyRoutes
         ], 200);
     }
 
+    /**
+     * Time-sliced: a target with a large object count needs multiple calls
+     * to finish (each one advances the resumable scan by ~20s of wall time —
+     * see Backfill::dryRun). Callers must poll until `done:true`; only the
+     * finished response carries the full report/hits fields.
+     */
     public function dryRun(WP_REST_Request $request): WP_REST_Response
     {
         $target = (string) $request->get_param('target');
@@ -126,17 +132,32 @@ class BrandSafetyRoutes
         }
 
         $result = Backfill::dryRun($target);
+
+        if (!$result['done']) {
+            return new WP_REST_Response([
+                'target' => $target,
+                'done' => false,
+                'scanned_so_far' => $result['scanned_so_far'],
+                'hits_objects_so_far' => $result['hits_objects_so_far'],
+            ], 200);
+        }
+
+        $report = Backfill::readReport($target);
+        $rows = $report['rows'] ?? [];
         $hitsTotal = 0;
-        foreach ($result['rows'] as $row) {
+        foreach ($rows as $row) {
             $hitsTotal += count($row['terms']);
         }
 
         return new WP_REST_Response([
             'target' => $target,
-            'scanned' => $result['scanned'],
-            'hits_objects' => count($result['rows']),
+            'done' => true,
+            'scanned' => $result['scanned_so_far'],
+            'scanned_so_far' => $result['scanned_so_far'],
+            'hits_objects' => count($rows),
+            'hits_objects_so_far' => $result['hits_objects_so_far'],
             'hits_total' => $hitsTotal,
-            'report' => array_slice($result['rows'], 0, 500),
+            'report' => array_slice($rows, 0, 500),
         ], 200);
     }
 

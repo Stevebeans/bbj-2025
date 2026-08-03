@@ -19,17 +19,59 @@ class Backfill
     }
 
     /**
-     * Read-only full scan. Returns ['scanned' => int, 'rows' => [...]] where
-     * rows are only the objects that had hits. Report (with scanned total)
-     * is written to disk; a fresh dry-run resets that target's apply cursor
-     * since the object set/order may have changed since the last run.
+     * Read-only scan, time-sliced and resumable: a single call processes
+     * objects for up to ~$sliceSeconds of wall time (always at least one
+     * object, even with $sliceSeconds=0) and persists partial progress
+     * (offset + rows-with-hits so far) to the report file with `done:false`.
+     * The next call for the same target picks up from that offset via
+     * iterate()'s starting-offset param — no rescanning consumed objects.
+     *
+     * A report already `done:true` (or missing/corrupt) is treated as
+     * finished/stale: this call deletes it and starts a fresh scan from
+     * offset 0, since the object set/order may have changed since the last
+     * completed run. Only a report explicitly `done:false` is resumed.
+     *
+     * The apply cursor is reset to 0 only once the scan actually finishes
+     * (`done:true`) — never on intermediate slices.
+     *
+     * @return array{done:bool, scanned_so_far:int, hits_objects_so_far:int}
      */
-    public static function dryRun(string $target): array
+    public static function dryRun(string $target, int $sliceSeconds = 20): array
     {
-        $rows = [];
-        $scanned = 0;
-        foreach (self::iterate($target) as $obj) {
+        $file = self::reportPath($target);
+        $existing = is_readable($file) ? json_decode((string) file_get_contents($file), true) : null;
+        $resuming = is_array($existing) && ($existing['done'] ?? true) === false;
+
+        if ($resuming) {
+            $offset = (int) ($existing['offset'] ?? 0);
+            $rows = is_array($existing['rows'] ?? null) ? $existing['rows'] : [];
+            $scanned = (int) ($existing['scanned'] ?? 0);
+        } else {
+            if (is_readable($file)) {
+                @unlink($file); // stale/completed report from a prior run — start fresh
+            }
+            $offset = 0;
+            $rows = [];
+            $scanned = 0;
+        }
+
+        $deadline = microtime(true) + max(0, $sliceSeconds);
+        $done = true;
+        $processedThisSlice = 0;
+
+        foreach (self::iterate($target, $offset) as $obj) {
+            // Always process at least one object per call (so sliceSeconds=0
+            // still makes progress instead of spinning forever), then check
+            // the budget before taking on the next one.
+            if ($processedThisSlice > 0 && microtime(true) >= $deadline) {
+                $done = false;
+                break;
+            }
+
             $scanned++;
+            $offset++;
+            $processedThisSlice++;
+
             $hits = Scanner::scan($obj['text']);
             if ($hits) {
                 $rows[] = ['id' => $obj['id'], 'label' => $obj['label'], 'url' => $obj['url'], 'terms' => $hits];
@@ -38,13 +80,31 @@ class Backfill
 
         $dir = WP_CONTENT_DIR . '/bbj-quarantine/reports';
         wp_mkdir_p($dir);
-        file_put_contents(self::reportPath($target), wp_json_encode(['scanned' => $scanned, 'rows' => $rows]));
+        file_put_contents($file, wp_json_encode([
+            'done' => $done,
+            'offset' => $offset,
+            'scanned' => $scanned,
+            'rows' => $rows,
+        ]));
 
-        $opt = get_option(Blocklist::OPTION, []);
-        $opt["apply_cursor_{$target}"] = 0;
-        update_option(Blocklist::OPTION, $opt);
+        if ($done) {
+            $opt = get_option(Blocklist::OPTION, []);
+            $opt["apply_cursor_{$target}"] = 0;
+            update_option(Blocklist::OPTION, $opt);
+        }
 
-        return ['scanned' => $scanned, 'rows' => $rows];
+        return ['done' => $done, 'scanned_so_far' => $scanned, 'hits_objects_so_far' => count($rows)];
+    }
+
+    /** Full persisted dry-run report for a target, or null if none exists/unreadable. */
+    public static function readReport(string $target): ?array
+    {
+        $file = self::reportPath($target);
+        if (!is_readable($file)) {
+            return null;
+        }
+        $data = json_decode((string) file_get_contents($file), true);
+        return is_array($data) ? $data : null;
     }
 
     /**
@@ -167,13 +227,23 @@ class Backfill
         }
     }
 
-    /** Generator over target objects: ['id', 'text', 'label', 'url']. Batched queries (500/page). */
-    private static function iterate(string $target): \Generator
+    /**
+     * Generator over target objects: ['id', 'text', 'label', 'url']. Batched
+     * queries (500/page). $startOffset resumes mid-table without rescanning
+     * already-consumed objects — it seeks to the containing page, then skips
+     * forward within just that first page.
+     */
+    private static function iterate(string $target, int $startOffset = 0): \Generator
     {
         global $wpdb;
-        $page = 0;
+        $pageSize = 500;
+        $firstPage = intdiv($startOffset, $pageSize);
+        $skipInFirstPage = $startOffset % $pageSize;
+        $page = $firstPage;
+
         while (true) {
-            $offset = $page * 500;
+            $offset = $page * $pageSize;
+            $items = [];
             if ($target === 'posts') {
                 $rows = $wpdb->get_results($wpdb->prepare(
                     "SELECT ID, post_title, post_content, post_name, post_type FROM {$wpdb->posts}
@@ -183,7 +253,7 @@ class Backfill
                 ));
                 foreach ($rows as $r) {
                     $url = $r->post_type === 'live-feed-updates' ? "/live-feed-updates/{$r->post_name}" : "/{$r->post_name}";
-                    yield ['id' => (int) $r->ID, 'text' => $r->post_title . "\n" . $r->post_content, 'label' => $r->post_title, 'url' => $url];
+                    $items[] = ['id' => (int) $r->ID, 'text' => $r->post_title . "\n" . $r->post_content, 'label' => $r->post_title, 'url' => $url];
                 }
             } elseif ($target === 'comments') {
                 $rows = $wpdb->get_results($wpdb->prepare(
@@ -191,17 +261,46 @@ class Backfill
                      WHERE comment_approved = '1' ORDER BY comment_ID LIMIT 500 OFFSET %d",
                     $offset
                 ));
+                // Batch-resolve host posts (slug + type) for real, working links —
+                // '?p=<id>' resolved relative to the admin page, not the site root.
+                $postMap = [];
+                if ($rows) {
+                    $postIds = array_values(array_unique(array_map(static fn($r) => (int) $r->comment_post_ID, $rows)));
+                    $placeholders = implode(',', array_fill(0, count($postIds), '%d'));
+                    $postRows = $wpdb->get_results($wpdb->prepare(
+                        "SELECT ID, post_name, post_type FROM {$wpdb->posts} WHERE ID IN ({$placeholders})",
+                        ...$postIds
+                    ));
+                    foreach ($postRows as $p) {
+                        $postMap[(int) $p->ID] = $p;
+                    }
+                }
                 foreach ($rows as $r) {
-                    yield ['id' => (int) $r->comment_ID, 'text' => $r->comment_content, 'label' => 'comment #' . $r->comment_ID, 'url' => '?p=' . $r->comment_post_ID];
+                    $post = $postMap[(int) $r->comment_post_ID] ?? null;
+                    $base = $post ? ($post->post_type === 'live-feed-updates' ? "/live-feed-updates/{$post->post_name}" : "/{$post->post_name}") : '';
+                    $items[] = [
+                        'id' => (int) $r->comment_ID,
+                        'text' => $r->comment_content,
+                        'label' => 'comment #' . $r->comment_ID,
+                        'url' => $base . '#comment-' . $r->comment_ID,
+                    ];
                 }
             } else { // quotes
                 $table = SocialSchema::table(SocialSchema::TABLE_QUOTES);
                 $rows = $wpdb->get_results($wpdb->prepare("SELECT * FROM {$table} ORDER BY id LIMIT 500 OFFSET %d", $offset), ARRAY_A);
                 foreach ($rows as $r) {
-                    yield ['id' => (int) $r['id'], 'text' => $r['quote_text'], 'label' => 'quote #' . $r['id'], 'url' => ''];
+                    $items[] = ['id' => (int) $r['id'], 'text' => $r['quote_text'], 'label' => 'quote #' . $r['id'], 'url' => ''];
                 }
             }
-            if (count($rows) < 500) {
+
+            foreach ($items as $i => $item) {
+                if ($page === $firstPage && $i < $skipInFirstPage) {
+                    continue;
+                }
+                yield $item;
+            }
+
+            if (count($rows) < $pageSize) {
                 return;
             }
             $page++;
