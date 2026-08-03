@@ -2,10 +2,13 @@
 
 namespace BigBrotherJunkies\Data\Social;
 
+use BigBrotherJunkies\Data\BrandSafety\Log;
+use BigBrotherJunkies\Data\BrandSafety\Scanner;
+
 /**
  * Approved-quote persistence. Candidates never land here — only rows Steve
- * approved. quote_text is wp_encode_emoji'd at rest (house rule), decoded on
- * the way out.
+ * approved. quote_text is censored (brand-safety) then wp_encode_emoji'd at
+ * rest (house rule), decoded on the way out.
  */
 class QuoteStore
 {
@@ -13,16 +16,29 @@ class QuoteStore
     {
         global $wpdb;
         $table = SocialSchema::table(SocialSchema::TABLE_QUOTES);
+
+        $quoteCensored = Scanner::censor((string) $args['quote_text']);
+        $contextCensored = Scanner::censor((string) ($args['context'] ?? ''));
+
         $ok = $wpdb->insert($table, [
             'season_id'    => (int) $args['season_id'],
             'player_id'    => isset($args['player_id']) && (int) $args['player_id'] > 0 ? (int) $args['player_id'] : null,
-            'quote_text'   => wp_encode_emoji((string) $args['quote_text']),
-            'context'      => wp_encode_emoji((string) ($args['context'] ?? '')),
+            'quote_text'   => wp_encode_emoji($quoteCensored['html']),
+            'context'      => wp_encode_emoji($contextCensored['html']),
             'said_on'      => (string) $args['said_on'],
             'source_count' => max(1, (int) ($args['source_count'] ?? 1)),
             'created_at'   => gmdate('Y-m-d H:i:s'),
         ]);
-        return $ok ? (int) $wpdb->insert_id : 0;
+
+        $insertId = $ok ? (int) $wpdb->insert_id : 0;
+
+        // Log::record() issues its own $wpdb->insert() calls, which would
+        // otherwise clobber $wpdb->insert_id before we read it above.
+        if ($ok) {
+            Log::record('quote', $insertId, array_merge($quoteCensored['hits'], $contextCensored['hits']));
+        }
+
+        return $insertId;
     }
 
     public static function delete(int $id): bool

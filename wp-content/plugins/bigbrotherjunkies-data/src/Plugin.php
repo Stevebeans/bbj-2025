@@ -720,6 +720,9 @@ class Plugin
         // Admin premium-members routes (subscription list, stats, cancel)
         $subscriptionAdminRoutes = new \BigBrotherJunkies\Data\Api\SubscriptionAdminRoutes();
         $subscriptionAdminRoutes->register();
+
+        // Brand safety: censor editorial content on save_post, expose ads_unsafe REST field
+        (new \BigBrotherJunkies\Data\BrandSafety\Hooks())->register();
     }
 
     /**
