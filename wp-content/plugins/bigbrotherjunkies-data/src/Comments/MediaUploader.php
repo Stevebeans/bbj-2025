@@ -228,7 +228,7 @@ class MediaUploader
         $table = CommentSchema::table(CommentSchema::TABLE_MEDIA);
 
         $media = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table} WHERE comment_id = %d",
+            "SELECT * FROM {$table} WHERE comment_id = %d AND storage_type != 'quarantined'",
             $commentId
         ), ARRAY_A);
 
@@ -325,6 +325,40 @@ class MediaUploader
             'width' => $width,
             'height' => $height,
         ];
+    }
+
+    /**
+     * Move all locally-stored media into a quarantine directory and mark
+     * the rows so they stop rendering. Used to retire unmoderated uploads
+     * without losing the underlying files.
+     *
+     * @return array{moved: int, errors: string[]}
+     */
+    public static function quarantineAllLocal(): array
+    {
+        global $wpdb;
+        $table = CommentSchema::table(CommentSchema::TABLE_MEDIA);
+        $dir = WP_CONTENT_DIR . '/bbj-quarantine';
+        if (!file_exists($dir)) {
+            wp_mkdir_p($dir);
+            file_put_contents($dir . '/.htaccess', "Deny from all\n");
+            file_put_contents($dir . '/index.php', '<?php // Silence is golden');
+        }
+        $rows = $wpdb->get_results("SELECT * FROM {$table} WHERE storage_type = 'local'");
+        $moved = 0;
+        $errors = [];
+        foreach ($rows as $row) {
+            $dest = $dir . '/' . basename($row->file_path);
+            if (file_exists($row->file_path)) {
+                if (!@rename($row->file_path, $dest)) {
+                    $errors[] = "move failed: {$row->file_name}";
+                    continue;
+                }
+            } // file already gone → still mark row so it stops rendering
+            $wpdb->update($table, ['storage_type' => 'quarantined', 'file_path' => $dest], ['id' => $row->id], ['%s', '%s'], ['%d']);
+            $moved++;
+        }
+        return ['moved' => $moved, 'errors' => $errors];
     }
 
     /**

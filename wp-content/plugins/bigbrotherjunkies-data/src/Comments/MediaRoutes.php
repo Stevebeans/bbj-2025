@@ -114,30 +114,13 @@ class MediaRoutes
      */
     public function uploadMedia(\WP_REST_Request $request): \WP_REST_Response
     {
-        $userId = get_current_user_id();
-
-        // Check if file was uploaded
-        $files = $request->get_file_params();
-        if (empty($files['file'])) {
-            return new \WP_REST_Response([
-                'success' => false,
-                'message' => 'No file uploaded',
-            ], 400);
-        }
-
-        $result = MediaUploader::upload($files['file'], $userId);
-
-        if (is_wp_error($result)) {
-            return new \WP_REST_Response([
-                'success' => false,
-                'message' => $result->get_error_message(),
-            ], 400);
-        }
-
+        // Removed 2026-08 for Freestar brand-safety compliance (unmoderated image
+        // uploads). Giphy (PG-13 rated) remains the only comment media path.
         return new \WP_REST_Response([
-            'success' => true,
-            'media' => $result,
-        ], 201);
+            'success' => false,
+            'code' => 'uploads_disabled',
+            'message' => 'Image uploads are no longer available. You can still add a GIF.',
+        ], 410);
     }
 
     /**
