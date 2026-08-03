@@ -48,13 +48,28 @@ class Backfill
     }
 
     /**
+     * Trickle delay between purge calls (cost guardrail — do not remove or
+     * shrink). scanAndCensorPost() writes via direct $wpdb->update, so it
+     * never fires transition_post_status and the purge-on-edit webhook never
+     * runs; without an explicit purge, applied posts would keep serving
+     * stale CF/ISR-cached HTML (uncensored content, missing ads_unsafe) for
+     * up to the edge TTL.
+     */
+    private const PURGE_THROTTLE_MICROSECONDS = 250000;
+
+    /**
      * Censor one batch of objects-with-hits from the stored report; cursor
      * lives in the brand-safety option. Never fatals: a missing/unreadable
      * report is reported as done with an error message, not thrown.
      *
-     * @return array{processed:int, remaining:int, done:bool, error?:string}
+     * $purge is honored only for the posts target (comments are client-fetched,
+     * quotes ride API responses — neither needs a CF/ISR purge). Defaults to
+     * false: callers must opt in explicitly, since a purge hits the real
+     * revalidate endpoint (prod by default when NEXT_PUBLIC_SITE_URL isn't set).
+     *
+     * @return array{processed:int, remaining:int, done:bool, purged:int, error?:string}
      */
-    public static function apply(string $target, int $batch): array
+    public static function apply(string $target, int $batch, bool $purge = false): array
     {
         $file = self::reportPath($target);
         if (!is_readable($file)) {
@@ -62,6 +77,7 @@ class Backfill
                 'processed' => 0,
                 'remaining' => 0,
                 'done' => true,
+                'purged' => 0,
                 'error' => 'no dry-run report found for this target; run dry-run first',
             ];
         }
@@ -73,8 +89,16 @@ class Backfill
         $cursor = (int) ($opt["apply_cursor_{$target}"] ?? 0);
         $slice = array_slice($report, $cursor, max(1, $batch));
 
+        $purged = 0;
         foreach ($slice as $row) {
-            self::applyOne($target, (int) $row['id']);
+            $id = (int) $row['id'];
+            self::applyOne($target, $id);
+            if ($purge && $target === 'posts') {
+                if (self::purgePost($id)) {
+                    $purged++;
+                }
+                usleep(self::PURGE_THROTTLE_MICROSECONDS);
+            }
         }
 
         $cursor += count($slice);
@@ -82,7 +106,20 @@ class Backfill
         update_option(Blocklist::OPTION, $opt);
 
         $remaining = max(0, count($report) - $cursor);
-        return ['processed' => count($slice), 'remaining' => $remaining, 'done' => $remaining === 0];
+        return ['processed' => count($slice), 'remaining' => $remaining, 'done' => $remaining === 0, 'purged' => $purged];
+    }
+
+    /** Targeted CF/ISR revalidation for one just-applied post, over-purge-tolerant. */
+    private static function purgePost(int $id): bool
+    {
+        $post = get_post($id);
+        if (!$post) {
+            return false;
+        }
+        if ($post->post_type === 'live-feed-updates') {
+            return \BigBrotherJunkies\Data\Utils\Revalidation::revalidateFeedUpdate($post->post_name);
+        }
+        return \BigBrotherJunkies\Data\Utils\Revalidation::revalidatePost($post->post_name);
     }
 
     private static function applyOne(string $target, int $id): void

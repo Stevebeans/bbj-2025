@@ -150,7 +150,12 @@ class BrandSafetyRoutes
         $batchParam = $request->get_param('batch');
         $batch = $batchParam !== null && $batchParam !== '' ? (int) $batchParam : self::BATCH_DEFAULTS[$target];
 
-        return new WP_REST_Response(Backfill::apply($target, $batch), 200);
+        // Default false: a purge hits the real revalidate endpoint (prod by
+        // default when NEXT_PUBLIC_SITE_URL isn't defined), so callers must
+        // opt in explicitly. No-op for comments/quotes (handled in Backfill).
+        $purge = (bool) $request->get_param('purge');
+
+        return new WP_REST_Response(Backfill::apply($target, $batch, $purge), 200);
     }
 
     public function flagged(): WP_REST_Response
