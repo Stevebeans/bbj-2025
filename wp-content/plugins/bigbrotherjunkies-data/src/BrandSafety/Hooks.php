@@ -42,7 +42,10 @@ class Hooks
             return;
         }
         $content = Scanner::censor($post->post_content);
-        $title = Scanner::censor($post->post_title);
+        // Titles are plain text — no HTML-tag semantics, so a literal '<'/'>'
+        // in a title must never be parsed as markup (would wrongly leave a
+        // hit unmasked and flag ads_unsafe via the unmaskable branch).
+        $title = Scanner::censorText($post->post_title);
         $hits = array_merge($content['hits'], $title['hits']);
         $changed = $content['html'] !== $post->post_content || $title['html'] !== $post->post_title;
 

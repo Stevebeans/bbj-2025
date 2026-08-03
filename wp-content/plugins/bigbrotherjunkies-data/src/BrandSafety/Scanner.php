@@ -25,6 +25,27 @@ class Scanner
         }
     }
 
+    /**
+     * Plain-text scan/censor for fields with no HTML-tag semantics (post titles,
+     * etc.) — `<` and `>` are ordinary characters, never treated as markup, so
+     * every censor-tier hit is maskable. `unmaskable` is always false.
+     */
+    public static function censorText(string $text): array
+    {
+        try {
+            $tiers = Blocklist::getTiers();
+            if (!$tiers) {
+                return ['html' => $text, 'hits' => [], 'unmaskable' => false];
+            }
+            $hits = [];
+            $masked = self::maskTextNode($text, $tiers, $hits, true);
+            return ['html' => $masked, 'hits' => $hits, 'unmaskable' => false];
+        } catch (\Throwable $e) {
+            error_log('[bbjd brand-safety] scanner error: ' . $e->getMessage());
+            return ['html' => $text, 'hits' => [], 'unmaskable' => false]; // fail open
+        }
+    }
+
     private static function run(string $html, bool $mask): array
     {
         $tiers = Blocklist::getTiers();
@@ -58,22 +79,29 @@ class Scanner
                 }
                 continue;
             }
-            $parts[$i] = preg_replace_callback($regex, function ($m) use ($tiers, &$hits, $mask) {
-                $term = self::normalize($m[0]);
-                $tier = $tiers[$term] ?? 'censor';
-                if ($tier === 'off') {
-                    return $m[0];
-                }
-                if ($tier === 'watch') {
-                    $hits[] = ['term' => $term, 'tier' => $tier, 'action' => 'watched'];
-                    return $m[0];
-                }
-                $hits[] = ['term' => $term, 'tier' => $tier, 'action' => 'censored'];
-                return $mask ? self::mask($m[0]) : $m[0];
-            }, $part);
+            $parts[$i] = self::maskTextNode($part, $tiers, $hits, $mask);
         }
 
         return ['html' => implode('', $parts), 'hits' => $hits, 'unmaskable' => $unmaskable];
+    }
+
+    /** Shared tier-matching + masking callback, applied to one plain-text chunk. */
+    private static function maskTextNode(string $text, array $tiers, array &$hits, bool $mask): string
+    {
+        $regex = self::buildRegex(array_keys($tiers));
+        return preg_replace_callback($regex, function ($m) use ($tiers, &$hits, $mask) {
+            $term = self::normalize($m[0]);
+            $tier = $tiers[$term] ?? 'censor';
+            if ($tier === 'off') {
+                return $m[0];
+            }
+            if ($tier === 'watch') {
+                $hits[] = ['term' => $term, 'tier' => $tier, 'action' => 'watched'];
+                return $m[0];
+            }
+            $hits[] = ['term' => $term, 'tier' => $tier, 'action' => 'censored'];
+            return $mask ? self::mask($m[0]) : $m[0];
+        }, $text);
     }
 
     /** One cached alternation; longest terms first so phrases beat their substrings. */
