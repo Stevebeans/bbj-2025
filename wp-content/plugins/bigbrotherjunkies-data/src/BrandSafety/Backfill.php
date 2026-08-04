@@ -46,6 +46,7 @@ class Backfill
             $offset = (int) ($existing['offset'] ?? 0);
             $rows = is_array($existing['rows'] ?? null) ? $existing['rows'] : [];
             $scanned = (int) ($existing['scanned'] ?? 0);
+            $applied = (int) ($existing['applied'] ?? 0);
         } else {
             if (is_readable($file)) {
                 @unlink($file); // stale/completed report from a prior run — start fresh
@@ -53,6 +54,7 @@ class Backfill
             $offset = 0;
             $rows = [];
             $scanned = 0;
+            $applied = 0;
         }
 
         $deadline = microtime(true) + max(0, $sliceSeconds);
@@ -78,19 +80,17 @@ class Backfill
             }
         }
 
-        QuarantineGuard::ensureSubDir('reports');
-        file_put_contents($file, wp_json_encode([
+        self::writeReport($file, [
             'done' => $done,
             'offset' => $offset,
             'scanned' => $scanned,
             'rows' => $rows,
-        ]));
-
-        if ($done) {
-            $opt = get_option(Blocklist::OPTION, []);
-            $opt["apply_cursor_{$target}"] = 0;
-            update_option(Blocklist::OPTION, $opt);
-        }
+            // A scan that actually finishes invalidates any in-progress apply
+            // cursor: the object set/order may have changed since the last
+            // completed run, so apply() must restart from the top of this
+            // fresh row list. Never reset on an intermediate (done:false) slice.
+            'applied' => $done ? 0 : $applied,
+        ]);
 
         return ['done' => $done, 'scanned_so_far' => $scanned, 'hits_objects_so_far' => count($rows)];
     }
@@ -117,8 +117,14 @@ class Backfill
     private const PURGE_THROTTLE_MICROSECONDS = 250000;
 
     /**
-     * Censor one batch of objects-with-hits from the stored report; cursor
-     * lives in the brand-safety option. Never fatals: a missing/unreadable
+     * Censor one batch of objects-with-hits from the stored report; the
+     * cursor (`applied`) lives IN that same report file, not in the
+     * `bbjd_brand_safety` option. The option is read via Cloudways' Redis
+     * object cache, which has served stale `alloptions` reads under rapid
+     * sequential REST requests — every apply batch re-read a stale cursor
+     * and reprocessed the same first batch forever. The filesystem has no
+     * such cache layer, and this loop is single-writer, so the report file
+     * is the reliable place for this state. Never fatals: a missing/unreadable
      * report is reported as done with an error message, not thrown.
      *
      * $purge is honored only for the posts target (comments are client-fetched,
@@ -142,11 +148,12 @@ class Backfill
         }
 
         $data = json_decode((string) file_get_contents($file), true);
-        $report = is_array($data) ? ($data['rows'] ?? []) : [];
-
-        $opt = get_option(Blocklist::OPTION, []);
-        $cursor = (int) ($opt["apply_cursor_{$target}"] ?? 0);
-        $slice = array_slice($report, $cursor, max(1, $batch));
+        if (!is_array($data)) {
+            $data = [];
+        }
+        $report = is_array($data['rows'] ?? null) ? $data['rows'] : [];
+        $applied = (int) ($data['applied'] ?? 0);
+        $slice = array_slice($report, $applied, max(1, $batch));
 
         $purged = 0;
         foreach ($slice as $row) {
@@ -160,12 +167,26 @@ class Backfill
             }
         }
 
-        $cursor += count($slice);
-        $opt["apply_cursor_{$target}"] = $cursor;
-        update_option(Blocklist::OPTION, $opt);
+        $applied += count($slice);
+        $data['applied'] = $applied;
+        self::writeReport($file, $data);
 
-        $remaining = max(0, count($report) - $cursor);
+        $remaining = max(0, count($report) - $applied);
         return ['processed' => count($slice), 'remaining' => $remaining, 'done' => $remaining === 0, 'purged' => $purged];
+    }
+
+    /**
+     * Persist a report atomically: write to a temp file in the same
+     * directory, then rename over the original. Both dryRun() and apply()
+     * read-modify-write this file as the sole cursor store, so a crash
+     * mid-write must never leave a half-written/corrupt report behind.
+     */
+    private static function writeReport(string $file, array $data): void
+    {
+        QuarantineGuard::ensureSubDir('reports');
+        $tmp = $file . '.tmp-' . getmypid() . '-' . bin2hex(random_bytes(4));
+        file_put_contents($tmp, wp_json_encode($data));
+        rename($tmp, $file);
     }
 
     /** Targeted CF/ISR revalidation for one just-applied post, over-purge-tolerant. */
