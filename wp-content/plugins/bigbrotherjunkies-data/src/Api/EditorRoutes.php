@@ -62,6 +62,26 @@ class EditorRoutes
             'permission_callback' => [$this, 'canWrite'],
         ]);
 
+        // --- Revisions (history panel) ---
+
+        register_rest_route($namespace, '/editor/posts/(?P<id>\d+)/revisions', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getRevisions'],
+            'permission_callback' => [$this, 'canWrite'],
+        ]);
+
+        register_rest_route($namespace, '/editor/posts/(?P<id>\d+)/revisions/(?P<rev_id>\d+)', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getRevision'],
+            'permission_callback' => [$this, 'canWrite'],
+        ]);
+
+        register_rest_route($namespace, '/editor/posts/(?P<id>\d+)/revisions/(?P<rev_id>\d+)/restore', [
+            'methods' => 'POST',
+            'callback' => [$this, 'restoreRevision'],
+            'permission_callback' => [$this, 'canWrite'],
+        ]);
+
         // --- Media ---
 
         register_rest_route($namespace, '/editor/media', [
@@ -248,62 +268,12 @@ class EditorRoutes
 
     public function getPost(\WP_REST_Request $request): \WP_REST_Response
     {
-        $postId = (int) $request->get_param('id');
-        $post = get_post($postId);
-
-        if (!$post || $post->post_type !== 'post') {
-            return new \WP_REST_Response(['error' => 'Post not found'], 404);
+        $post = $this->guardPostAccess((int) $request->get_param('id'));
+        if ($post instanceof \WP_REST_Response) {
+            return $post;
         }
 
-        // Ownership check for non-reviewers
-        if (!$this->canReview() && (int) $post->post_author !== get_current_user_id()) {
-            return new \WP_REST_Response(['error' => 'Not authorized'], 403);
-        }
-
-        $categories = wp_get_post_categories($postId, ['fields' => 'all']);
-        $categoryData = array_map(function ($cat) {
-            return [
-                'id' => $cat->term_id,
-                'name' => $cat->name,
-                'slug' => $cat->slug,
-                'parent' => $cat->parent,
-            ];
-        }, $categories);
-
-        $thumbnailId = get_post_thumbnail_id($postId);
-        $featuredImage = null;
-        if ($thumbnailId) {
-            $featuredImage = [
-                'id' => (int) $thumbnailId,
-                'url' => wp_get_attachment_url($thumbnailId),
-                'thumbnail' => wp_get_attachment_image_url($thumbnailId, 'thumbnail'),
-            ];
-        }
-
-        $reviewNote = get_post_meta($postId, '_bbj_review_note', true);
-
-        return new \WP_REST_Response([
-            'id' => $post->ID,
-            'title' => $post->post_title,
-            'content' => $post->post_content,
-            'slug' => $post->post_name,
-            'status' => $post->post_status,
-            'date' => $post->post_date,
-            'modified' => $post->post_modified,
-            'author' => [
-                'id' => (int) $post->post_author,
-                'name' => get_the_author_meta('display_name', $post->post_author),
-            ],
-            'categories' => $categoryData,
-            'featured_image' => $featuredImage,
-            'meta_description' => get_post_meta($postId, '_bbj_meta_description', true) ?: '',
-            'review_note' => $reviewNote ?: '',
-            'crop_data' => json_decode(get_post_meta($postId, '_bbj_crop_data', true) ?: '{}', true),
-            'live_updates' => (int) get_post_meta($postId, '_bbjd_live_updates', true) === 1,
-            'live_start' => (int) get_post_meta($postId, '_bbjd_live_start', true),
-            'live_end' => (int) get_post_meta($postId, '_bbjd_live_end', true),
-            'scheduled_for' => $post->post_status === 'future' ? $post->post_date_gmt : null,
-        ]);
+        return new \WP_REST_Response($this->formatPostResponse($post));
     }
 
     public function updatePost(\WP_REST_Request $request): \WP_REST_Response
@@ -827,5 +797,147 @@ class EditorRoutes
                     . "Please review it in the admin dashboard.\n"
             );
         }
+    }
+
+    /** Shared 404/ownership guard. Returns the post, or an error response. */
+    private function guardPostAccess(int $postId)
+    {
+        $post = get_post($postId);
+        if (!$post || $post->post_type !== 'post') {
+            return new \WP_REST_Response(['error' => 'Post not found'], 404);
+        }
+        // Ownership check for non-reviewers
+        if (!$this->canReview() && (int) $post->post_author !== get_current_user_id()) {
+            return new \WP_REST_Response(['error' => 'Not authorized'], 403);
+        }
+        return $post;
+    }
+
+    /** Format a post into the full response array. */
+    public function formatPostResponse(\WP_Post $post): array
+    {
+        $postId = $post->ID;
+
+        $categories = wp_get_post_categories($postId, ['fields' => 'all']);
+        $categoryData = array_map(function ($cat) {
+            return [
+                'id' => $cat->term_id,
+                'name' => $cat->name,
+                'slug' => $cat->slug,
+                'parent' => $cat->parent,
+            ];
+        }, $categories);
+
+        $thumbnailId = get_post_thumbnail_id($postId);
+        $featuredImage = null;
+        if ($thumbnailId) {
+            $featuredImage = [
+                'id' => (int) $thumbnailId,
+                'url' => wp_get_attachment_url($thumbnailId),
+                'thumbnail' => wp_get_attachment_image_url($thumbnailId, 'thumbnail'),
+            ];
+        }
+
+        $reviewNote = get_post_meta($postId, '_bbj_review_note', true);
+
+        return [
+            'id' => $post->ID,
+            'title' => $post->post_title,
+            'content' => $post->post_content,
+            'slug' => $post->post_name,
+            'status' => $post->post_status,
+            'date' => $post->post_date,
+            'modified' => $post->post_modified,
+            'author' => [
+                'id' => (int) $post->post_author,
+                'name' => get_the_author_meta('display_name', $post->post_author),
+            ],
+            'categories' => $categoryData,
+            'featured_image' => $featuredImage,
+            'meta_description' => get_post_meta($postId, '_bbj_meta_description', true) ?: '',
+            'review_note' => $reviewNote ?: '',
+            'crop_data' => json_decode(get_post_meta($postId, '_bbj_crop_data', true) ?: '{}', true),
+            'live_updates' => (int) get_post_meta($postId, '_bbjd_live_updates', true) === 1,
+            'live_start' => (int) get_post_meta($postId, '_bbjd_live_start', true),
+            'live_end' => (int) get_post_meta($postId, '_bbjd_live_end', true),
+            'scheduled_for' => $post->post_status === 'future' ? $post->post_date_gmt : null,
+        ];
+    }
+
+    /** Load a revision, verifying it belongs to the given parent. */
+    private function loadRevision(int $parentId, int $revId): ?\WP_Post
+    {
+        $rev = get_post($revId);
+        if (!$rev || $rev->post_type !== 'revision' || (int) $rev->post_parent !== $parentId) {
+            return null;
+        }
+        return $rev;
+    }
+
+    public function getRevisions(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $post = $this->guardPostAccess((int) $request->get_param('id'));
+        if ($post instanceof \WP_REST_Response) {
+            return $post;
+        }
+
+        $revisions = wp_get_post_revisions($post->ID, ['numberposts' => 50]);
+        $items = array_map(function ($rev) {
+            return [
+                'id' => $rev->ID,
+                'date' => $rev->post_date,
+                'word_count' => str_word_count(wp_strip_all_tags($rev->post_content)),
+                'author_name' => get_the_author_meta('display_name', $rev->post_author),
+            ];
+        }, array_values($revisions));
+
+        return new \WP_REST_Response(['revisions' => $items]);
+    }
+
+    public function getRevision(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $post = $this->guardPostAccess((int) $request->get_param('id'));
+        if ($post instanceof \WP_REST_Response) {
+            return $post;
+        }
+
+        $rev = $this->loadRevision($post->ID, (int) $request->get_param('rev_id'));
+        if (!$rev) {
+            return new \WP_REST_Response(['error' => 'Revision not found'], 404);
+        }
+
+        return new \WP_REST_Response([
+            'id' => $rev->ID,
+            'date' => $rev->post_date,
+            'title' => $rev->post_title,
+            'content' => $rev->post_content,
+        ]);
+    }
+
+    public function restoreRevision(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $post = $this->guardPostAccess((int) $request->get_param('id'));
+        if ($post instanceof \WP_REST_Response) {
+            return $post;
+        }
+
+        // Mirror updatePost: T1 writers can't touch published posts.
+        if (!$this->canPublish() && $post->post_status === 'publish') {
+            return new \WP_REST_Response(['error' => 'Cannot edit published posts. Contact a reviewer.'], 403);
+        }
+
+        $rev = $this->loadRevision($post->ID, (int) $request->get_param('rev_id'));
+        if (!$rev) {
+            return new \WP_REST_Response(['error' => 'Revision not found'], 404);
+        }
+
+        // Snapshots the current state as a new revision first, so restore
+        // is itself undoable, then copies the revision back onto the post.
+        $result = wp_restore_post_revision($rev->ID);
+        if (!$result || is_wp_error($result)) {
+            return new \WP_REST_Response(['error' => 'Restore failed'], 500);
+        }
+
+        return new \WP_REST_Response($this->formatPostResponse(get_post($post->ID)));
     }
 }
