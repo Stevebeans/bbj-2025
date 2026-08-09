@@ -814,7 +814,7 @@ class EditorRoutes
     }
 
     /** Format a post into the full response array. */
-    public function formatPostResponse(\WP_Post $post): array
+    private function formatPostResponse(\WP_Post $post): array
     {
         $postId = $post->ID;
 
