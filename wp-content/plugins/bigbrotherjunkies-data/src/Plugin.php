@@ -73,6 +73,7 @@ use BigBrotherJunkies\Data\Api\LiveThreadRoutes;
 use BigBrotherJunkies\Data\Api\UserAdminRoutes;
 use BigBrotherJunkies\Data\Api\BrandSafetyRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
+use BigBrotherJunkies\Data\Cron\RevisionRetention;
 use BigBrotherJunkies\Data\Cron\BillingExpiryCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
@@ -454,6 +455,10 @@ class Plugin
         // spam once anything is queued).
         $contentEngineCron = new ContentEngineCron();
         $contentEngineCron->init();
+
+        // Bounded retention for post revisions (history feature, 2026-08-08).
+        $revisionRetention = new RevisionRetention();
+        $revisionRetention->init();
 
         // Expires cancel-at-period-end subscriptions (the only expiry path
         // for PayPal period-end cancels; Stripe's webhook usually wins).
