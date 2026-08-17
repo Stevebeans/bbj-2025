@@ -115,6 +115,19 @@ class FeedUpdateRoutes
     }
 
     /**
+     * Ownership guard for edit/delete: the update's author, or staff with
+     * comment_moderation (admins/editors). Plain updaters manage only their own.
+     */
+    private function canManageUpdate(\WP_Post $post): bool
+    {
+        if ((int) $post->post_author === get_current_user_id()) {
+            return true;
+        }
+
+        return PermissionChecker::userCan('comment_moderation');
+    }
+
+    /**
      * Create a new feed update
      */
     public function createFeedUpdate(\WP_REST_Request $request): \WP_REST_Response
@@ -232,6 +245,13 @@ class FeedUpdateRoutes
             ], 404);
         }
 
+        if (!$this->canManageUpdate($post)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'You can only edit your own updates',
+            ], 403);
+        }
+
         $title   = $request->get_param('title');
         $details = $request->get_param('details');
         $type    = $request->get_param('update_type');
@@ -267,10 +287,19 @@ class FeedUpdateRoutes
         // Clear caches so the archive + single-post pages reflect the edit
         do_action('breeze_clear_all_cache');
 
+        // Same freshness path as delete: the recent-updates transient feeds the
+        // homepage cards, and the webhook targeted-purges the update's page +
+        // homepage/hub from Vercel and Cloudflare. Without this an edit stays
+        // invisible on cached pages until the next publish.
+        delete_transient(HomeRoutes::RECENT_TRANSIENT);
+        \BigBrotherJunkies\Data\Utils\Revalidation::revalidateFeedUpdate($post->post_name);
+
         $updated = get_post($id);
         return new \WP_REST_Response([
             'success' => true,
-            'update' => $this->formatFeedUpdate($updated),
+            // Full content so inline editors can repaint the card without a
+            // second fetch (extra fields are harmless to the admin pane).
+            'update' => $this->formatFeedUpdate($updated, true),
         ]);
     }
 
@@ -286,6 +315,13 @@ class FeedUpdateRoutes
                 'success' => false,
                 'message' => 'Feed update not found',
             ], 404);
+        }
+
+        if (!$this->canManageUpdate($post)) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => 'You can only delete your own updates',
+            ], 403);
         }
 
         $slug = $post->post_name;
