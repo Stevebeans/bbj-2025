@@ -14,8 +14,9 @@ class DraftBatchLogic
     /** A stale cursor never pulls more than this many hours of backlog. */
     public const MAX_HOURS = 24;
 
-    /** Hard cap on posts per batch, whatever the model returns. */
-    public const MAX_POSTS = 5;
+    /** Hard cap on posts per batch, whatever the model returns. Raised from 5
+     * on 8/22 with the single-story split (typical full day = 6-12 posts). */
+    public const MAX_POSTS = 15;
 
     /**
      * UTC window for a batch given the stored cursor (last covered moment).
@@ -108,6 +109,8 @@ class DraftBatchLogic
             }
             $posts[] = [
                 'covers' => trim((string) ($post['covers'] ?? '')),
+                // A/B opener label (tease|recap) — DraftService validates it.
+                'opener' => trim((string) ($post['opener'] ?? '')),
                 'text'   => $body,
             ];
             if (count($posts) === self::MAX_POSTS) {

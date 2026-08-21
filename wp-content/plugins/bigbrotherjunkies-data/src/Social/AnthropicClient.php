@@ -25,7 +25,7 @@ class AnthropicClient
 
         $payload = [
             'model'      => $model,
-            'max_tokens' => 8000,
+            'max_tokens' => 16000, // raised 8/22: 15 single-story batch posts need the headroom
             'system'     => $system,
             'messages'   => [['role' => 'user', 'content' => $userMessage]],
         ];
