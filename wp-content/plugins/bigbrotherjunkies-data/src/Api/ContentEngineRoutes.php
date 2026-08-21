@@ -163,7 +163,11 @@ class ContentEngineRoutes
             'image_url' => esc_url_raw($request->get_param('image_url') ?? ''),
             'target_page' => sanitize_text_field($request->get_param('target_page') ?? ''),
             'target_page_name' => sanitize_text_field($request->get_param('target_page_name') ?? ''),
-            'scheduled_at' => $request->get_param('scheduled_at') ? sanitize_text_field($request->get_param('scheduled_at')) : null,
+            // FB posts get de-clockworked: grid picks shift 2-14 min, and no
+            // two scheduled posts land within 25 min (QueueBridge::humanizeSlot).
+            'scheduled_at' => $request->get_param('scheduled_at')
+                ? \BigBrotherJunkies\Data\Social\QueueBridge::humanizeSlot(sanitize_text_field($request->get_param('scheduled_at')))
+                : null,
             'template_type' => sanitize_text_field($request->get_param('template_type') ?? ''),
             'source_url' => esc_url_raw($request->get_param('source_url') ?? ''),
             'ai_variations' => $request->get_param('ai_variations') ? wp_json_encode($request->get_param('ai_variations')) : null,
