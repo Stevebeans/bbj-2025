@@ -18,6 +18,7 @@ class SlotLogic
         'social_quickie'    => 'quickie card',
         'feed_update_share' => 'feed share',
         'batch'             => 'batch post',
+        'manual_photo'      => 'photo post',
     ];
 
     public static function labelFor(string $source): string

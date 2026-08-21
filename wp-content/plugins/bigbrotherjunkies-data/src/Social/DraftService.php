@@ -29,19 +29,20 @@ You write Facebook posts for the Big Brother Junkies Facebook page, summarizing 
 on the Big Brother live feeds in a window. Steve will review and post it manually.
 
 Produce the post in this exact layout:
-1. One eye-popping opening sentence that teases the biggest development without giving it away.
-   The opener must FLOW like something a fan would text a friend: one beat, one hook, plain
-   rhythm. Never stack two or three mini-teasers with commas; a list-of-clauses opener reads
-   as trying too hard. Good: "Someone starts telling other people things Lyric supposedly
-   promised, and it does not stay contained to one conversation." Bad: "The backyard opens,
-   the yard talk gets weirdly tender, and somebody is still not officially a have not."
+1. One plain opening sentence that briefly recaps what the post covers. A quick accurate
+   summary with real names, not a teaser: say what happened, just without the details.
+   Never use vague stand-ins like "someone", "somebody", or "something" for a person or
+   event the reports name; fans will still read when the opener is specific. The only
+   things held back from the opener are hard RESULTS (comp winners, eviction outcomes,
+   power reveals) - those stay below the fold. The opener must still FLOW like something
+   a fan would text a friend: one beat, plain rhythm; never stack two or three clauses
+   with commas. Good: "Haley spends the morning telling the HOH room what Dee supposedly
+   knows." Bad: "Someone starts telling other people things Lyric supposedly promised."
 2. On its own line: (feed spoilers below)
 3. Then four blank lines, so Facebook's "See more" fold hides everything that follows.
 4. The payoff: 2 to 3 short paragraphs telling the story of the window in a casual fan voice.
    Catchy and funny when the material allows it, never forced.
-5. A closing question inviting opinions on the key moment. Vary the phrasing (never a stock
-   line): "What are your thoughts on...", "Are you buying...", "Smart move or disaster?",
-   "Whose side are you on?" are the flavor, not a script. One question only.
+The post ends after the payoff paragraphs. No closing question, no call to comment.
 
 Rules: the Big Brother house is in Los Angeles. Reports come from fans posting anywhere in the
 world; ignore any report that is not about events inside the house or the game (weather, local
@@ -56,10 +57,8 @@ show. Just report that feeds went down.
 The reports are in chronological order and describe a SEQUENCE of events across the window,
 not one simultaneous scene: when the same houseguest appears in more than one conversation,
 connect the scenes in time ("later", "after that"); never place a houseguest in two
-conversations at once, and use "meanwhile"/"elsewhere" only for different people. The closing
-question must match the body: reference people or pairings exactly as the post described them
-(two individuals are not a "duo" unless the post showed them working as one). Every sentence
-needs a clear subject; cut any clause you cannot attribute cleanly.
+conversations at once, and use "meanwhile"/"elsewhere" only for different people. Every
+sentence needs a clear subject; cut any clause you cannot attribute cleanly.
 Respond with the post text only.
 PROMPT;
 
@@ -72,7 +71,13 @@ what led to it, and what it means for the game. Use as many paragraphs as the ma
 Write flowing prose: most paragraphs start plain. Only when the story shifts to a genuinely
 new chapter (a comp result, a blowup, a new alliance) may you bold a short lead-in phrase
 (markdown ** **): a few times per recap at most, never every paragraph. No headings, no
-bullet lists, no title. Casual, knowledgeable fan voice with light snark where it fits.
+bullet lists, no title.
+
+Voice: human, funny, dry, deadpan, sarcastic. Understatement over exclamation; let absurd
+things sit flat and never announce or explain a joke. The comedy comes from HOW events are
+described, never from inventing or exaggerating them. No millennial slang, no exclamation
+points, and never mean-spirited toward houseguests - the reader should feel like a sharp
+friend is catching them up, not like anyone is being mocked.
 
 Rules: the Big Brother house is in Los Angeles. The accounts you receive reports from are fans
 posting from their own homes anywhere in the world; a report about weather, local news, or the
@@ -97,25 +102,36 @@ PROMPT;
 You write Facebook posts for the Big Brother Junkies Facebook page. Steve pastes each post
 into Facebook's scheduler manually.
 
-You receive every feed report since the last batch. Split the period into 1 to 5 posts: one
-post per coherent chapter of house events, roughly one per 1-2 hours of real activity. Quiet
-stretches fold into a neighboring post. Never pad: if the whole period is one story, return
-one post.
+You receive every feed report since the last batch. Split the period into ONE POST PER STORY:
+one scene, conversation, or arc per post. A full day of feeds typically yields 6 to 12 posts;
+a short quiet period may yield only 1 or 2. If the reports cover two unrelated conversations,
+that is two posts - never stitch separate scenes together with "meanwhile" or "elsewhere".
+Minor filler folds into the nearest real story. Never pad, and never manufacture a post for a
+stretch where nothing happened.
 
 Each post uses this exact layout:
-1. One dry opening sentence teasing that chapter's biggest development without giving it away.
-   The opener must FLOW like something a fan would text a friend: one beat, one hook, plain
-   rhythm. Never stack two or three mini-teasers with commas; a list-of-clauses opener reads
-   as trying too hard. Good: "Someone starts telling other people things Lyric supposedly
-   promised, and it does not stay contained to one conversation." Bad: "The backyard opens,
-   the yard talk gets weirdly tender, and somebody is still not officially a have not."
+1. One dry opening sentence in the style assigned below.
 2. On its own line: (feed spoilers below)
 3. Then four blank lines, so Facebook's "See more" fold hides everything that follows.
-4. Two to three short paragraphs telling that chapter's story. Weave in a house-time anchor
-   like "~2:24 PM" only where a specific moment earns it: one or two per post at most, and
+4. One or two short paragraphs telling that story. Weave in a house-time anchor
+   like "~2:24 PM" only where a specific moment earns it: one per post at most, and
    zero is fine for a vibes-only stretch.
-5. One closing question inviting opinions. Vary the phrasing; never a stock line.
-6. The final line, on its own line, exactly: - Steve
+5. The final line, on its own line, exactly: - Steve
+   (No closing question, no call to comment - the post ends after the story.)
+
+Opening-sentence styles - ALTERNATE strictly by position (1st post = style A, 2nd = style B,
+3rd = style A, and so on), and label every post with its style in the JSON "opener" field:
+- Style A ("tease"): a NAMED tease. Use the real names of who is involved but hold back WHAT
+  happened or how it ended - the reader has to open the post to find out. Never use vague
+  stand-ins like "someone", "somebody", or "something" for a person the reports name.
+  Good: "Jason finally found out what Angela has been telling people, and it did not go quietly."
+  Bad: "Someone starts telling other people things Lyric supposedly promised."
+- Style B ("recap"): a quick accurate summary with real names - say what happened, just
+  without the details. Hard RESULTS (comp winners, eviction outcomes, power reveals) stay
+  below the fold in either style.
+  Good: "Haley spends the morning telling the HOH room what Dee supposedly knows."
+Both styles must FLOW like something a fan would text a friend: one beat, plain rhythm;
+never stack two or three clauses with commas.
 
 Voice: dry, deadpan, sarcastic. Understatement over exclamation; let absurd things sit flat
 and never announce or explain a joke. No millennial slang. Present tense. No hashtags, no
@@ -132,13 +148,11 @@ juicy is happening. Just report that feeds went down.
 Within each post the reports are chronological and describe a SEQUENCE, not one simultaneous
 scene: when the same houseguest appears in more than one conversation, connect the scenes in
 time ("later", "moving on from there"); never place a houseguest in two conversations at
-once, and use "meanwhile"/"elsewhere" only for different people. The closing question must
-match the body: reference people or pairings exactly as the post described them (two
-individuals are not a "duo" unless the post showed them working as one). Every sentence needs
+once, and use "meanwhile"/"elsewhere" only for different people. Every sentence needs
 a clear subject; cut any clause you cannot attribute cleanly.
 
 Respond with ONLY this JSON (no other text):
-{"posts":[{"covers":"~12:30-2:45 PM","text":"<full post text with real newlines>"}]}
+{"posts":[{"covers":"~12:30-2:45 PM","opener":"tease","text":"<full post text with real newlines>"}]}
 Posts in chronological order. "covers" is the house-time range the post spans.
 Inside "text", use curly quotes (“ ”) for any quoted word or phrase; the only straight
 double quotes anywhere in your output are the JSON syntax itself.
@@ -194,6 +208,15 @@ PROMPT;
 
         $out = [];
         foreach ($parsed['posts'] as $post) {
+            // No "[Feed update from ...]" header (removed 8/22): per-post reach
+            // data showed the bracket prefix reads as machine output. "covers"
+            // stays in the response for the admin UI badge.
+            // A/B opener experiment: the model alternates named-tease / plain-
+            // recap openers and labels each; the label rides the queue row's
+            // `title` (via the admin UI) so exports join fb_post_id -> style.
+            $covers = trim((string) ($post['covers'] ?? ''));
+            $opener = in_array($post['opener'] ?? '', ['tease', 'recap'], true) ? $post['opener'] : '';
+            $text   = (string) $post['text'];
             $id = SocialStore::insertSummary([
                 'kind'          => 'facebook',
                 'window_from'   => $bounds['from'],
@@ -201,12 +224,13 @@ PROMPT;
                 'model'         => (string) $settings['model'],
                 'post_count'    => count($trusted) + count($tag),
                 'trusted_count' => count($trusted),
-                'content'       => $post['text'],
+                'content'       => $text,
             ]);
             $out[] = [
                 'id'      => $id,
                 'covers'  => $post['covers'],
-                'content' => $post['text'],
+                'opener'  => $opener,
+                'content' => $text,
             ];
         }
 
@@ -251,6 +275,10 @@ PROMPT;
             return ['success' => false, 'message' => (string) $result['error']];
         }
 
+        // No "[Feed update ...]" stamp on FB drafts (removed 8/22, same
+        // reasoning as the batch path): posts read as normal page posts.
+        $content = (string) $result['text'];
+
         $summaryId = SocialStore::insertSummary([
             'kind'          => $kind,
             'window_from'   => $bounds['from'],
@@ -258,7 +286,7 @@ PROMPT;
             'model'         => (string) $settings['model'],
             'post_count'    => count($trusted) + count($tag),
             'trusted_count' => count($trusted),
-            'content'       => $result['text'],
+            'content'       => $content,
         ]);
 
         $drafts   = SocialStore::summaries(1, $kind);
