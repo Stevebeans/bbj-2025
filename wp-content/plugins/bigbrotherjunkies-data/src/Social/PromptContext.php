@@ -105,8 +105,16 @@ class PromptContext
     public static function rosterBlock(array $roster, array $nicknames, bool $includeRoster = true): string
     {
         $lines = [];
-        if ($includeRoster && $roster) {
-            $lines[] = "This season's houseguests: " . implode(', ', array_slice($roster, 0, 40)) . '.';
+        $active  = array_slice((array) ($roster['active'] ?? []), 0, 30);
+        $evicted = array_slice((array) ($roster['evicted'] ?? []), 0, 30);
+        if ($includeRoster && $active) {
+            $lines[] = 'Houseguests CURRENTLY in the house: ' . implode(', ', $active) . '.';
+        }
+        if ($includeRoster && $evicted) {
+            $lines[] = 'EVICTED - no longer in the house: ' . implode(', ', $evicted) . '. Never write '
+                . 'about an evicted houseguest as if they are currently in the house. Exit interviews, '
+                . 'eviction reactions, and post-eviction chatter about them are NOT live-feed intel; '
+                . 'skip those reports unless current houseguests are discussing them inside the house.';
         }
 
         $pairs = [];

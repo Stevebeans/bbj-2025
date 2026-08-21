@@ -56,25 +56,37 @@ class PromptContextTest extends TestCase
 
     // --- rosterBlock ---
 
-    public function test_roster_block_lists_roster_glossary_and_rule(): void
+    public function test_roster_block_splits_active_and_evicted_with_guardrail(): void
     {
-        $block = PromptContext::rosterBlock(['Haley', 'Kamu', 'Lala'], ['Thog = Haley']);
-        $this->assertStringContainsString("This season's houseguests: Haley, Kamu, Lala.", $block);
+        $block = PromptContext::rosterBlock(
+            ['active' => ['Haley', 'Lala'], 'evicted' => ['Kamu']],
+            ['Thog = Haley']
+        );
+        $this->assertStringContainsString('Houseguests CURRENTLY in the house: Haley, Lala.', $block);
+        $this->assertStringContainsString('EVICTED - no longer in the house: Kamu.', $block);
+        $this->assertStringContainsString('NOT live-feed intel', $block);
         $this->assertStringContainsString('Thog = Haley', $block);
         $this->assertStringContainsString('SAME person', $block);
     }
 
+    public function test_roster_block_omits_evicted_line_when_none(): void
+    {
+        $block = PromptContext::rosterBlock(['active' => ['Haley'], 'evicted' => []], []);
+        $this->assertStringContainsString('CURRENTLY in the house: Haley.', $block);
+        $this->assertStringNotContainsString('EVICTED', $block);
+    }
+
     public function test_roster_block_glossary_only_when_roster_excluded(): void
     {
-        $block = PromptContext::rosterBlock(['Haley'], ['Thog = Haley'], false);
-        $this->assertStringNotContainsString("This season's houseguests", $block);
+        $block = PromptContext::rosterBlock(['active' => ['Haley'], 'evicted' => []], ['Thog = Haley'], false);
+        $this->assertStringNotContainsString('CURRENTLY in the house', $block);
         $this->assertStringContainsString('Thog = Haley', $block);
     }
 
     public function test_roster_block_empty_when_nothing_to_say(): void
     {
-        $this->assertSame('', PromptContext::rosterBlock([], []));
-        $this->assertSame('', PromptContext::rosterBlock(['Haley'], [], false));
+        $this->assertSame('', PromptContext::rosterBlock(['active' => [], 'evicted' => []], []));
+        $this->assertSame('', PromptContext::rosterBlock(['active' => ['Haley'], 'evicted' => []], [], false));
     }
 
     public function test_roster_block_drops_malformed_glossary_lines(): void

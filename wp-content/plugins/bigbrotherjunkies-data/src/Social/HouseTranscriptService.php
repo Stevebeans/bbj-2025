@@ -172,13 +172,13 @@ PROMPT;
     public static function rosterCallNames(): array
     {
         if (!function_exists('bbj_v2_get_season_players')) {
-            return [];
+            return ['active' => [], 'evicted' => []];
         }
         $seasonId = (int) get_option('bbj_v2_current_season', 0);
         if ($seasonId <= 0) {
-            return [];
+            return ['active' => [], 'evicted' => []];
         }
-        $out = [];
+        $out = ['active' => [], 'evicted' => []];
         foreach ((array) bbj_v2_get_season_players($seasonId, 'thumbnail') as $p) {
             $first = trim((string) ($p['first_name'] ?? ''));
             $last  = trim((string) ($p['last_name'] ?? ''));
@@ -188,7 +188,12 @@ PROMPT;
                 continue;
             }
             $full = trim($first . ' ' . $last);
-            $out[] = ($full !== '' && $full !== $call) ? "{$call} ({$full})" : $call;
+            // Same evicted test as the homepage houseboard (jury = out of the
+            // house). Without this split the prompts listed evictees as live
+            // houseguests and Bean Bot kept "reporting" them in the house
+            // (Kamu, 2026-08-22 member reports).
+            $evicted = ((int) ($p['current_jury'] ?? 0) === 1) || ((int) ($p['current_evicted'] ?? 0) === 1);
+            $out[$evicted ? 'evicted' : 'active'][] = ($full !== '' && $full !== $call) ? "{$call} ({$full})" : $call;
         }
         return $out;
     }
