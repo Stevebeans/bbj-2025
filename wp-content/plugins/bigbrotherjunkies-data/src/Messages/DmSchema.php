@@ -90,6 +90,7 @@ class DmSchema
             reporter_id BIGINT(20) UNSIGNED NOT NULL,
             thread_id BIGINT(20) UNSIGNED NOT NULL,
             message_id BIGINT(20) UNSIGNED NULL DEFAULT NULL,
+            reason VARCHAR(50) NOT NULL DEFAULT '',
             note VARCHAR(500) NOT NULL DEFAULT '',
             created_at DATETIME NOT NULL,
             resolved_at DATETIME NULL DEFAULT NULL,

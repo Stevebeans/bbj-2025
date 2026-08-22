@@ -10,7 +10,7 @@ namespace BigBrotherJunkies\Data\Messages;
 class DmStore
 {
     public const DB_VERSION_OPTION = 'bbj_dm_db_version';
-    public const DB_VERSION        = '1.2.0';
+    public const DB_VERSION        = '1.3.0';
 
     public static function maybeMigrate(): void
     {
@@ -520,7 +520,7 @@ class DmStore
         $where    = $openOnly ? 'WHERE r.resolved_at IS NULL' : '';
 
         $rows = $wpdb->get_results($wpdb->prepare(
-            "SELECT r.id, r.reporter_id, r.thread_id, r.message_id, r.note,
+            "SELECT r.id, r.reporter_id, r.thread_id, r.message_id, r.reason, r.note,
                     r.created_at, r.resolved_at,
                     ru.user_login AS reporter_username,
                     lo.user_login AS lo_username, hi.user_login AS hi_username,
@@ -584,14 +584,16 @@ class DmStore
         return $updated !== false && $updated > 0;
     }
 
-    public static function report(int $reporterId, int $threadId, ?int $messageId, string $note): bool
+    public static function report(int $reporterId, int $threadId, ?int $messageId, string $note, string $reason = 'other'): bool
     {
         global $wpdb;
+        $reason = in_array($reason, \BigBrotherJunkies\Data\Conduct\ConductLogic::REASONS, true) ? $reason : 'other';
         $reports = DmSchema::table(DmSchema::TABLE_REPORTS);
         $ok = $wpdb->insert($reports, [
             'reporter_id' => $reporterId,
             'thread_id'   => $threadId,
             'message_id'  => $messageId,
+            'reason'      => $reason,
             'note'        => wp_encode_emoji(mb_substr(sanitize_text_field($note), 0, 500)),
             'created_at'  => current_time('mysql', true),
         ]);
@@ -602,8 +604,17 @@ class DmStore
         wp_mail(
             get_option('admin_email'),
             'BBJ: DM report from ' . ($reporter ? $reporter->user_login : "user {$reporterId}"),
-            "Thread #{$threadId}" . ($messageId ? ", message #{$messageId}" : '') . "\n\nNote: {$note}\n\nReview in admin."
+            "Thread #{$threadId}" . ($messageId ? ", message #{$messageId}" : '') . "\n\nReason: {$reason}\n\nNote: {$note}\n\nReview in admin."
         );
         return true;
+    }
+
+    public static function messageBelongsToThread(int $messageId, int $threadId): bool
+    {
+        global $wpdb;
+        $t = DmSchema::table(DmSchema::TABLE_MESSAGES);
+        return (bool) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$t} WHERE id = %d AND thread_id = %d", $messageId, $threadId
+        ));
     }
 }

@@ -205,11 +205,17 @@ class DmRoutes
         if (DmStore::messages($threadId, get_current_user_id(), null, 1) === null) {
             return new WP_REST_Response(['success' => false, 'message' => 'Not your conversation.'], 403);
         }
+        $messageId = isset($params['message_id']) ? (int) $params['message_id'] : null;
+        if ($messageId && !DmStore::messageBelongsToThread($messageId, $threadId)) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Invalid message.'], 400);
+        }
+        $reason = (string) ($params['reason'] ?? 'other');
         $ok = DmStore::report(
             get_current_user_id(),
             $threadId,
-            isset($params['message_id']) ? (int) $params['message_id'] : null,
-            (string) ($params['note'] ?? '')
+            $messageId,
+            (string) ($params['note'] ?? ''),
+            $reason
         );
         return new WP_REST_Response(['success' => $ok], $ok ? 200 : 500);
     }
