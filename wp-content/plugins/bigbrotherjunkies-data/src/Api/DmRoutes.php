@@ -26,6 +26,7 @@ class DmRoutes
         'rate_limited'   => 'You are sending messages too fast. Give it a minute.',
         'thread_limited' => 'You have started too many new conversations today.',
         'db'             => 'Could not save the message. Please try again.',
+        'suspended'      => "You can't send messages right now.",
     ];
 
     public function init(): void
@@ -150,7 +151,7 @@ class DmRoutes
         if (!$result['ok']) {
             $reason = (string) $result['reason'];
             $status = in_array($reason, ['rate_limited', 'thread_limited'], true) ? 429
-                : ($reason === 'blocked' || $reason === 'closed' || $reason === 'not_followed' ? 403 : 400);
+                : (in_array($reason, ['blocked', 'closed', 'not_followed', 'suspended'], true) ? 403 : 400);
             return new WP_REST_Response([
                 'success' => false,
                 'reason'  => $reason,

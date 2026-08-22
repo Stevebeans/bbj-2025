@@ -785,6 +785,14 @@ class CommentRoutes
             ], 403);
         }
 
+        $restriction = \BigBrotherJunkies\Data\Conduct\ConductStore::activeRestriction($userId, 'commenting');
+        if ($restriction !== null) {
+            return new \WP_REST_Response([
+                'success' => false,
+                'message' => \BigBrotherJunkies\Data\Conduct\ConductLogic::gateRefusal('commenting', $restriction['expires_at']),
+            ], 403);
+        }
+
         // Verify post exists and allows comments
         $post = get_post($postId);
         if (!$post) {

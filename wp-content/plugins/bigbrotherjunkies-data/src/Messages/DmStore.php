@@ -210,6 +210,11 @@ class DmStore
             return ['ok' => false, 'reason' => 'no_user'];
         }
 
+        // Conduct: an active ban silences DMs entirely.
+        if (\BigBrotherJunkies\Data\Conduct\ConductStore::activeBan($senderId) !== null) {
+            return ['ok' => false, 'reason' => 'suspended'];
+        }
+
         $valid = DmLogic::validBody(sanitize_textarea_field(html_entity_decode($rawBody, ENT_QUOTES, 'UTF-8')));
         if (!$valid['ok']) {
             return ['ok' => false, 'reason' => $valid['reason']];
@@ -243,6 +248,11 @@ class DmStore
         ));
 
         if (!$threadId) {
+            // Conduct: a dm_init timeout stops new conversations (replies still work).
+            if (\BigBrotherJunkies\Data\Conduct\ConductStore::activeRestriction($senderId, 'dm_init') !== null) {
+                return ['ok' => false, 'reason' => 'suspended'];
+            }
+
             // New-threads-per-day limit only applies when opening a conversation.
             $ntKey = 'bbj_dm_nt_' . $senderId;
             $opened = (int) get_transient($ntKey);
