@@ -596,6 +596,11 @@ class Plugin
         $homeRoutes = new HomeRoutes();
         $homeRoutes->register();
 
+        // Comment system tables + migrations (idempotent)
+        if (CommentMigrator::needsMigration()) {
+            CommentMigrator::migrate();
+        }
+
         // Comment system routes
         $commentRoutes = new CommentRoutes();
         $commentRoutes->register();

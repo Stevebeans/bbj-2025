@@ -77,7 +77,7 @@ class ConductLogic
     {
         $body = "Following repeated reports from other members, your posting privileges on "
             . "Big Brother Junkies have been removed. If you believe this is a mistake, "
-            . "you can reply to this message.";
+            . "you can reach the team through the site contact form.";
         return self::withNote($body, $note);
     }
 
