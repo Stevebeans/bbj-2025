@@ -665,6 +665,9 @@ class Plugin
         $dmRoutes = new DmRoutes();
         $dmRoutes->init();
 
+        // Conduct / moderation system (unified reports queue + enforcement ladder).
+        \BigBrotherJunkies\Data\Conduct\ConductStore::maybeMigrate();
+
         // Contact form routes
         $contactRoutes = new ContactRoutes();
         $contactRoutes->register();
