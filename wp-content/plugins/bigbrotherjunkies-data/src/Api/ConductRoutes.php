@@ -36,7 +36,21 @@ class ConductRoutes
             'callback'            => [$this, 'member'],
             'permission_callback' => [$this, 'checkAccess'],
         ]);
-        // The action route is added in Task 9.
+        register_rest_route(self::NAMESPACE, '/admin/conduct/members/(?P<user_id>\d+)/action', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'action'],
+            'permission_callback' => [$this, 'checkAccess'],
+            'args'                => [
+                'action'   => ['required' => true, 'type' => 'string',
+                               'enum' => ['warning', 'timeout', 'ban', 'lift']],
+                'scope'    => ['type' => 'string', 'default' => '',
+                               'enum' => ['', 'commenting', 'dm_init', 'both']],
+                'duration' => ['type' => 'string', 'default' => '',
+                               'enum' => ['', '24h', '72h', '7d']],
+                'note'     => ['type' => 'string', 'default' => '',
+                               'sanitize_callback' => 'sanitize_textarea_field'],
+            ],
+        ]);
     }
 
     public function checkAccess(): bool
@@ -82,6 +96,42 @@ class ConductRoutes
             'reports'   => ConductStore::memberReports($userId),
             'actions'   => ConductStore::historyFor($userId),
             'active'    => ConductStore::activeRestrictions($userId),
+        ], 200);
+    }
+
+    public function action(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $userId = (int) $request->get_param('user_id');
+        $action = (string) $request->get_param('action');
+        if (DmStore::isProtectedTarget($userId) && !$this->canSeeProtected()) {
+            return new \WP_REST_Response(['message' => 'Reports about moderators are handled by the site admin.'], 403);
+        }
+        $moderatorId = get_current_user_id();
+        // applyAction/record cap the stored note at 1000 chars, but the DM body
+        // builders receive the raw note first; an unbounded note could push the
+        // DM body over the 2000-char validBody cap (silent dm_sent=false) while
+        // the stored log stays capped, so cap here before either path sees it.
+        $note = mb_substr((string) $request->get_param('note'), 0, 1000);
+        $result = ConductStore::applyAction(
+            $userId,
+            $moderatorId,
+            $action,
+            (string) $request->get_param('scope'),
+            (string) $request->get_param('duration'),
+            $note
+        );
+        if (!$result['ok']) {
+            $status = $result['reason'] === 'protected' ? 403 : ($result['reason'] === 'no_user' ? 404 : 400);
+            return new \WP_REST_Response(['message' => 'Could not apply action (' . ($result['reason'] ?? 'error') . ').'], $status);
+        }
+        if ($action !== 'lift') {
+            ConductStore::resolveOpenReportsFor($userId, $moderatorId, $action);
+        }
+        return new \WP_REST_Response([
+            'success' => true,
+            'dm_sent' => $result['dm_sent'] ?? false,
+            'actions' => ConductStore::historyFor($userId),
+            'active'  => ConductStore::activeRestrictions($userId),
         ], 200);
     }
 }

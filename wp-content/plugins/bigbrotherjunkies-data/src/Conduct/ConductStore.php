@@ -216,6 +216,28 @@ class ConductStore
         return ['ok' => true, 'action_id' => $actionId, 'dm_sent' => $dmSent];
     }
 
+    /** Acting from the queue tidies it: close the member's open reports. */
+    public static function resolveOpenReportsFor(int $userId, int $moderatorId, string $action): void
+    {
+        global $wpdb;
+        $crt = \BigBrotherJunkies\Data\Comments\CommentSchema::table(\BigBrotherJunkies\Data\Comments\CommentSchema::TABLE_REPORTS);
+        $drt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_REPORTS);
+        $dtt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_THREADS);
+        $now = current_time('mysql', true);
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$crt} SET status = 'actioned', action_taken = %s, reviewed_by = %d, reviewed_at = %s
+             WHERE reported_user_id = %d AND status = 'pending'",
+            'conduct_' . $action, $moderatorId, $now, $userId
+        ));
+        $wpdb->query($wpdb->prepare(
+            "UPDATE {$drt} r INNER JOIN {$dtt} t ON t.id = r.thread_id
+             SET r.resolved_at = %s
+             WHERE r.resolved_at IS NULL
+               AND (CASE WHEN t.user_lo = r.reporter_id THEN t.user_hi ELSE t.user_lo END) = %d",
+            $now, $userId
+        ));
+    }
+
     /** Members with at least one report, merged across comment + DM pipelines. */
     public static function membersOverview(int $page, int $perPage, bool $includeProtected): array
     {
