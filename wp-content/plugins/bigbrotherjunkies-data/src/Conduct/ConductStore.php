@@ -215,4 +215,176 @@ class ConductStore
         }
         return ['ok' => true, 'action_id' => $actionId, 'dm_sent' => $dmSent];
     }
+
+    /** Members with at least one report, merged across comment + DM pipelines. */
+    public static function membersOverview(int $page, int $perPage, bool $includeProtected): array
+    {
+        global $wpdb;
+        $crt = \BigBrotherJunkies\Data\Comments\CommentSchema::table(\BigBrotherJunkies\Data\Comments\CommentSchema::TABLE_REPORTS);
+        $drt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_REPORTS);
+        $dtt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_THREADS);
+
+        $byUser = [];
+        $commentRows = $wpdb->get_results(
+            "SELECT reported_user_id AS uid, COUNT(*) AS total,
+                    SUM(status = 'pending') AS open, MAX(created_at) AS last_at
+             FROM {$crt} WHERE reported_user_id > 0 GROUP BY reported_user_id",
+            ARRAY_A
+        ) ?: [];
+        foreach ($commentRows as $row) {
+            $byUser[(int) $row['uid']] = [
+                'comment_reports' => (int) $row['total'],
+                'dm_reports'      => 0,
+                'open_reports'    => (int) $row['open'],
+                'last_report_at'  => $row['last_at'],
+            ];
+        }
+        // The reported member in a DM report is the thread participant who is
+        // not the reporter.
+        $dmRows = $wpdb->get_results(
+            "SELECT CASE WHEN t.user_lo = r.reporter_id THEN t.user_hi ELSE t.user_lo END AS uid,
+                    COUNT(*) AS total, SUM(r.resolved_at IS NULL) AS open, MAX(r.created_at) AS last_at
+             FROM {$drt} r INNER JOIN {$dtt} t ON t.id = r.thread_id
+             GROUP BY uid",
+            ARRAY_A
+        ) ?: [];
+        foreach ($dmRows as $row) {
+            $uid = (int) $row['uid'];
+            if (!isset($byUser[$uid])) {
+                $byUser[$uid] = ['comment_reports' => 0, 'dm_reports' => 0, 'open_reports' => 0, 'last_report_at' => null];
+            }
+            $byUser[$uid]['dm_reports']   = (int) $row['total'];
+            $byUser[$uid]['open_reports'] += (int) $row['open'];
+            if ($row['last_at'] > ($byUser[$uid]['last_report_at'] ?? '')) {
+                $byUser[$uid]['last_report_at'] = $row['last_at'];
+            }
+        }
+
+        $members = [];
+        foreach ($byUser as $uid => $counts) {
+            $user = get_userdata($uid);
+            if (!$user) {
+                continue;
+            }
+            if (!$includeProtected && \BigBrotherJunkies\Data\Messages\DmStore::isProtectedTarget($uid)) {
+                continue;
+            }
+            $members[] = $counts + [
+                'user' => [
+                    'id'     => $uid,
+                    'name'   => $user->display_name,
+                    'avatar' => get_avatar_url($uid),
+                ],
+                'active'       => self::activeRestrictions($uid),
+                'action_count' => count(self::historyFor($uid)),
+            ];
+        }
+        usort($members, static function ($a, $b) {
+            return [$b['open_reports'], $b['last_report_at']] <=> [$a['open_reports'], $a['last_report_at']];
+        });
+        $total = count($members);
+        $members = array_slice($members, ($page - 1) * $perPage, $perPage);
+        return [
+            'members'    => $members,
+            'pagination' => [
+                'total' => $total, 'per_page' => $perPage,
+                'current_page' => $page, 'total_pages' => (int) ceil($total / max(1, $perPage)),
+            ],
+        ];
+    }
+
+    /** All reports about one member, merged + evidence-attached, newest first. */
+    public static function memberReports(int $userId): array
+    {
+        global $wpdb;
+        $crt = \BigBrotherJunkies\Data\Comments\CommentSchema::table(\BigBrotherJunkies\Data\Comments\CommentSchema::TABLE_REPORTS);
+        $drt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_REPORTS);
+        $dtt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_THREADS);
+        $out = [];
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT r.*, ru.display_name AS reporter_name, c.comment_content, p.post_title
+             FROM {$crt} r
+             LEFT JOIN {$wpdb->users} ru ON ru.ID = r.reporter_id
+             LEFT JOIN {$wpdb->comments} c ON c.comment_ID = r.comment_id
+             LEFT JOIN {$wpdb->posts} p ON p.ID = c.comment_post_ID
+             WHERE r.reported_user_id = %d",
+            $userId
+        ), ARRAY_A) ?: [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'type'          => 'comment',
+                'id'            => (int) $r['id'],
+                'reason'        => $r['reason'],
+                'details'       => $r['details'],
+                'reporter_name' => $r['reporter_name'],
+                'created_at'    => $r['created_at'],
+                'status'        => $r['status'],
+                'evidence'      => [
+                    'comment_id' => (int) $r['comment_id'],
+                    'content'    => $r['comment_content'],
+                    'post_title' => $r['post_title'],
+                ],
+            ];
+        }
+
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT r.*, ru.display_name AS reporter_name
+             FROM {$drt} r
+             INNER JOIN {$dtt} t ON t.id = r.thread_id
+             LEFT JOIN {$wpdb->users} ru ON ru.ID = r.reporter_id
+             WHERE (CASE WHEN t.user_lo = r.reporter_id THEN t.user_hi ELSE t.user_lo END) = %d",
+            $userId
+        ), ARRAY_A) ?: [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'type'          => 'dm',
+                'id'            => (int) $r['id'],
+                'reason'        => $r['reason'] ?? 'other',
+                'details'       => html_entity_decode($r['note'], ENT_QUOTES, 'UTF-8'),
+                'reporter_name' => $r['reporter_name'],
+                'created_at'    => $r['created_at'],
+                'status'        => $r['resolved_at'] ? 'resolved' : 'pending',
+                'evidence'      => self::dmEvidence((int) $r['thread_id'], $r['message_id'] !== null ? (int) $r['message_id'] : null),
+            ];
+        }
+
+        usort($out, static fn($a, $b) => strcmp($b['created_at'], $a['created_at']));
+        return $out;
+    }
+
+    /**
+     * Report-attached messages ONLY: the reported message + up to 5 preceding.
+     * Never a general thread-read (spec: no mod browsing of DMs).
+     */
+    public static function dmEvidence(int $threadId, ?int $messageId): ?array
+    {
+        if ($messageId === null) {
+            return null;
+        }
+        global $wpdb;
+        $mt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_MESSAGES);
+        $shape = static function (array $m) use ($wpdb): array {
+            $sender = get_userdata((int) $m['sender_id']);
+            return [
+                'sender_name' => $sender ? $sender->display_name : 'Deleted user',
+                'body'        => html_entity_decode($m['body'], ENT_QUOTES, 'UTF-8'),
+                'created_at'  => $m['created_at'],
+            ];
+        };
+        $reported = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$mt} WHERE id = %d AND thread_id = %d", $messageId, $threadId
+        ), ARRAY_A);
+        if (!$reported) {
+            return null;
+        }
+        $context = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$mt} WHERE thread_id = %d AND id < %d ORDER BY id DESC LIMIT 5",
+            $threadId, $messageId
+        ), ARRAY_A) ?: [];
+        return [
+            'message' => $shape($reported),
+            'context' => array_map($shape, array_reverse($context)),
+        ];
+    }
 }

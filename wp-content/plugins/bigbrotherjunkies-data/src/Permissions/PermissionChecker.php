@@ -19,6 +19,11 @@ class PermissionChecker
             'description' => 'View reports, approve/delete comments, manage blacklist',
             'roles' => ['administrator', 'editor'],
         ],
+        'conduct_moderation' => [
+            'label'       => 'Conduct Queue',
+            'description' => 'Member reports across comments and DMs; warnings, timeouts, bans',
+            'roles'       => ['administrator', 'editor'],
+        ],
         'feed_updates' => [
             'label' => 'Feed Updater',
             'description' => 'Post and edit live feed updates',

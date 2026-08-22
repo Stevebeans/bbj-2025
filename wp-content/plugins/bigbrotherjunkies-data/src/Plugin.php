@@ -37,6 +37,7 @@ use BigBrotherJunkies\Data\Api\WeeklyRoutes;
 use BigBrotherJunkies\Data\Api\FanVoteRoutes;
 use BigBrotherJunkies\Data\Api\SocialRoutes;
 use BigBrotherJunkies\Data\Api\DmRoutes;
+use BigBrotherJunkies\Data\Api\ConductRoutes;
 use BigBrotherJunkies\Data\Api\ContactRoutes;
 use BigBrotherJunkies\Data\Api\PlayerPhotoRoutes;
 use BigBrotherJunkies\Data\Api\ImportRoutes;
@@ -667,6 +668,8 @@ class Plugin
 
         // Conduct / moderation system (unified reports queue + enforcement ladder).
         \BigBrotherJunkies\Data\Conduct\ConductStore::maybeMigrate();
+        $conductRoutes = new ConductRoutes();
+        $conductRoutes->register();
 
         // Contact form routes
         $contactRoutes = new ContactRoutes();
