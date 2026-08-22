@@ -247,6 +247,23 @@ class CommentRoutes
         // Get current user ID if logged in
         $currentUserId = get_current_user_id();
 
+        // Anonymous responses are viewer-identical (user_vote/can_* only exist
+        // for logged-in users), and thread pages hammer this endpoint at peak
+        // (848 of 4K reqs during the 8/22 load-37 slowdown). A 15s micro-cache
+        // turns the anonymous herd into ~4 computes/min per (post,page,sort);
+        // logged-in requests stay live.
+        $anonCacheKey = null;
+        if ($currentUserId === 0) {
+            $anonCacheKey = sprintf(
+                'bbjd_comments_anon_%d_%d_%d_%s',
+                (int) $postId, (int) $page, (int) $perPage, (string) ($sort ?: 'newest')
+            );
+            $cached = wp_cache_get($anonCacheKey, 'bbjd-comments');
+            if (is_array($cached)) {
+                return new \WP_REST_Response($cached, 200);
+            }
+        }
+
         // Check if current user can pin comments
         $canPin = $this->checkCanPin();
 
@@ -330,7 +347,7 @@ class CommentRoutes
             $formattedComments[] = $this->formatComment($comment, $userVotes, $currentUserId, 0, $canPin);
         }
 
-        return new \WP_REST_Response([
+        $payload = [
             'comments' => $formattedComments,
             'pagination' => [
                 'total' => $totalComments,
@@ -338,7 +355,11 @@ class CommentRoutes
                 'current_page' => $page,
                 'total_pages' => ceil($totalComments / $perPage),
             ],
-        ], 200);
+        ];
+        if ($anonCacheKey !== null) {
+            wp_cache_set($anonCacheKey, $payload, 'bbjd-comments', 15);
+        }
+        return new \WP_REST_Response($payload, 200);
     }
 
     /**
@@ -436,6 +457,7 @@ class CommentRoutes
                 'name' => $comment['comment_author'],
                 'avatar' => $avatar,
                 'is_online' => $isOnline,
+                'is_staff' => $this->isStaffAuthor($userId),
                 'rank' => $rank ? [
                     'key' => $rank['key'],
                     'name' => $rank['name'],
@@ -1191,5 +1213,22 @@ class CommentRoutes
             'code' => 'content_blocked',
             'message' => "Your comment contains a link or content that can't be posted. Please edit and try again.",
         ], 400);
+    }
+
+    /**
+     * Staff (comment_moderation holders) can't be muted/blocked; the client
+     * hides those controls off this flag. Memoized per request — a thread has
+     * few distinct authors but many comments. Per-author, not per-viewer, so
+     * the payload stays identical for every reader (cache-safe).
+     */
+    private array $staffAuthorCache = [];
+
+    private function isStaffAuthor(int $userId): bool
+    {
+        if ($userId <= 0) {
+            return false;
+        }
+        return $this->staffAuthorCache[$userId]
+            ??= \BigBrotherJunkies\Data\Messages\DmStore::isProtectedTarget($userId);
     }
 }
