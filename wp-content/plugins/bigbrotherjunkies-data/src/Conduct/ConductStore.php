@@ -95,6 +95,13 @@ class ConductStore
         return $rows;
     }
 
+    /** The legacy comment blacklist a conduct ban mirrors itself into. */
+    private static function blacklistTable(): string
+    {
+        global $wpdb;
+        return $wpdb->prefix . 'bbj_comment_blacklist';
+    }
+
     public static function liftAll(int $userId, int $moderatorId): int
     {
         global $wpdb;
@@ -107,8 +114,8 @@ class ConductStore
             $now, $moderatorId, $userId, $now
         ));
         $revoked = (int) $wpdb->rows_affected;
-        // A conduct ban also wrote a comment-blacklist row (Task 4); deactivate it.
-        $bl = $wpdb->prefix . 'bbj_comment_blacklist';
+        // A conduct ban also wrote a comment-blacklist row; deactivate it.
+        $bl = self::blacklistTable();
         $wpdb->query($wpdb->prepare(
             "UPDATE {$bl} SET is_active = 0 WHERE user_id = %d AND reason = %s AND is_active = 1",
             $userId, self::BAN_BLACKLIST_REASON
@@ -171,14 +178,13 @@ class ConductStore
             return ['ok' => false, 'reason' => 'protected'];
         }
 
-        global $wpdb;
-        $body = '';
-        $actionId = 0;
-
         if ($action === 'lift') {
             self::liftAll($userId, $moderatorId);
             return ['ok' => true, 'dm_sent' => false];
         }
+
+        $body = '';
+        $actionId = 0;
 
         if ($action === 'warning') {
             $actionId = self::record($userId, $moderatorId, 'warning', '', null, $note);
@@ -188,10 +194,11 @@ class ConductStore
             $actionId = self::record($userId, $moderatorId, 'timeout', $scope, $expires, $note);
             $body = ConductLogic::timeoutBody($scope, $duration, $note);
         } elseif ($action === 'ban') {
+            global $wpdb;
             $actionId = self::record($userId, $moderatorId, 'ban', 'both', null, $note);
             // Paper-trail row in the existing comment blacklist so the legacy
             // enforcement + admin UI stay consistent with the conduct log.
-            $bl = $wpdb->prefix . 'bbj_comment_blacklist';
+            $bl = self::blacklistTable();
             $already = $wpdb->get_var($wpdb->prepare(
                 "SELECT id FROM {$bl} WHERE user_id = %d AND reason = %s AND is_active = 1", $userId, self::BAN_BLACKLIST_REASON
             ));
@@ -245,6 +252,7 @@ class ConductStore
         $crt = \BigBrotherJunkies\Data\Comments\CommentSchema::table(\BigBrotherJunkies\Data\Comments\CommentSchema::TABLE_REPORTS);
         $drt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_REPORTS);
         $dtt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_THREADS);
+        $act = ConductSchema::table(ConductSchema::TABLE_ACTIONS);
 
         $byUser = [];
         $commentRows = $wpdb->get_results(
@@ -299,7 +307,7 @@ class ConductStore
                 ],
                 'active'       => self::activeRestrictions($uid),
                 'action_count' => (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT COUNT(*) FROM " . ConductSchema::table(ConductSchema::TABLE_ACTIONS) . " WHERE user_id = %d",
+                    "SELECT COUNT(*) FROM {$act} WHERE user_id = %d",
                     $uid
                 )),
             ];

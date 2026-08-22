@@ -121,8 +121,9 @@ class ConductRoutes
             $note
         );
         if (!$result['ok']) {
-            $status = $result['reason'] === 'protected' ? 403 : ($result['reason'] === 'no_user' ? 404 : 400);
-            return new \WP_REST_Response(['message' => 'Could not apply action (' . ($result['reason'] ?? 'error') . ').'], $status);
+            $reason = (string) ($result['reason'] ?? 'error');
+            $status = ['protected' => 403, 'no_user' => 404][$reason] ?? 400;
+            return new \WP_REST_Response(['message' => 'Could not apply action (' . $reason . ').'], $status);
         }
         if ($action !== 'lift') {
             ConductStore::resolveOpenReportsFor($userId, $moderatorId, $action);
