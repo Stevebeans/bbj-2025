@@ -73,6 +73,7 @@ class CommentSchema
             id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             comment_id BIGINT(20) UNSIGNED NOT NULL,
             reporter_id BIGINT(20) UNSIGNED NOT NULL,
+            reported_user_id BIGINT(20) UNSIGNED NOT NULL DEFAULT 0,
             reason VARCHAR(50) NOT NULL,
             details TEXT,
             status VARCHAR(20) NOT NULL DEFAULT 'pending',
@@ -83,6 +84,7 @@ class CommentSchema
             PRIMARY KEY (id),
             KEY idx_comment (comment_id),
             KEY idx_reporter (reporter_id),
+            KEY idx_reported (reported_user_id),
             KEY idx_status (status),
             KEY idx_created (created_at)
         ) {$charset};";

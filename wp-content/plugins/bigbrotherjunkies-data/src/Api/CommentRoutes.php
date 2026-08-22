@@ -678,9 +678,10 @@ class CommentRoutes
         $wpdb->insert($reportsTable, [
             'comment_id' => $commentId,
             'reporter_id' => $userId,
+            'reported_user_id' => (int) $comment->user_id,
             'reason' => $reason,
             'details' => $details,
-        ], ['%d', '%d', '%s', '%s']);
+        ], ['%d', '%d', '%d', '%s', '%s']);
 
         // Check if comment has reached report threshold for auto-notification
         $reportCount = (int) $wpdb->get_var($wpdb->prepare("

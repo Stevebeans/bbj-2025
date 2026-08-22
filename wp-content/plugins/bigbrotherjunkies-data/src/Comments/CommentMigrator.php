@@ -8,7 +8,7 @@ namespace BigBrotherJunkies\Data\Comments;
 class CommentMigrator
 {
     public const DB_VERSION_OPTION = 'bbj_comment_db_version';
-    public const CURRENT_VERSION = '2.0.0'; // v2: Added media, reactions, sessions, notifications, stats, follows, pinned
+    public const CURRENT_VERSION = '2.1.0'; // 2.1: reported_user_id on reports
     public const MIGRATION_STATUS_OPTION = 'bbj_comment_vote_migration_status';
 
     /**
@@ -16,6 +16,8 @@ class CommentMigrator
      */
     public static function migrate(): array
     {
+        global $wpdb;
+
         $results = [];
 
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -24,6 +26,16 @@ class CommentMigrator
             dbDelta($schema);
             $results[$tableName] = self::tableExists($tableName);
         }
+
+        // 2.1.0: attribute existing reports to the comment author so grouping
+        // survives comment deletion.
+        $reports = CommentSchema::table(CommentSchema::TABLE_REPORTS);
+        $wpdb->query(
+            "UPDATE {$reports} r
+             INNER JOIN {$wpdb->comments} c ON c.comment_ID = r.comment_id
+             SET r.reported_user_id = c.user_id
+             WHERE r.reported_user_id = 0"
+        );
 
         update_option(self::DB_VERSION_OPTION, self::CURRENT_VERSION);
 
