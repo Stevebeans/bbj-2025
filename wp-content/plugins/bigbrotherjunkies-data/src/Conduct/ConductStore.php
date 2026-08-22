@@ -116,4 +116,103 @@ class ConductStore
         self::record($userId, $moderatorId, 'lift', '', null, '');
         return $revoked;
     }
+
+    public const SYSTEM_USER_OPTION = 'bbjd_conduct_system_user_id';
+    public const SYSTEM_USER_LOGIN  = 'bbj-moderation';
+
+    /**
+     * The account warnings/notices are sent from. Lazily created; pass
+     * $createIfMissing = false for read-only checks (isProtectedTarget) so a
+     * hot path never creates users.
+     */
+    public static function systemUserId(bool $createIfMissing = true): int
+    {
+        $id = (int) get_option(self::SYSTEM_USER_OPTION, 0);
+        if ($id > 0 && get_userdata($id)) {
+            return $id;
+        }
+        if (!$createIfMissing) {
+            return 0;
+        }
+        $existing = get_user_by('login', self::SYSTEM_USER_LOGIN);
+        if ($existing) {
+            update_option(self::SYSTEM_USER_OPTION, (int) $existing->ID);
+            return (int) $existing->ID;
+        }
+        $id = wp_insert_user([
+            'user_login'   => self::SYSTEM_USER_LOGIN,
+            'user_email'   => self::SYSTEM_USER_LOGIN . '@bigbrotherjunkies.com',
+            'user_pass'    => wp_generate_password(32, true, true),
+            'display_name' => 'BBJ Moderation',
+            'role'         => 'subscriber',
+        ]);
+        if (is_wp_error($id)) {
+            return 0;
+        }
+        update_option(self::SYSTEM_USER_OPTION, (int) $id);
+        return (int) $id;
+    }
+
+    /**
+     * Apply a ladder action: validate, guard protected targets, log, enforce
+     * side effects (blacklist row on ban), notify the member by system DM.
+     * The DM is best-effort; the action itself never fails on DM problems.
+     */
+    public static function applyAction(int $userId, int $moderatorId, string $action, string $scope, string $duration, string $note): array
+    {
+        $valid = ConductLogic::validAction($action, $scope, $duration);
+        if (!$valid['ok']) {
+            return $valid;
+        }
+        if (!get_userdata($userId)) {
+            return ['ok' => false, 'reason' => 'no_user'];
+        }
+        if (\BigBrotherJunkies\Data\Messages\DmStore::isProtectedTarget($userId)) {
+            return ['ok' => false, 'reason' => 'protected'];
+        }
+
+        global $wpdb;
+        $body = '';
+        $actionId = 0;
+
+        if ($action === 'lift') {
+            self::liftAll($userId, $moderatorId);
+            return ['ok' => true, 'dm_sent' => false];
+        }
+
+        if ($action === 'warning') {
+            $actionId = self::record($userId, $moderatorId, 'warning', '', null, $note);
+            $body = ConductLogic::warningBody($note);
+        } elseif ($action === 'timeout') {
+            $expires = gmdate('Y-m-d H:i:s', time() + ConductLogic::DURATIONS[$duration] * 3600);
+            $actionId = self::record($userId, $moderatorId, 'timeout', $scope, $expires, $note);
+            $body = ConductLogic::timeoutBody($scope, $duration, $note);
+        } elseif ($action === 'ban') {
+            $actionId = self::record($userId, $moderatorId, 'ban', 'both', null, $note);
+            // Paper-trail row in the existing comment blacklist so the legacy
+            // enforcement + admin UI stay consistent with the conduct log.
+            $bl = $wpdb->prefix . 'bbj_comment_blacklist';
+            $already = $wpdb->get_var($wpdb->prepare(
+                "SELECT id FROM {$bl} WHERE user_id = %d AND reason = %s AND is_active = 1", $userId, self::BAN_BLACKLIST_REASON
+            ));
+            if (!$already) {
+                $wpdb->insert($bl, [
+                    'user_id'    => $userId,
+                    'reason'     => self::BAN_BLACKLIST_REASON,
+                    'created_by' => $moderatorId,
+                    'created_at' => current_time('mysql', true),
+                    'is_active'  => 1,
+                ]);
+            }
+            $body = ConductLogic::banBody($note);
+        }
+
+        $dmSent = false;
+        $sys = self::systemUserId();
+        if ($sys > 0 && $body !== '') {
+            $res = \BigBrotherJunkies\Data\Messages\DmStore::sendSystem($sys, $userId, $body);
+            $dmSent = !empty($res['ok']);
+        }
+        return ['ok' => true, 'action_id' => $actionId, 'dm_sent' => $dmSent];
+    }
 }

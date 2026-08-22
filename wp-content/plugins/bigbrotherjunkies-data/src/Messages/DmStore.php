@@ -138,12 +138,18 @@ class DmStore
      * Admins and comment moderators can't be muted or blocked — members were
      * blocking mods and then wondering why moderation replies never showed.
      * "Staff" = anyone the live permission config grants comment_moderation
-     * (administrators are always in that set).
+     * (administrators are always in that set). The conduct system account is
+     * also protected: it must stay reachable so warnings can land as DMs.
      */
     public static function isProtectedTarget(int $userId): bool
     {
-        return $userId > 0
-            && \BigBrotherJunkies\Data\Permissions\PermissionChecker::userCan('comment_moderation', $userId);
+        if ($userId <= 0) {
+            return false;
+        }
+        if ($userId === \BigBrotherJunkies\Data\Conduct\ConductStore::systemUserId(false)) {
+            return true;
+        }
+        return \BigBrotherJunkies\Data\Permissions\PermissionChecker::userCan('comment_moderation', $userId);
     }
 
     /** Remove any existing block/mute rows whose target is protected staff. */
@@ -287,6 +293,74 @@ class DmStore
             'id' => $messageId, 'thread_id' => $threadId, 'sender_id' => $senderId,
             'body' => $valid['body'], 'created_at' => $now,
         ]];
+    }
+
+    /**
+     * Moderation/system delivery: skips privacy, blocks, and rate limits.
+     * Only ConductStore calls this; never expose it through a member route.
+     *
+     * @return array{ok:bool,thread_id?:int}
+     */
+    public static function sendSystem(int $senderId, int $recipientId, string $rawBody): array
+    {
+        if ($senderId <= 0 || $recipientId <= 0 || !get_userdata($recipientId)) {
+            return ['ok' => false];
+        }
+
+        $valid = DmLogic::validBody(sanitize_textarea_field(html_entity_decode($rawBody, ENT_QUOTES, 'UTF-8')));
+        if (!$valid['ok']) {
+            return ['ok' => false];
+        }
+
+        global $wpdb;
+        $threads  = DmSchema::table(DmSchema::TABLE_THREADS);
+        $messages = DmSchema::table(DmSchema::TABLE_MESSAGES);
+        [$lo, $hi] = DmLogic::pair($senderId, $recipientId);
+        $now = current_time('mysql', true);
+
+        $threadId = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT id FROM {$threads} WHERE user_lo = %d AND user_hi = %d",
+            $lo, $hi
+        ));
+
+        if (!$threadId) {
+            $inserted = $wpdb->insert($threads, [
+                'user_lo' => $lo, 'user_hi' => $hi,
+                'created_at' => $now, 'last_message_at' => $now,
+                'last_sender_id' => $senderId,
+            ]);
+            if ($inserted === false) {
+                // Lost a race to the UNIQUE key: reread.
+                $threadId = (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT id FROM {$threads} WHERE user_lo = %d AND user_hi = %d",
+                    $lo, $hi
+                ));
+                if (!$threadId) {
+                    return ['ok' => false];
+                }
+            } else {
+                $threadId = (int) $wpdb->insert_id;
+            }
+        }
+
+        $encoded = wp_encode_emoji($valid['body']);
+        $okIns = $wpdb->insert($messages, [
+            'thread_id' => $threadId, 'sender_id' => $senderId,
+            'body' => $encoded, 'created_at' => $now,
+        ]);
+        if ($okIns === false) {
+            return ['ok' => false];
+        }
+
+        // Sender has read their own message: bump their cursor with last_message_at.
+        $readCol = $senderId === $lo ? 'lo_read_at' : 'hi_read_at';
+        $wpdb->update($threads, [
+            'last_message_at' => $now,
+            'last_sender_id'  => $senderId,
+            $readCol          => $now,
+        ], ['id' => $threadId]);
+
+        return ['ok' => true, 'thread_id' => $threadId];
     }
 
     // -----------------------------------------------------------------------
