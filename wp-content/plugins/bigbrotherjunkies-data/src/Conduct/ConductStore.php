@@ -276,7 +276,10 @@ class ConductStore
                     'avatar' => get_avatar_url($uid),
                 ],
                 'active'       => self::activeRestrictions($uid),
-                'action_count' => count(self::historyFor($uid)),
+                'action_count' => (int) $wpdb->get_var($wpdb->prepare(
+                    "SELECT COUNT(*) FROM " . ConductSchema::table(ConductSchema::TABLE_ACTIONS) . " WHERE user_id = %d",
+                    $uid
+                )),
             ];
         }
         usort($members, static function ($a, $b) {
@@ -340,7 +343,7 @@ class ConductStore
             $out[] = [
                 'type'          => 'dm',
                 'id'            => (int) $r['id'],
-                'reason'        => $r['reason'] ?? 'other',
+                'reason'        => $r['reason'] !== '' ? $r['reason'] : 'other',
                 'details'       => html_entity_decode($r['note'], ENT_QUOTES, 'UTF-8'),
                 'reporter_name' => $r['reporter_name'],
                 'created_at'    => $r['created_at'],
@@ -364,7 +367,7 @@ class ConductStore
         }
         global $wpdb;
         $mt = \BigBrotherJunkies\Data\Messages\DmSchema::table(\BigBrotherJunkies\Data\Messages\DmSchema::TABLE_MESSAGES);
-        $shape = static function (array $m) use ($wpdb): array {
+        $shape = static function (array $m): array {
             $sender = get_userdata((int) $m['sender_id']);
             return [
                 'sender_name' => $sender ? $sender->display_name : 'Deleted user',
