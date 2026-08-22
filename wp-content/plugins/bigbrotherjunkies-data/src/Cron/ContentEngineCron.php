@@ -81,6 +81,8 @@ class ContentEngineCron
             return;
         }
 
+        $post->body = \BigBrotherJunkies\Data\Social\PostFooter::apply((string) $post->body);
+
         // Photo posts go to /photos, everything else to /feed.
         $hasImage = !empty($post->image_url) || !empty($post->image_data);
         $endpoint = $hasImage ? "/{$post->target_page}/photos" : "/{$post->target_page}/feed";

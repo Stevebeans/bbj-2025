@@ -68,6 +68,7 @@ class FacebookRoutes
             return new \WP_REST_Response(['error' => 'No token configured for this page'], 400);
         }
 
+        $message = \BigBrotherJunkies\Data\Social\PostFooter::apply((string) $message);
         $body = ['message' => $message, 'access_token' => $token];
         if ($link) {
             $body['link'] = $link;
@@ -110,6 +111,8 @@ class FacebookRoutes
         if (!$token) {
             return new \WP_REST_Response(['error' => 'No token configured for this page'], 400);
         }
+
+        $message = \BigBrotherJunkies\Data\Social\PostFooter::apply((string) $message);
 
         // If we have base64 image data, upload as multipart
         if ($imageData) {
