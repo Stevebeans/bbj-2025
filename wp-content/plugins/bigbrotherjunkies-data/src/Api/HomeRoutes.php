@@ -554,7 +554,11 @@ class HomeRoutes
         $endDate = !empty($seasonInfo['end_date']) ? new \DateTime($seasonInfo['end_date'], $tz) : null;
 
         $totalDays = ($startDate && $endDate) ? max(0, $startDate->diff($endDate)->days + 1) : 0;
-        $daysElapsed = $startDate ? max(0, $startDate->diff($currentDate)->days) : 0;
+        // Inclusive "Day N" count (premiere = Day 1), matching the players'
+        // days_in_house below and SeasonRoutes — the show's own convention.
+        $daysElapsed = ($startDate && $currentDate >= $startDate)
+            ? $startDate->diff($currentDate)->days + 1
+            : 0;
         if ($endDate && $currentDate > $endDate) {
             $daysElapsed = $totalDays;
         }

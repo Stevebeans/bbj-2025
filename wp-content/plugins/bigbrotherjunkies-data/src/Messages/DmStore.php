@@ -10,7 +10,7 @@ namespace BigBrotherJunkies\Data\Messages;
 class DmStore
 {
     public const DB_VERSION_OPTION = 'bbj_dm_db_version';
-    public const DB_VERSION        = '1.0.0';
+    public const DB_VERSION        = '1.2.0';
 
     public static function maybeMigrate(): void
     {
@@ -21,6 +21,10 @@ class DmStore
         foreach (DmSchema::getAllSchemas() as $schema) {
             dbDelta($schema);
         }
+        // 1.2.0: staff became unblockable/unmutable — retroactively clear any
+        // existing rows that target them (runs on a web request, so the live
+        // permission config is authoritative).
+        self::purgeProtectedTargets();
         update_option(self::DB_VERSION_OPTION, self::DB_VERSION);
     }
 
@@ -84,6 +88,91 @@ class DmStore
                FROM {$t} b INNER JOIN {$wpdb->users} u ON u.ID = b.blocked_id
               WHERE b.blocker_id = %d ORDER BY b.created_at DESC",
             $blocker
+        ), ARRAY_A) ?: [];
+        foreach ($rows as &$r) {
+            $r['user_id'] = (int) $r['user_id'];
+        }
+        return $rows;
+    }
+
+    public static function blockedIds(int $blocker): array
+    {
+        global $wpdb;
+        $t = DmSchema::table(DmSchema::TABLE_BLOCKS);
+        return array_map('intval', $wpdb->get_col($wpdb->prepare(
+            "SELECT blocked_id FROM {$t} WHERE blocker_id = %d", $blocker
+        )));
+    }
+
+    // -----------------------------------------------------------------------
+    // Comment mutes (one-way, comments-only; see comment-mute-block spec)
+    // -----------------------------------------------------------------------
+
+    public static function mute(int $muter, int $muted): void
+    {
+        global $wpdb;
+        $t = DmSchema::table(DmSchema::TABLE_MUTES);
+        $wpdb->query($wpdb->prepare(
+            "INSERT IGNORE INTO {$t} (muter_id, muted_id, created_at) VALUES (%d, %d, %s)",
+            $muter, $muted, current_time('mysql', true)
+        ));
+    }
+
+    public static function unmute(int $muter, int $muted): void
+    {
+        global $wpdb;
+        $t = DmSchema::table(DmSchema::TABLE_MUTES);
+        $wpdb->delete($t, ['muter_id' => $muter, 'muted_id' => $muted]);
+    }
+
+    public static function mutedIds(int $muter): array
+    {
+        global $wpdb;
+        $t = DmSchema::table(DmSchema::TABLE_MUTES);
+        return array_map('intval', $wpdb->get_col($wpdb->prepare(
+            "SELECT muted_id FROM {$t} WHERE muter_id = %d", $muter
+        )));
+    }
+
+    /**
+     * Admins and comment moderators can't be muted or blocked — members were
+     * blocking mods and then wondering why moderation replies never showed.
+     * "Staff" = anyone the live permission config grants comment_moderation
+     * (administrators are always in that set).
+     */
+    public static function isProtectedTarget(int $userId): bool
+    {
+        return $userId > 0
+            && \BigBrotherJunkies\Data\Permissions\PermissionChecker::userCan('comment_moderation', $userId);
+    }
+
+    /** Remove any existing block/mute rows whose target is protected staff. */
+    public static function purgeProtectedTargets(): void
+    {
+        global $wpdb;
+        $tables = [
+            [DmSchema::table(DmSchema::TABLE_BLOCKS), 'blocked_id'],
+            [DmSchema::table(DmSchema::TABLE_MUTES),  'muted_id'],
+        ];
+        foreach ($tables as [$table, $col]) {
+            $targets = array_map('intval', $wpdb->get_col("SELECT DISTINCT {$col} FROM {$table}"));
+            foreach ($targets as $target) {
+                if (self::isProtectedTarget($target)) {
+                    $wpdb->delete($table, [$col => $target]);
+                }
+            }
+        }
+    }
+
+    public static function mutedList(int $muter): array
+    {
+        global $wpdb;
+        $t = DmSchema::table(DmSchema::TABLE_MUTES);
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT m.muted_id AS user_id, u.user_login AS username, u.display_name
+               FROM {$t} m INNER JOIN {$wpdb->users} u ON u.ID = m.muted_id
+              WHERE m.muter_id = %d ORDER BY m.created_at DESC",
+            $muter
         ), ARRAY_A) ?: [];
         foreach ($rows as &$r) {
             $r['user_id'] = (int) $r['user_id'];

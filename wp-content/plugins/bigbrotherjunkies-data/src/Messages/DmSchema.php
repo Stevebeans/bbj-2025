@@ -13,6 +13,7 @@ class DmSchema
     public const TABLE_MESSAGES = 'bbj_dm_messages';
     public const TABLE_BLOCKS   = 'bbj_dm_blocks';
     public const TABLE_REPORTS  = 'bbj_dm_reports';
+    public const TABLE_MUTES    = 'bbj_user_mutes';
 
     public static function table(string $name): string
     {
@@ -33,6 +34,7 @@ class DmSchema
             self::TABLE_MESSAGES => self::messages(),
             self::TABLE_BLOCKS   => self::blocks(),
             self::TABLE_REPORTS  => self::reports(),
+            self::TABLE_MUTES    => self::mutes(),
         ];
     }
 
@@ -93,6 +95,18 @@ class DmSchema
             resolved_at DATETIME NULL DEFAULT NULL,
             PRIMARY KEY (id),
             KEY idx_created (created_at)
+        ) " . self::charset() . ";";
+    }
+
+    /** Comment-mutes. One-way; comments-only (blocks live in TABLE_BLOCKS). */
+    private static function mutes(): string
+    {
+        $t = self::table(self::TABLE_MUTES);
+        return "CREATE TABLE {$t} (
+            muter_id BIGINT(20) UNSIGNED NOT NULL,
+            muted_id BIGINT(20) UNSIGNED NOT NULL,
+            created_at DATETIME NOT NULL,
+            PRIMARY KEY (muter_id, muted_id)
         ) " . self::charset() . ";";
     }
 }

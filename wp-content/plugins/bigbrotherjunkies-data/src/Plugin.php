@@ -183,6 +183,24 @@ class Plugin
             \BigBrotherJunkies\Data\LiveThread\LiveThreadState::openThread($post->ID);
         }, 10, 3);
 
+        // Mel's episode recaps auto-file into the Episode Recaps category
+        // (term created + 508 posts backfilled 2026-08-17). Neither the custom
+        // editor (Season dropdown only) nor Mel's workflow offers a category
+        // checkbox, so assignment happens here: her recap-titled posts get the
+        // category on save, appended (never replacing the season category).
+        // Same author+title rule as the backfill, so the archive stays
+        // self-consistent. wp_set_object_terms with append is idempotent.
+        add_action('save_post_post', function ($postId, $post) {
+            $melUserId = 28456;
+            if ((int) $post->post_author !== $melUserId) return;
+            if ($post->post_status !== 'publish') return;
+            if (stripos($post->post_title, 'recap') === false) return;
+            $term = get_term_by('slug', 'episode-recaps', 'category');
+            if ($term && !has_category($term->term_id, $post)) {
+                wp_set_object_terms($postId, (int) $term->term_id, 'category', true);
+            }
+        }, 10, 2);
+
         // Revalidate Next.js cache when posts or feed updates are published
         add_action('transition_post_status', function ($new_status, $old_status, $post) {
             if ($new_status !== 'publish') return;

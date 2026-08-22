@@ -292,6 +292,7 @@ class UserProfileRoutes
                 'recent_comments' => $formattedComments,
                 'is_following' => $isFollowing,
                 'is_self' => $currentUserId === $userId,
+                'is_staff' => \BigBrotherJunkies\Data\Messages\DmStore::isProtectedTarget($userId),
             ],
         ], 200);
     }

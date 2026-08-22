@@ -27,14 +27,16 @@ class BeanBotService
     public const CYCLE_HOOK = 'bbjd_bean_bot_cycle';
     public const AS_GROUP   = 'bbj-social';
 
-    /** Allowed cycle intervals (minutes). */
-    public const INTERVALS = [30, 45, 60];
+    /** Allowed cycle intervals (minutes). Fast options (5/10/15) are for busy
+     * feed days; cycles without new trusted posts bail before the Claude call,
+     * so a fast interval on a quiet feed costs only the cursor query. */
+    public const INTERVALS = [5, 10, 15, 30, 45, 60];
 
     /**
-     * Service-managed keys — the ONLY keys a running cycle may write. The four
+     * Service-managed keys — the ONLY keys a running cycle may write. The five
      * user-settable keys (enabled / interval_minutes / max_per_day /
-     * bluesky_enabled) are deliberately absent so a cycle can never resurrect a
-     * setting Steve changed mid-flight (kill-switch safety).
+     * bluesky_enabled / post_as_user_id) are deliberately absent so a cycle can
+     * never resurrect a setting Steve changed mid-flight (kill-switch safety).
      */
     public const SERVICE_KEYS = [
         'cursor_post_id',
@@ -51,14 +53,17 @@ class BeanBotService
 
     /**
      * Option defaults. `enabled=false` so a fresh deploy never auto-posts.
-     * The first four keys are user-settable via REST; the rest are
+     * The first five keys are user-settable via REST; the rest are
      * service-managed (cursor, cap bookkeeping, run state).
+     * `post_as_user_id` 0 = publish under the Bean Bot user (author_user_id
+     * below is the service-side cache of that bot user, a different thing).
      */
     public const DEFAULTS = [
         'enabled'          => false,
         'interval_minutes' => 30,
         'max_per_day'      => 24,
         'bluesky_enabled'  => true,
+        'post_as_user_id'  => 0,
         'cursor_post_id'   => 0,
         'posts_today'      => 0,
         'posts_today_date' => '',
@@ -108,7 +113,8 @@ PROMPT;
     /**
      * Whitelist + sanitize a settings patch, persist it, return the merged
      * settings. ONLY enabled / interval_minutes / max_per_day / bluesky_enabled
-     * are settable here; service-managed fields are ignored in the patch.
+     * / post_as_user_id are settable here; service-managed fields are ignored
+     * in the patch.
      */
     public static function saveSettings(array $patch): array
     {
@@ -129,6 +135,12 @@ PROMPT;
         }
         if (array_key_exists('bluesky_enabled', $patch)) {
             $current['bluesky_enabled'] = (bool) $patch['bluesky_enabled'];
+        }
+        if (array_key_exists('post_as_user_id', $patch)) {
+            $postAs = (int) $patch['post_as_user_id'];
+            if ($postAs === 0 || ($postAs > 0 && get_user_by('id', $postAs))) {
+                $current['post_as_user_id'] = $postAs;
+            }
         }
 
         update_option(self::OPTION, $current);
@@ -362,8 +374,11 @@ PROMPT;
             ]));
         }
 
-        // 9. Resolve the author before publishing; never post as user 0.
-        $authorId = self::ensureUser();
+        // 9. Resolve the author before publishing; never post as user 0. A
+        // configured "post under" user (Steve, when he's around) wins; fall
+        // back to the bot user when unset or if that account was deleted.
+        $postAs   = (int) $settings['post_as_user_id'];
+        $authorId = ($postAs > 0 && get_user_by('id', $postAs)) ? $postAs : self::ensureUser();
         if ($authorId <= 0) {
             $message = 'Could not resolve the Bean Bot author user.';
             self::persistCycleState(['last_error' => $message]);

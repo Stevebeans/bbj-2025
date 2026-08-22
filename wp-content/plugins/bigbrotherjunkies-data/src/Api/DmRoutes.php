@@ -65,6 +65,18 @@ class DmRoutes
             ['methods' => 'POST', 'callback' => [$this, 'savePrivacy'], 'permission_callback' => $auth],
         ]);
 
+        // Social graph: comment mutes + combined filter lists (comment mute/block spec).
+        register_rest_route(self::NAMESPACE, '/social/mute', [
+            ['methods' => 'POST',   'callback' => [$this, 'mute'],   'permission_callback' => $auth],
+            ['methods' => 'DELETE', 'callback' => [$this, 'unmute'], 'permission_callback' => $auth],
+        ]);
+        register_rest_route(self::NAMESPACE, '/social/mutes', [
+            'methods' => 'GET', 'callback' => [$this, 'muteList'], 'permission_callback' => $auth,
+        ]);
+        register_rest_route(self::NAMESPACE, '/social/filters', [
+            'methods' => 'GET', 'callback' => [$this, 'filters'], 'permission_callback' => $auth,
+        ]);
+
         // Moderation (admin Users tab), gated like the rest of that tab.
         register_rest_route(self::NAMESPACE, '/dm/reports', [
             'methods' => 'GET',
@@ -167,6 +179,9 @@ class DmRoutes
         if ($target <= 0 || $target === get_current_user_id()) {
             return new WP_REST_Response(['success' => false, 'message' => 'Invalid user.'], 400);
         }
+        if (DmStore::isProtectedTarget($target)) {
+            return new WP_REST_Response(['success' => false, 'message' => "Site moderators can't be blocked."], 400);
+        }
         DmStore::block(get_current_user_id(), $target);
         return new WP_REST_Response(['success' => true], 200);
     }
@@ -208,5 +223,45 @@ class DmRoutes
         $params = $request->get_json_params() ?: [];
         $saved = DmStore::savePrivacy(get_current_user_id(), (string) ($params['privacy'] ?? ''));
         return new WP_REST_Response(['success' => true, 'privacy' => $saved], 200);
+    }
+
+    public function mute(WP_REST_Request $request): WP_REST_Response
+    {
+        $me     = get_current_user_id();
+        $params = $request->get_json_params() ?: [];
+        $target = (int) ($params['user_id'] ?? 0);
+        if ($target <= 0 || $target === $me || !get_userdata($target)) {
+            return new WP_REST_Response(['success' => false, 'message' => 'Invalid member.'], 400);
+        }
+        if (DmStore::isProtectedTarget($target)) {
+            return new WP_REST_Response(['success' => false, 'message' => "Site moderators can't be muted."], 400);
+        }
+        DmStore::mute($me, $target);
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    public function unmute(WP_REST_Request $request): WP_REST_Response
+    {
+        $params = $request->get_json_params() ?: [];
+        DmStore::unmute(get_current_user_id(), (int) ($params['user_id'] ?? 0));
+        return new WP_REST_Response(['success' => true], 200);
+    }
+
+    public function muteList(WP_REST_Request $request): WP_REST_Response
+    {
+        return new WP_REST_Response([
+            'success' => true,
+            'muted'   => DmStore::mutedList(get_current_user_id()),
+        ], 200);
+    }
+
+    public function filters(WP_REST_Request $request): WP_REST_Response
+    {
+        $me = get_current_user_id();
+        return new WP_REST_Response([
+            'success'     => true,
+            'muted_ids'   => DmStore::mutedIds($me),
+            'blocked_ids' => DmStore::blockedIds($me),
+        ], 200);
     }
 }

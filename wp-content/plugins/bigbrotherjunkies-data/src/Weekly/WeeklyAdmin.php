@@ -343,6 +343,7 @@ class WeeklyAdmin
             }
         }
 
+        $clearedJurors = [];
         $wpdb->query('START TRANSACTION');
         try {
             $wpdb->query($wpdb->prepare("DELETE FROM {$wcomps} WHERE week_id = %d", $weekId));
@@ -391,17 +392,33 @@ class WeeklyAdmin
             }
 
             // Finale: jury votes live on each juror's own eviction-week row.
-            if ($juryVotes) {
-                $winnerId = (int) $wpdb->get_var($wpdb->prepare(
-                    "SELECT season_winner FROM {$wpdb->prefix}bbj_seasons WHERE id = %d",
+            // Replace-all semantics: when the payload carries the jury_votes
+            // key at all (even empty = finale unchecked), clear the season's
+            // recorded votes first, then apply the submitted set. A payload
+            // WITHOUT the key (ordinary week save, old clients) leaves votes
+            // untouched.
+            if (array_key_exists('jury_votes', $payload)) {
+                $clearedJurors = array_map('intval', $wpdb->get_col($wpdb->prepare(
+                    "SELECT player_id FROM {$wplayers} WHERE season_id = %d AND vote_to_win_for > 0",
+                    $seasonId
+                )) ?: []);
+                $wpdb->query($wpdb->prepare(
+                    "UPDATE {$wplayers} SET vote_to_win_for = 0, vote_to_win = 0
+                      WHERE season_id = %d AND vote_to_win_for > 0",
                     $seasonId
                 ));
-                foreach ($juryVotes as $juror => $for) {
-                    $wpdb->query($wpdb->prepare(
-                        "UPDATE {$wplayers} SET vote_to_win_for = %d, vote_to_win = %d
-                          WHERE season_id = %d AND player_id = %d AND evicted = 1",
-                        $for, ($winnerId && $for === $winnerId) ? 1 : 0, $seasonId, $juror
+                if ($juryVotes) {
+                    $winnerId = (int) $wpdb->get_var($wpdb->prepare(
+                        "SELECT season_winner FROM {$wpdb->prefix}bbj_seasons WHERE id = %d",
+                        $seasonId
                     ));
+                    foreach ($juryVotes as $juror => $for) {
+                        $wpdb->query($wpdb->prepare(
+                            "UPDATE {$wplayers} SET vote_to_win_for = %d, vote_to_win = %d
+                              WHERE season_id = %d AND player_id = %d AND evicted = 1",
+                            $for, ($winnerId && $for === $winnerId) ? 1 : 0, $seasonId, $juror
+                        ));
+                    }
                 }
             }
 
@@ -423,7 +440,7 @@ class WeeklyAdmin
         }
 
         $newIds = array_map(static fn ($p) => $p['player_id'], $plan['players']);
-        $changed = array_values(array_unique(array_merge($oldIds, $newIds, array_keys($juryVotes))));
+        $changed = array_values(array_unique(array_merge($oldIds, $newIds, array_keys($juryVotes), $clearedJurors)));
 
         return ['season_id' => $seasonId, 'changed_player_ids' => $changed];
     }
