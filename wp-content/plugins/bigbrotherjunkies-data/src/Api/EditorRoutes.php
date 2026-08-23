@@ -257,6 +257,10 @@ class EditorRoutes
             update_post_meta($postId, '_bbjd_live_end', (int) $params['live_end']);
         }
 
+        if (isset($params['ghost_author'])) {
+            \BigBrotherJunkies\Data\Editor\GhostAuthor::saveFlag($postId, $params['ghost_author']);
+        }
+
         $post = get_post($postId);
 
         return new \WP_REST_Response([
@@ -354,6 +358,15 @@ class EditorRoutes
             update_post_meta($postId, '_bbjd_live_end', (int) $params['live_end']);
         }
 
+        if (isset($params['ghost_author'])) {
+            \BigBrotherJunkies\Data\Editor\GhostAuthor::saveFlag($postId, $params['ghost_author']);
+            // Already-live posts get the byline change immediately; drafts wait
+            // for publish (syncAuthor in changeStatus).
+            if (in_array(get_post_status($postId), ['publish', 'future'], true)) {
+                \BigBrotherJunkies\Data\Editor\GhostAuthor::syncAuthor($postId);
+            }
+        }
+
         $freshPost = get_post($postId);
         return new \WP_REST_Response(['success' => true, 'slug' => $freshPost->post_name]);
     }
@@ -436,6 +449,11 @@ class EditorRoutes
 
         if (is_wp_error($result)) {
             return new \WP_REST_Response(['error' => $result->get_error_message()], 500);
+        }
+
+        // Ghost byline swap happens at publish/schedule time only.
+        if (in_array($newStatus, ['publish', 'future'], true)) {
+            \BigBrotherJunkies\Data\Editor\GhostAuthor::syncAuthor($postId);
         }
 
         // Send email on pending_review
@@ -860,6 +878,7 @@ class EditorRoutes
             'live_updates' => (int) get_post_meta($postId, '_bbjd_live_updates', true) === 1,
             'live_start' => (int) get_post_meta($postId, '_bbjd_live_start', true),
             'live_end' => (int) get_post_meta($postId, '_bbjd_live_end', true),
+            'ghost_author' => \BigBrotherJunkies\Data\Editor\GhostAuthor::isFlagged($postId),
             'scheduled_for' => $post->post_status === 'future' ? $post->post_date_gmt : null,
         ];
     }
