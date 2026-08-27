@@ -195,14 +195,15 @@ PROMPT;
         }
 
         $parsed = DraftBatchLogic::parseModelJson((string) $result['text']);
+        // Keep the complete raw reply from EVERY run, not just parse failures.
+        // The 8/26 untagged batch parsed fine, so nothing was stored and there
+        // was no way to see what the model actually put in "opener".
+        update_option('bbjd_fb_batch_last_raw', [
+            'at'  => current_time('mysql', true),
+            'err' => isset($parsed['error']) ? (string) $parsed['error'] : '',
+            'raw' => wp_encode_emoji(substr((string) $result['text'], 0, 60000)),
+        ], false);
         if (isset($parsed['error'])) {
-            // Keep the complete raw reply for post-mortem (head/tail in the
-            // error log has already proven too short to diagnose with).
-            update_option('bbjd_fb_batch_last_raw', [
-                'at'  => current_time('mysql', true),
-                'err' => (string) $parsed['error'],
-                'raw' => wp_encode_emoji(substr((string) $result['text'], 0, 60000)),
-            ], false);
             return ['success' => false, 'message' => 'Model returned unusable output: ' . $parsed['error']];
         }
 

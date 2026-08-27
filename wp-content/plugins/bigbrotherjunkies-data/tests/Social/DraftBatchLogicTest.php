@@ -43,16 +43,45 @@ class DraftBatchLogicTest extends TestCase
         $this->assertSame('Post two.', $out['posts'][1]['text']);
     }
 
-    public function test_parse_drops_blank_posts_and_caps_at_five(): void
+    public function test_parse_drops_blank_posts_and_caps_at_max(): void
     {
+        // Cap raised 5 -> 15 on 8/22 (single-story batches); test tracks the constant.
         $posts = [['covers' => '', 'text' => '   ']];
-        for ($i = 1; $i <= 7; $i++) {
+        for ($i = 1; $i <= DraftBatchLogic::MAX_POSTS + 2; $i++) {
             $posts[] = ['covers' => "h$i", 'text' => "Post $i"];
         }
         $out = DraftBatchLogic::parseModelJson(json_encode(['posts' => $posts]));
-        $this->assertCount(5, $out['posts']);
+        $this->assertCount(DraftBatchLogic::MAX_POSTS, $out['posts']);
         $this->assertSame('Post 1', $out['posts'][0]['text']);
-        $this->assertSame('Post 5', $out['posts'][4]['text']);
+        $this->assertSame('Post ' . DraftBatchLogic::MAX_POSTS, $out['posts'][DraftBatchLogic::MAX_POSTS - 1]['text']);
+    }
+
+    public function test_normalize_opener_accepts_variants(): void
+    {
+        // The model occasionally capitalizes, pads, or answers with the style
+        // letter; anything recognizable maps to a clean label, garbage to ''.
+        $this->assertSame('tease', DraftBatchLogic::normalizeOpener('tease'));
+        $this->assertSame('tease', DraftBatchLogic::normalizeOpener(' Tease '));
+        $this->assertSame('tease', DraftBatchLogic::normalizeOpener('Style A ("tease")'));
+        $this->assertSame('tease', DraftBatchLogic::normalizeOpener('A'));
+        $this->assertSame('recap', DraftBatchLogic::normalizeOpener('recap'));
+        $this->assertSame('recap', DraftBatchLogic::normalizeOpener('RECAP'));
+        $this->assertSame('recap', DraftBatchLogic::normalizeOpener('style b'));
+        $this->assertSame('recap', DraftBatchLogic::normalizeOpener('b'));
+        $this->assertSame('', DraftBatchLogic::normalizeOpener(''));
+        $this->assertSame('', DraftBatchLogic::normalizeOpener('funny'));
+    }
+
+    public function test_parse_normalizes_openers(): void
+    {
+        $out = DraftBatchLogic::parseModelJson(json_encode(['posts' => [
+            ['covers' => 'h1', 'opener' => 'Tease', 'text' => 'One'],
+            ['covers' => 'h2', 'opener' => 'STYLE B', 'text' => 'Two'],
+            ['covers' => 'h3', 'opener' => 'whatever', 'text' => 'Three'],
+        ]]));
+        $this->assertSame('tease', $out['posts'][0]['opener']);
+        $this->assertSame('recap', $out['posts'][1]['opener']);
+        $this->assertSame('', $out['posts'][2]['opener']);
     }
 
     public function test_parse_rejects_garbage_and_empty(): void

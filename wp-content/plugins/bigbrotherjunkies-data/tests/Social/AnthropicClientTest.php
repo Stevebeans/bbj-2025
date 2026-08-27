@@ -51,7 +51,7 @@ final class AnthropicClientTest extends TestCase
         (new AnthropicClient())->complete('sys', 'user', 'claude-sonnet-5', 'sk-test');
         $body = $this->requestBody();
         $this->assertSame(['type' => 'disabled'], $body['thinking']);
-        $this->assertSame(8000, $body['max_tokens']);
+        $this->assertSame(16000, $body['max_tokens']); // raised 8/22 for 15-post batches
     }
 
     public function test_other_models_send_no_thinking_field(): void

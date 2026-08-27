@@ -109,8 +109,11 @@ class DraftBatchLogic
             }
             $posts[] = [
                 'covers' => trim((string) ($post['covers'] ?? '')),
-                // A/B opener label (tease|recap) — DraftService validates it.
-                'opener' => trim((string) ($post['opener'] ?? '')),
+                // A/B opener label, normalized — the model occasionally
+                // capitalizes or answers with the style letter, and a strict
+                // compare was silently blanking those (8/26: a whole batch
+                // queued untagged, invisible to the A/B export join).
+                'opener' => self::normalizeOpener((string) ($post['opener'] ?? '')),
                 'text'   => $body,
             ];
             if (count($posts) === self::MAX_POSTS) {
@@ -123,6 +126,29 @@ class DraftBatchLogic
         }
 
         return ['posts' => $posts];
+    }
+
+    /**
+     * Map whatever the model put in "opener" to a clean A/B label.
+     * Recognizes the labels themselves in any casing/padding plus the
+     * prompt's style letters ("A"/"Style A" = tease, "B" = recap).
+     * Unrecognizable input maps to '' so the experiment stays uncontaminated:
+     * a missing label just drops the post from the A/B join, a wrong one
+     * would poison it.
+     */
+    public static function normalizeOpener(string $raw): string
+    {
+        $v = strtolower(trim($raw));
+        if ($v === '') {
+            return '';
+        }
+        if (strpos($v, 'tease') !== false || $v === 'a' || $v === 'style a') {
+            return 'tease';
+        }
+        if (strpos($v, 'recap') !== false || $v === 'b' || $v === 'style b') {
+            return 'recap';
+        }
+        return '';
     }
 
     /**
