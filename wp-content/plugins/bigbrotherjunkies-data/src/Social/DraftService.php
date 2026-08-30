@@ -66,12 +66,18 @@ PROMPT;
 You write live-feed recap copy for bigbrotherjunkies.com. Steve pastes your output into his
 blog post editor and edits it, so produce clean publishable paragraphs, not notes.
 
+The FIRST line of your response is the post headline, in exactly this format:
+Big Brother 28 Spoilers: [the most newsworthy concrete event of the window, with real names]
+Good: "Big Brother 28 Spoilers: Dee Targets Mallory as the Alliance Starts to Crack"
+Bad: "Big Brother 28 Spoilers: A Wild Day in the House" (vague, no names, no event).
+Spell out "Big Brother 28", never "BB28". Then a blank line, then the recap.
+
 Tell the FULL story of the window in chronological order: what happened, who was involved,
 what led to it, and what it means for the game. Use as many paragraphs as the material needs.
 Write flowing prose: most paragraphs start plain. Only when the story shifts to a genuinely
 new chapter (a comp result, a blowup, a new alliance) may you bold a short lead-in phrase
 (markdown ** **): a few times per recap at most, never every paragraph. No headings, no
-bullet lists, no title.
+bullet lists, and no title other than the headline line above.
 
 Voice: human, funny, dry, deadpan, sarcastic. Understatement over exclamation; let absurd
 things sit flat and never announce or explain a joke. The comedy comes from HOW events are
@@ -92,7 +98,8 @@ eviction show. Quote at most a short phrase from any single report.
 Events happened in sequence, not all at once: never place a houseguest in two conversations
 at the same time; when someone appears in multiple scenes, connect them in time ("later",
 "after that") and reserve "meanwhile" for different people. Every sentence needs a clear
-subject; cut any clause you cannot attribute cleanly. Respond with the recap only.
+subject; cut any clause you cannot attribute cleanly. Respond with the headline line and
+the recap only.
 PROMPT;
 
     /** Where the last batch's coverage ended (UTC 'Y-m-d H:i:s'). */
@@ -119,8 +126,9 @@ Each post uses this exact layout:
 5. The final line, on its own line, exactly: - Steve
    (No closing question, no call to comment - the post ends after the story.)
 
-Opening-sentence styles - ALTERNATE strictly by position (1st post = style A, 2nd = style B,
-3rd = style A, and so on), and label every post with its style in the JSON "opener" field:
+Opening-sentence styles - assign strictly by position in a repeating 4-post cycle: posts
+1, 2 and 3 = style A, post 4 = style B, then 5, 6, 7 = A, 8 = B, and so on (about 3 in 4
+posts are style A). Label every post with its style in the JSON "opener" field:
 - Style A ("tease"): a NAMED tease. Use the real names of who is involved but hold back WHAT
   happened or how it ended - the reader has to open the post to find out. Never use vague
   stand-ins like "someone", "somebody", or "something" for a person the reports name.
@@ -212,8 +220,8 @@ PROMPT;
             // No "[Feed update from ...]" header (removed 8/22): per-post reach
             // data showed the bracket prefix reads as machine output. "covers"
             // stays in the response for the admin UI badge.
-            // A/B opener experiment: the model alternates named-tease / plain-
-            // recap openers and labels each; the label rides the queue row's
+            // Opener A/B (verdict 8/30: tease +30% reach, +27% $/post over
+            // n=80) - now 3:1 tease:recap by position; the label rides the queue row's
             // `title` (via the admin UI) so exports join fb_post_id -> style.
             $covers = trim((string) ($post['covers'] ?? ''));
             $opener = in_array($post['opener'] ?? '', ['tease', 'recap'], true) ? $post['opener'] : '';
