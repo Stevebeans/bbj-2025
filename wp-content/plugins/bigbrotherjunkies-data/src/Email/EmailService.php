@@ -169,7 +169,17 @@ class EmailService
             'unsubscribed_at' => $now,
         ], ['email' => $email]);
 
-        return $updated !== false && $updated > 0;
+        // A valid token proves we generated the link, even when the address
+        // never made it into the subscribers table (welcome-email recipients
+        // who registered but never confirmed the newsletter opt-in). Treat
+        // those as unsubscribed too instead of erroring, and clear any
+        // pending opt-in flag so no later flow re-adds them.
+        $user = get_user_by('email', $email);
+        if ($user) {
+            delete_user_meta($user->ID, 'bbjd_pending_newsletter_optin');
+        }
+
+        return $updated !== false;
     }
 
     /**

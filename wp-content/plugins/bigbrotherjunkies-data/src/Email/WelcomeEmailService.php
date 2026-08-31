@@ -114,7 +114,12 @@ class WelcomeEmailService
             '{{settings_url}}' => esc_url($frontend . '/settings'),
             '{{manage_subscription_url}}' => esc_url($frontend . '/settings?tab=premium'),
             '{{cancel_url}}'   => esc_url($frontend . '/settings?tab=premium'),
-            '{{unsubscribe_url}}' => esc_url($frontend . '/unsubscribe?email=' . rawurlencode($user->user_email)),
+            // The unsubscribe page requires a valid HMAC token; without it
+            // every welcome-email unsubscribe click errored out.
+            '{{unsubscribe_url}}' => esc_url($frontend . '/unsubscribe?' . http_build_query([
+                'email' => $user->user_email,
+                'token' => (new EmailService())->generateUnsubscribeToken($user->user_email),
+            ])),
         ];
     }
 
