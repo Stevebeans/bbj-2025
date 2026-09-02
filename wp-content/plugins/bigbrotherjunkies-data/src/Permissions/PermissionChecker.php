@@ -104,6 +104,11 @@ class PermissionChecker
             'description' => 'Configure the blocklist, review flagged content, and run legacy-content backfills',
             'roles' => ['administrator'],
         ],
+        'stories_manage' => [
+            'label'       => 'Stories',
+            'description' => 'Configure story sources, review the inbox and story queue, hand items to the FB queue',
+            'roles'       => ['administrator'],
+        ],
     ];
 
     public static function userCan(string $feature, ?int $userId = null): bool
