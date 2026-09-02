@@ -34,7 +34,7 @@ class SchemaTest extends TestCase
     {
         $all = Schema::getAllSchemas();
         $this->assertStringContainsString('CREATE TABLE wp_bbj_story_queue', $all[Schema::TABLE_QUEUE]);
-        foreach (['show_slug', 'cluster_id', 'label', 'blurb', 'evidence', 'sensitive', 'sensitive_reason',
+        foreach (['show_slug', 'cluster_id', 'label', 'blurb', 'evidence', 'is_sensitive', 'sensitive_reason',
                   'matches_post_id', 'status', 'created_at', 'expires_at', 'resolved_at', 'resolved_by',
                   'published_post_id'] as $col) {
             $this->assertStringContainsString($col, $all[Schema::TABLE_QUEUE]);
@@ -44,6 +44,6 @@ class SchemaTest extends TestCase
                   'queued', 'dropped', 'errors'] as $col) {
             $this->assertStringContainsString($col, $all[Schema::TABLE_RUNS]);
         }
-        $this->assertSame('1.0.0', Schema::DB_VERSION);
+        $this->assertSame('1.0.1', Schema::DB_VERSION);
     }
 }

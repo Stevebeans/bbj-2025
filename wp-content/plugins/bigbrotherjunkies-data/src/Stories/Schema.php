@@ -15,7 +15,7 @@ class Schema
     public const TABLE_QUEUE = 'bbj_story_queue';
     public const TABLE_RUNS  = 'bbj_story_runs';
 
-    public const DB_VERSION        = '1.0.0';
+    public const DB_VERSION        = '1.0.1';
     public const DB_VERSION_OPTION = 'bbjd_stories_db_version';
 
     public static function table(string $name): string
@@ -93,7 +93,7 @@ class Schema
             label VARCHAR(10) NOT NULL DEFAULT 'rumor',
             blurb TEXT NOT NULL,
             evidence LONGTEXT NOT NULL,
-            sensitive TINYINT(1) NOT NULL DEFAULT 0,
+            is_sensitive TINYINT(1) NOT NULL DEFAULT 0 /* was `sensitive` - a reserved word */,
             sensitive_reason VARCHAR(190) NOT NULL DEFAULT '',
             matches_post_id BIGINT(20) UNSIGNED NULL,
             status VARCHAR(10) NOT NULL DEFAULT 'pending',
