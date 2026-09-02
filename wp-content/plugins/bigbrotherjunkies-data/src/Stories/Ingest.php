@@ -33,10 +33,11 @@ class Ingest
             return ['skipped' => true, 'ingested' => 0, 'errors' => ['Another ingest is running.']];
         }
         set_transient(self::LOCK_KEY, 1, 300);
-        $runId = ItemStore::recordRun(['show' => '', 'kind' => 'ingest']);
+        $runId = 0;
         $ingested = 0;
         $errors   = [];
         try {
+            $runId = ItemStore::recordRun(['show' => '', 'kind' => 'ingest']);
             foreach (array_keys($shows) as $slug) {
                 foreach (Settings::sourcesFor($slug) as $source) {
                     $adapter = self::adapterFor($source['type']);
@@ -59,7 +60,9 @@ class Ingest
             ItemStore::prune(14);
         } finally {
             delete_transient(self::LOCK_KEY);
-            ItemStore::finishRun($runId, ['ingested' => $ingested, 'errors' => $errors]);
+            if ($runId > 0) {
+                ItemStore::finishRun($runId, ['ingested' => $ingested, 'errors' => $errors]);
+            }
         }
         return ['skipped' => false, 'ingested' => $ingested, 'errors' => $errors];
     }
