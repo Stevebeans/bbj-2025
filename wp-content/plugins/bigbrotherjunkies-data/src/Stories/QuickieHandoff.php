@@ -23,10 +23,11 @@ class QuickieHandoff
             return ['success' => false, 'message' => 'Item not found.'];
         }
         return [
-            'success' => true,
-            'item'    => $item,
-            'caption' => QuickieHandoffLogic::defaultCaption($item),
-            'credit'  => QuickieHandoffLogic::creditLine($item),
+            'success'       => true,
+            'item'          => $item,
+            'caption'       => QuickieHandoffLogic::defaultCaption($item),
+            'credit'        => QuickieHandoffLogic::creditLine($item),
+            'credit_handle' => QuickieHandoffLogic::creditHandle($item),
         ];
     }
 
@@ -48,7 +49,7 @@ class QuickieHandoff
 
         $imageUrl     = null;
         $attachmentId = null;
-        if (in_array($item['media_type'], ['image', 'video', 'carousel'], true) && ($item['media_url'] !== '' || $item['thumbnail_url'] !== '')) {
+        if ($item['source'] === 'instagram' && in_array($item['media_type'], ['image', 'video', 'carousel'], true) && ($item['media_url'] !== '' || $item['thumbnail_url'] !== '')) {
             $pull = self::pullMedia($item);
             if ($pull['error'] !== null && $item['source'] === 'instagram') {
                 return ['success' => false, 'message' => 'Media pull failed: ' . $pull['error']];
@@ -66,7 +67,10 @@ class QuickieHandoff
             'source'           => self::QUEUE_SOURCE,
             'content_type'     => 'facebook_post',
             'title'            => mb_substr('Inbox: ' . $item['title'], 0, 255),
-            'body'             => wp_encode_emoji($caption),
+            // Raw caption, not wp_encode_emoji'd: bbj_content_queue is utf8mb4 and
+            // ContentEngineCron posts body verbatim to the Graph API. Matches
+            // QueueBridge::enqueueQuickie, which does the same.
+            'body'             => $caption,
             'image_url'        => $imageUrl,
             'target_page'      => $pageId,
             'target_page_name' => (string) ($args['page_name'] ?? ''),

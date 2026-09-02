@@ -101,7 +101,15 @@ class ItemStore
     {
         global $wpdb;
         $t = Schema::table(Schema::TABLE_ITEMS);
-        $wpdb->update($t, ['inbox_status' => $status, 'used_queue_id' => $queueId], ['id' => $id], ['%s', '%d'], ['%d']);
+        $data   = ['inbox_status' => $status];
+        $format = ['%s'];
+        // Only touch used_queue_id when a value is actually supplied, so a
+        // dismiss on an already-queued item never nulls its existing link.
+        if ($queueId !== null) {
+            $data['used_queue_id'] = $queueId;
+            $format[] = '%d';
+        }
+        $wpdb->update($t, $data, ['id' => $id], $format, ['%d']);
     }
 
     public static function unprocessed(string $show, int $limit = 200): array

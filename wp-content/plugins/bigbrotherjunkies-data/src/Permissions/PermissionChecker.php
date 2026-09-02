@@ -106,7 +106,7 @@ class PermissionChecker
         ],
         'stories_manage' => [
             'label'       => 'Stories',
-            'description' => 'Configure story sources, review the inbox and story queue, hand items to the FB queue',
+            'description' => 'Configure story sources, review the inbox and story queue, hand items to the FB queue; the repost modal also needs content_engine (FB pages + slots)',
             'roles'       => ['administrator'],
         ],
     ];

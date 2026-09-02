@@ -36,10 +36,17 @@ class Ingest
         $runId = 0;
         $ingested = 0;
         $errors   = [];
+        $igEnabled = !empty(Settings::settings()['ig_enabled']);
         try {
             $runId = ItemStore::recordRun(['show' => '', 'kind' => 'ingest']);
             foreach (array_keys($shows) as $slug) {
                 foreach (Settings::sourcesFor($slug) as $source) {
+                    if ($source['type'] === 'instagram' && !$igEnabled) {
+                        // Not approved yet: skip the fetch entirely so the
+                        // disabled state doesn't spam the run log's error list
+                        // every 15-minute cycle.
+                        continue;
+                    }
                     $adapter = self::adapterFor($source['type']);
                     if (!$adapter) {
                         continue;

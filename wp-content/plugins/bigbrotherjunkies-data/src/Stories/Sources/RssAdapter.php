@@ -9,7 +9,7 @@ class RssAdapter implements SourceAdapter
 
     public function fetch(array $source): array
     {
-        $res = wp_remote_get($source['key'], [
+        $res = wp_safe_remote_get($source['key'], [
             'timeout'    => 15,
             'user-agent' => 'BigBrotherJunkiesStories/1.0 (+https://bigbrotherjunkies.com)',
         ]);

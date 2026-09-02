@@ -22,7 +22,11 @@ class InstagramAdapter implements SourceAdapter
     {
         $settings = Settings::settings();
         if (empty($settings['ig_enabled'])) {
-            return ['items' => [], 'error' => null]; // silent: not approved yet
+            // Ingest::run() skips instagram sources entirely while disabled, so
+            // this branch is only reached via Ingest::testSource() (the Sources
+            // "Test" button), which needs an explanatory message rather than a
+            // silent "no items returned".
+            return ['items' => [], 'error' => 'instagram: disabled until Meta approves Business Discovery (Settings → Instagram enabled)'];
         }
         $igUserId = (string) $settings['ig_user_id'];
         if ($igUserId === '') {
@@ -31,7 +35,10 @@ class InstagramAdapter implements SourceAdapter
         $handle = $source['key'];
         $last   = (int) (($settings['ig_last_polled'][$handle] ?? 0));
         if ($last > time() - self::PER_HANDLE_MIN_SECONDS) {
-            return ['items' => [], 'error' => null]; // throttled, not an error
+            // Throttled, not an error — and silent (not just non-fatal) because
+            // this fires on most 15-minute ingest cycles (30-min per-handle
+            // floor), so surfacing it would spam the run log every cycle.
+            return ['items' => [], 'error' => null];
         }
         [, $token] = self::pageCredentials();
         if ($token === '') {

@@ -113,10 +113,11 @@ class ContentEngineCron
             ];
             if (!empty($post->image_url)) {
                 $body['url'] = $post->image_url;
-            } elseif ($post->source === 'feed_update_share' && !empty($post->source_url)) {
+            } elseif (in_array($post->source, ['feed_update_share', 'stories_inbox'], true) && !empty($post->source_url)) {
                 // Feed-update drips are link posts. Gated on source so legacy
                 // news_scan rows (which also carry source_url) keep their
-                // existing text-only behavior.
+                // existing text-only behavior. Stories-inbox rows without an
+                // image are link posts too.
                 $body['link'] = $post->source_url;
             }
 
