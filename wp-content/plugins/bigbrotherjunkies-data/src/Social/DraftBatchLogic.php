@@ -223,18 +223,18 @@ class DraftBatchLogic
 
     /**
      * Schema-aware extraction for JSON that decoders reject (unescaped inner
-     * quotes). Each post is matched structurally: `{"covers":"..","text":"..`
-     * up to the `"}` that is followed by `,` or `]`. Text may contain raw
-     * quotes freely; JSON escapes (\n, \", \\) are then decoded by hand.
+     * quotes). Each post is matched structurally: `{"covers":".."`, then the
+     * optional `"opener":".."`, then `"text":"..` up to the `"}` that is
+     * followed by `,` or `]`. Text may contain raw quotes freely; JSON
+     * escapes (\n, \", \\) are then decoded by hand.
      *
      * @return list<array{covers:string,opener:string,text:string}>|null null when no post matches
      */
     private static function salvagePosts(string $text): ?array
     {
         $matched = preg_match_all(
-            // "opener" (A/B label, added 8/21) sits between covers and text in the
-            // documented envelope; without this optional group the salvage never
-            // matched again and every straight-quote batch was lost (9/5).
+            // The "opener" group MUST stay optional: it landed in the envelope
+            // 8/21 but not here, so the salvage matched nothing until 9/5.
             '/\{\s*"covers"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*(?:"opener"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*)?"text"\s*:\s*"(.*?)"\s*\}\s*(?=,|\])/s',
             $text,
             $m,
