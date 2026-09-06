@@ -18,6 +18,40 @@ namespace BigBrotherJunkies\Data\Comments;
  */
 class RankCalculator
 {
+    // Rank lookups run once per COMMENT in every list response (author rank
+    // badge), and getUserStats() is two heavy aggregate queries. Before 9/5/2026
+    // nothing cached them: a 56-comment page did ~112 full scans of wp_comments
+    // per logged-in request, and every comment/vote INSERT flushed MariaDB's
+    // query cache so the whole crowd recomputed at once (load 64, 80 workers
+    // wedged, 140s responses). Two layers now: a per-request memo (same author
+    // appears many times on one page) and a 10-minute object-cache entry per
+    // user. Writes that change stats (comment post, vote) go through
+    // updateUserRank(), which busts + re-primes, so members still see their
+    // rank move immediately.
+    private const CACHE_GROUP = 'bbjd-rank';
+    private const CACHE_TTL = 600;
+
+    /** @var array<int, array> per-request memo */
+    private static array $memo = [];
+
+    private static function cacheKey(int $userId): string
+    {
+        return 'rank_' . $userId;
+    }
+
+    /** Clear the per-request memo (tests; long-running CLI jobs). */
+    public static function resetMemo(): void
+    {
+        self::$memo = [];
+    }
+
+    /** Drop both cache layers for one user so the next lookup recomputes. */
+    public static function bustCache(int $userId): void
+    {
+        unset(self::$memo[$userId]);
+        wp_cache_delete(self::cacheKey($userId), self::CACHE_GROUP);
+    }
+
     /**
      * Rank definitions with requirements
      *
@@ -128,6 +162,26 @@ class RankCalculator
      * @return array Rank info including name, color, icon, stats
      */
     public static function calculateRank(int $userId): array
+    {
+        if (isset(self::$memo[$userId])) {
+            return self::$memo[$userId];
+        }
+
+        $cached = wp_cache_get(self::cacheKey($userId), self::CACHE_GROUP);
+        if (is_array($cached)) {
+            return self::$memo[$userId] = $cached;
+        }
+
+        $rank = self::computeRank($userId);
+        wp_cache_set(self::cacheKey($userId), $rank, self::CACHE_GROUP, self::CACHE_TTL);
+
+        return self::$memo[$userId] = $rank;
+    }
+
+    /**
+     * Uncached rank computation (special rank / role checks / stats).
+     */
+    private static function computeRank(int $userId): array
     {
         // Check for special rank first (stored in user meta)
         $specialRank = get_user_meta($userId, 'bbj_special_rank', true);
@@ -275,6 +329,7 @@ class RankCalculator
      */
     public static function updateUserRank(int $userId): array
     {
+        self::bustCache($userId);
         $rank = self::calculateRank($userId);
 
         // Store the rank key for quick lookups
@@ -351,6 +406,7 @@ class RankCalculator
 
         update_user_meta($userId, 'bbj_special_rank', $rankKey);
         update_user_meta($userId, 'bbj_user_rank', self::SPECIAL_RANKS[$rankKey]['name']);
+        self::bustCache($userId);
 
         return true;
     }
