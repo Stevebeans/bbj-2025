@@ -18,6 +18,36 @@ namespace BigBrotherJunkies\Data\Comments;
  */
 class RankCalculator
 {
+    // Every comment in a list response looks up its author's rank, and
+    // getUserStats() is two heavy aggregates over wp_comments. Uncached, that
+    // wedged prod on 9/5/2026 (~112 full scans per page, 140s responses).
+    // Two layers: a per-request memo (one author repeats across a page) and a
+    // 10-minute object-cache entry per user. Stat-changing writes go through
+    // updateUserRank(), which busts + re-primes, so a rank still moves at once.
+    private const CACHE_GROUP = 'bbjd-rank';
+    private const CACHE_TTL = 600;
+
+    /** @var array<int, array> per-request memo */
+    private static array $memo = [];
+
+    private static function cacheKey(int $userId): string
+    {
+        return 'rank_' . $userId;
+    }
+
+    /** Clear the per-request memo (tests; long-running CLI jobs). */
+    public static function resetMemo(): void
+    {
+        self::$memo = [];
+    }
+
+    /** Drop both cache layers for one user so the next lookup recomputes. */
+    public static function bustCache(int $userId): void
+    {
+        unset(self::$memo[$userId]);
+        wp_cache_delete(self::cacheKey($userId), self::CACHE_GROUP);
+    }
+
     /**
      * Rank definitions with requirements
      *
@@ -128,6 +158,26 @@ class RankCalculator
      * @return array Rank info including name, color, icon, stats
      */
     public static function calculateRank(int $userId): array
+    {
+        if (isset(self::$memo[$userId])) {
+            return self::$memo[$userId];
+        }
+
+        $rank = wp_cache_get(self::cacheKey($userId), self::CACHE_GROUP);
+        if (!is_array($rank)) {
+            $rank = self::computeRank($userId);
+            wp_cache_set(self::cacheKey($userId), $rank, self::CACHE_GROUP, self::CACHE_TTL);
+        }
+
+        self::$memo[$userId] = $rank;
+
+        return $rank;
+    }
+
+    /**
+     * Uncached rank computation (special rank / role checks / stats).
+     */
+    private static function computeRank(int $userId): array
     {
         // Check for special rank first (stored in user meta)
         $specialRank = get_user_meta($userId, 'bbj_special_rank', true);
@@ -275,6 +325,7 @@ class RankCalculator
      */
     public static function updateUserRank(int $userId): array
     {
+        self::bustCache($userId);
         $rank = self::calculateRank($userId);
 
         // Store the rank key for quick lookups
@@ -351,6 +402,7 @@ class RankCalculator
 
         update_user_meta($userId, 'bbj_special_rank', $rankKey);
         update_user_meta($userId, 'bbj_user_rank', self::SPECIAL_RANKS[$rankKey]['name']);
+        self::bustCache($userId);
 
         return true;
     }

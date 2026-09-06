@@ -223,16 +223,19 @@ class DraftBatchLogic
 
     /**
      * Schema-aware extraction for JSON that decoders reject (unescaped inner
-     * quotes). Each post is matched structurally: `{"covers":"..","text":"..`
-     * up to the `"}` that is followed by `,` or `]`. Text may contain raw
-     * quotes freely; JSON escapes (\n, \", \\) are then decoded by hand.
+     * quotes). Each post is matched structurally: `{"covers":".."`, then the
+     * optional `"opener":".."`, then `"text":"..` up to the `"}` that is
+     * followed by `,` or `]`. Text may contain raw quotes freely; JSON
+     * escapes (\n, \", \\) are then decoded by hand.
      *
-     * @return list<array{covers:string,text:string}>|null null when no post matches
+     * @return list<array{covers:string,opener:string,text:string}>|null null when no post matches
      */
     private static function salvagePosts(string $text): ?array
     {
         $matched = preg_match_all(
-            '/\{\s*"covers"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*"text"\s*:\s*"(.*?)"\s*\}\s*(?=,|\])/s',
+            // The "opener" group MUST stay optional: it landed in the envelope
+            // 8/21 but not here, so the salvage matched nothing until 9/5.
+            '/\{\s*"covers"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*(?:"opener"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*)?"text"\s*:\s*"(.*?)"\s*\}\s*(?=,|\])/s',
             $text,
             $m,
             PREG_SET_ORDER
@@ -244,7 +247,8 @@ class DraftBatchLogic
         foreach ($m as $hit) {
             $posts[] = [
                 'covers' => self::unescapeJsonString($hit[1]),
-                'text'   => self::unescapeJsonString($hit[2]),
+                'opener' => self::unescapeJsonString($hit[2]),
+                'text'   => self::unescapeJsonString($hit[3]),
             ];
         }
         return $posts;
