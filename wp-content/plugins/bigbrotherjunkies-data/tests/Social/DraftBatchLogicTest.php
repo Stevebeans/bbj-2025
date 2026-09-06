@@ -161,4 +161,28 @@ class DraftBatchLogicTest extends TestCase
         $raw = "{\"posts\":[{\"covers\":\"h\",\"text\":\"This got cut off mid sen";
         $this->assertArrayHasKey('error', DraftBatchLogic::parseModelJson($raw));
     }
+
+    public function test_salvage_survives_opener_field_and_literal_newlines(): void
+    {
+        // Prod 9/5: the model kept the documented envelope (covers, opener, text)
+        // but used straight quotes inside one post and raw newlines in later
+        // ones. Decoders reject that; the salvage regex must still see every
+        // post (it was written before "opener" existed and never matched since).
+        $raw = "{\"posts\":[{\"covers\":\"~6:58-7:20 PM\",\"opener\":\"recap\",\"text\":\"Taylor promises a shower that will be \"a little hood.\"\n- Steve\"},"
+            . "{\"covers\":\"~8:08-8:23 PM\",\"opener\":\"tease\",\"text\":\"Angela has a rough night.
+(feed spoilers below)
+
+Dee comforts her.
+- Steve\"}]}";
+
+        $result = DraftBatchLogic::parseModelJson($raw);
+
+        $this->assertArrayHasKey('posts', $result, 'salvage must rescue the batch');
+        $this->assertCount(2, $result['posts']);
+        $this->assertSame('recap', $result['posts'][0]['opener']);
+        $this->assertSame('tease', $result['posts'][1]['opener']);
+        $this->assertStringContainsString('"a little hood."', $result['posts'][0]['text']);
+        $this->assertStringContainsString("Angela has a rough night.
+(feed spoilers below)", $result['posts'][1]['text']);
+    }
 }

@@ -227,12 +227,15 @@ class DraftBatchLogic
      * up to the `"}` that is followed by `,` or `]`. Text may contain raw
      * quotes freely; JSON escapes (\n, \", \\) are then decoded by hand.
      *
-     * @return list<array{covers:string,text:string}>|null null when no post matches
+     * @return list<array{covers:string,opener:string,text:string}>|null null when no post matches
      */
     private static function salvagePosts(string $text): ?array
     {
         $matched = preg_match_all(
-            '/\{\s*"covers"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*"text"\s*:\s*"(.*?)"\s*\}\s*(?=,|\])/s',
+            // "opener" (A/B label, added 8/21) sits between covers and text in the
+            // documented envelope; without this optional group the salvage never
+            // matched again and every straight-quote batch was lost (9/5).
+            '/\{\s*"covers"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*(?:"opener"\s*:\s*"((?:\\\\.|[^"\\\\])*)"\s*,\s*)?"text"\s*:\s*"(.*?)"\s*\}\s*(?=,|\])/s',
             $text,
             $m,
             PREG_SET_ORDER
@@ -244,7 +247,8 @@ class DraftBatchLogic
         foreach ($m as $hit) {
             $posts[] = [
                 'covers' => self::unescapeJsonString($hit[1]),
-                'text'   => self::unescapeJsonString($hit[2]),
+                'opener' => self::unescapeJsonString($hit[2]),
+                'text'   => self::unescapeJsonString($hit[3]),
             ];
         }
         return $posts;
