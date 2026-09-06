@@ -18,16 +18,12 @@ namespace BigBrotherJunkies\Data\Comments;
  */
 class RankCalculator
 {
-    // Rank lookups run once per COMMENT in every list response (author rank
-    // badge), and getUserStats() is two heavy aggregate queries. Before 9/5/2026
-    // nothing cached them: a 56-comment page did ~112 full scans of wp_comments
-    // per logged-in request, and every comment/vote INSERT flushed MariaDB's
-    // query cache so the whole crowd recomputed at once (load 64, 80 workers
-    // wedged, 140s responses). Two layers now: a per-request memo (same author
-    // appears many times on one page) and a 10-minute object-cache entry per
-    // user. Writes that change stats (comment post, vote) go through
-    // updateUserRank(), which busts + re-primes, so members still see their
-    // rank move immediately.
+    // Every comment in a list response looks up its author's rank, and
+    // getUserStats() is two heavy aggregates over wp_comments. Uncached, that
+    // wedged prod on 9/5/2026 (~112 full scans per page, 140s responses).
+    // Two layers: a per-request memo (one author repeats across a page) and a
+    // 10-minute object-cache entry per user. Stat-changing writes go through
+    // updateUserRank(), which busts + re-primes, so a rank still moves at once.
     private const CACHE_GROUP = 'bbjd-rank';
     private const CACHE_TTL = 600;
 
@@ -167,15 +163,15 @@ class RankCalculator
             return self::$memo[$userId];
         }
 
-        $cached = wp_cache_get(self::cacheKey($userId), self::CACHE_GROUP);
-        if (is_array($cached)) {
-            return self::$memo[$userId] = $cached;
+        $rank = wp_cache_get(self::cacheKey($userId), self::CACHE_GROUP);
+        if (!is_array($rank)) {
+            $rank = self::computeRank($userId);
+            wp_cache_set(self::cacheKey($userId), $rank, self::CACHE_GROUP, self::CACHE_TTL);
         }
 
-        $rank = self::computeRank($userId);
-        wp_cache_set(self::cacheKey($userId), $rank, self::CACHE_GROUP, self::CACHE_TTL);
+        self::$memo[$userId] = $rank;
 
-        return self::$memo[$userId] = $rank;
+        return $rank;
     }
 
     /**

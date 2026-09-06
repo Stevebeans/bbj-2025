@@ -5,7 +5,7 @@ namespace {
 if (!defined('ARRAY_A')) {
     define('ARRAY_A', 'ARRAY_A');
 }
- if (!function_exists('get_user_meta')) {
+if (!function_exists('get_user_meta')) {
     function get_user_meta($userId, $key = '', $single = false) { return $GLOBALS['__bbj_user_meta'][$userId][$key] ?? ''; }
 }
 if (!function_exists('update_user_meta')) {
