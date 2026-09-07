@@ -130,6 +130,12 @@ that is two posts - never stitch separate scenes together with "meanwhile" or "e
 Minor filler folds into the nearest real story. Never pad, and never manufacture a post for a
 stretch where nothing happened.
 
+Your input opens with the date, a game-state line from the site's weekly editor, and a HOUSE
+UPDATES block: feed updates the site's own watchers already published. Those are reference,
+not stories to split into posts. Use them and the game-state line to get names, nominations
+and the day right; take the stories themselves from the reports. Never contradict the
+game-state line, and use the stated day of the week; do not infer it from the date.
+
 Each post uses this exact layout:
 1. One dry opening sentence in the style assigned below.
 2. On its own line: (feed spoilers below)

@@ -33,10 +33,11 @@ class BeanBotService
     public const INTERVALS = [5, 10, 15, 30, 45, 60];
 
     /**
-     * Service-managed keys — the ONLY keys a running cycle may write. The five
+     * Service-managed keys — the ONLY keys a running cycle may write. The six
      * user-settable keys (enabled / interval_minutes / max_per_day /
-     * bluesky_enabled / post_as_user_id) are deliberately absent so a cycle can
-     * never resurrect a setting Steve changed mid-flight (kill-switch safety).
+     * bluesky_enabled / post_as_user_id / context_blocks) are deliberately
+     * absent so a cycle can never resurrect a setting Steve changed
+     * mid-flight (kill-switch safety).
      */
     public const SERVICE_KEYS = [
         'cursor_post_id',
@@ -114,8 +115,8 @@ PROMPT;
     /**
      * Whitelist + sanitize a settings patch, persist it, return the merged
      * settings. ONLY enabled / interval_minutes / max_per_day / bluesky_enabled
-     * / post_as_user_id are settable here; service-managed fields are ignored
-     * in the patch.
+     * / post_as_user_id / context_blocks are settable here; service-managed
+     * fields are ignored in the patch.
      */
     public static function saveSettings(array $patch): array
     {

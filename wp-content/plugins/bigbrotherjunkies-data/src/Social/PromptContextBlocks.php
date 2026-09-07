@@ -111,6 +111,7 @@ class PromptContextBlocks
         try {
             $seasonId = (int) get_option('bbj_v2_current_season', 0);
             if ($seasonId <= 0) {
+                error_log('[bbjd] PromptContextBlocks::gameStateLine: bbj_v2_current_season not set');
                 return '';
             }
             $weeks = \BigBrotherJunkies\Data\Weekly\WeeklyData::getSeasonWeeks($seasonId);
@@ -155,8 +156,8 @@ class PromptContextBlocks
             $lines[] = sprintf(
                 '[%s] %s: %s',
                 BeanBotLogic::toHouseTime((string) $row['posted_at']),
-                trim((string) $row['author']),
-                self::squash((string) $row['text'])
+                trim((string) ($row['author'] ?? '')),
+                self::squash((string) ($row['text'] ?? ''))
             );
         }
         return implode("\n", $lines);
@@ -176,6 +177,13 @@ class PromptContextBlocks
      * Wrapper: published live-feed-updates in the UTC window, excluding
      * Bean Bot's author (0 excludes nobody). Not unit-tested (uses $wpdb);
      * all formatting is in formatHouseUpdates.
+     *
+     * Limitation: this only excludes $excludeAuthorId (Bean Bot's
+     * post_author). If Bean Bot's `post_as_user_id` setting is ever set to a
+     * real user, its AI-written updates publish under that user and are
+     * indistinguishable from a human watcher's, so they would enter this
+     * block. `post_as_user_id` must stay 0 until a bot marker exists on the
+     * post; FeedUpdateCreator::isBotAuthor has the same limitation.
      */
     public static function houseUpdatesBlock(string $fromUtc, string $toUtc, int $excludeAuthorId): string
     {
@@ -192,12 +200,12 @@ class PromptContextBlocks
                 $sql   .= ' AND p.post_author <> %d';
                 $args[] = $excludeAuthorId;
             }
-            $sql .= ' ORDER BY p.post_date_gmt ASC LIMIT 500';
+            $sql .= ' ORDER BY p.post_date_gmt DESC LIMIT 500';
 
             $rows = $wpdb->get_results($wpdb->prepare($sql, ...$args), ARRAY_A) ?: [];
             foreach ($rows as &$row) {
                 $row['author'] = (string) ($row['author'] ?? '') !== '' ? $row['author'] : 'Feed watcher';
-                $row['text']   = wp_strip_all_tags(html_entity_decode((string) $row['text'], ENT_QUOTES, 'UTF-8'));
+                $row['text']   = html_entity_decode(wp_strip_all_tags((string) $row['text']), ENT_QUOTES, 'UTF-8');
             }
             unset($row);
             return self::formatHouseUpdates($rows);
