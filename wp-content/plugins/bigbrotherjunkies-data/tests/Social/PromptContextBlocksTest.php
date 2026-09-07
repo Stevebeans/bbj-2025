@@ -106,4 +106,54 @@ class PromptContextBlocksTest extends TestCase
     {
         $this->assertSame('', PromptContextBlocks::gameStateLineFromWeeks([], '2026-09-06'));
     }
+
+    public function test_house_updates_are_chronological_with_weekday_stamps(): void
+    {
+        $rows = [
+            ['posted_at' => '2026-09-06 21:14:00', 'author' => 'LynnD', 'text' => 'Dee crying to Angela in the bathroom, worried she is the one going home.'],
+            ['posted_at' => '2026-09-06 19:02:00', 'author' => 'Steve Beans', 'text' => 'Barrett wins HOH.'],
+        ];
+        $expected = implode("\n", [
+            '=== HOUSE UPDATES (bigbrotherjunkies.com feed watchers; primary account of the day) ===',
+            '[Sun Sep 6 12:02 PM] Steve Beans: Barrett wins HOH.',
+            '[Sun Sep 6 2:14 PM] LynnD: Dee crying to Angela in the bathroom, worried she is the one going home.',
+        ]);
+        $this->assertSame($expected, PromptContextBlocks::formatHouseUpdates($rows));
+    }
+
+    public function test_house_updates_keep_the_newest_when_over_cap(): void
+    {
+        $rows = [];
+        for ($i = 0; $i < 5; $i++) {
+            $rows[] = ['posted_at' => sprintf('2026-09-06 %02d:00:00', 15 + $i), 'author' => 'Steve Beans', 'text' => "update {$i}"];
+        }
+        $out = PromptContextBlocks::formatHouseUpdates($rows, 3);
+        $lines = explode("\n", $out);
+        $this->assertSame('(2 earlier updates omitted)', $lines[1]);
+        $this->assertStringEndsWith('update 2', $lines[2]);
+        $this->assertStringEndsWith('update 4', $lines[4]);
+        $this->assertCount(5, $lines); // header + omitted line + 3 rows
+    }
+
+    public function test_house_updates_collapse_whitespace_and_trim_long_text(): void
+    {
+        $long = str_repeat('word ', 200); // 1000 chars
+        $rows = [['posted_at' => '2026-09-06 19:02:00', 'author' => 'LynnD', 'text' => "line one\n\n   line   two " . $long]];
+        $out  = PromptContextBlocks::formatHouseUpdates($rows);
+        $line = explode("\n", $out)[1];
+        $this->assertStringContainsString('line one line two word', $line);
+        // 600 chars of text plus the 3-byte UTF-8 ellipsis.
+        $this->assertLessThanOrEqual(strlen('[Sun Sep 6 12:02 PM] LynnD: ') + 600 + 3, strlen($line));
+        $this->assertStringEndsWith('…', $line);
+    }
+
+    public function test_house_updates_block_is_empty_with_no_rows(): void
+    {
+        $this->assertSame('', PromptContextBlocks::formatHouseUpdates([]));
+    }
+
+    public function test_community_block_is_reserved_and_empty_in_v1(): void
+    {
+        $this->assertSame('', PromptContextBlocks::communityBlock());
+    }
 }

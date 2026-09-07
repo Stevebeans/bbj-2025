@@ -117,4 +117,96 @@ class PromptContextBlocks
             return '';
         }
     }
+
+    public const HOUSE_UPDATES_HEADER = '=== HOUSE UPDATES (bigbrotherjunkies.com feed watchers; primary account of the day) ===';
+    public const HOUSE_UPDATES_CAP    = 60;
+    public const HOUSE_UPDATE_MAX_CHARS = 600;
+
+    /**
+     * The day's human-written live-feed-updates as model-facing lines.
+     * Rows: ['posted_at' => UTC 'Y-m-d H:i:s', 'author' => string, 'text' => string].
+     * Chronological; over $cap keeps the newest and says how many were dropped.
+     */
+    public static function formatHouseUpdates(array $rows, int $cap = self::HOUSE_UPDATES_CAP): string
+    {
+        if ($rows === []) {
+            return '';
+        }
+        usort($rows, static fn(array $a, array $b): int => strcmp((string) $a['posted_at'], (string) $b['posted_at']));
+
+        $omitted = 0;
+        if (count($rows) > $cap) {
+            $omitted = count($rows) - $cap;
+            $rows    = array_slice($rows, $omitted);
+        }
+
+        $lines   = [self::HOUSE_UPDATES_HEADER];
+        if ($omitted > 0) {
+            $lines[] = sprintf('(%d earlier updates omitted)', $omitted);
+        }
+        foreach ($rows as $row) {
+            $lines[] = sprintf(
+                '[%s] %s: %s',
+                BeanBotLogic::toHouseTime((string) $row['posted_at']),
+                trim((string) $row['author']),
+                self::squash((string) $row['text'])
+            );
+        }
+        return implode("\n", $lines);
+    }
+
+    /** Collapse whitespace; cap length with an ellipsis. */
+    private static function squash(string $text): string
+    {
+        $text = trim((string) preg_replace('/\s+/u', ' ', $text));
+        if (mb_strlen($text) > self::HOUSE_UPDATE_MAX_CHARS) {
+            $text = rtrim(mb_substr($text, 0, self::HOUSE_UPDATE_MAX_CHARS)) . '…';
+        }
+        return $text;
+    }
+
+    /**
+     * Wrapper: published live-feed-updates in the UTC window, excluding
+     * Bean Bot's author (0 excludes nobody). Not unit-tested (uses $wpdb);
+     * all formatting is in formatHouseUpdates.
+     */
+    public static function houseUpdatesBlock(string $fromUtc, string $toUtc, int $excludeAuthorId): string
+    {
+        try {
+            global $wpdb;
+            $sql = "SELECT p.post_date_gmt AS posted_at, u.display_name AS author, p.post_content AS text
+                      FROM {$wpdb->posts} p
+                      LEFT JOIN {$wpdb->users} u ON u.ID = p.post_author
+                     WHERE p.post_type = 'live-feed-updates'
+                       AND p.post_status = 'publish'
+                       AND p.post_date_gmt BETWEEN %s AND %s";
+            $args = [$fromUtc, $toUtc];
+            if ($excludeAuthorId > 0) {
+                $sql   .= ' AND p.post_author <> %d';
+                $args[] = $excludeAuthorId;
+            }
+            $sql .= ' ORDER BY p.post_date_gmt ASC LIMIT 500';
+
+            $rows = $wpdb->get_results($wpdb->prepare($sql, ...$args), ARRAY_A) ?: [];
+            foreach ($rows as &$row) {
+                $row['author'] = (string) ($row['author'] ?? '') !== '' ? $row['author'] : 'Feed watcher';
+                $row['text']   = wp_strip_all_tags(html_entity_decode((string) $row['text'], ENT_QUOTES, 'UTF-8'));
+            }
+            unset($row);
+            return self::formatHouseUpdates($rows);
+        } catch (\Throwable $e) {
+            error_log('[bbjd] PromptContextBlocks::houseUpdatesBlock failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    /**
+     * Reserved for a community source (Reddit daily threads if the Data
+     * Access Request is approved, or the site's own live-thread comments
+     * with a better selection rule). Empty in v1 by design; see the spec.
+     */
+    public static function communityBlock(): string
+    {
+        return '';
+    }
 }
