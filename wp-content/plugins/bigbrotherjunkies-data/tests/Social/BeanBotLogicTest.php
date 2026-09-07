@@ -87,7 +87,15 @@ class BeanBotLogicTest extends TestCase
     {
         // 02:23 UTC on Jul 14 is 19:23 PDT (UTC-7) on Jul 13 the day before:
         // proves both the timezone shift and the date rollover across midnight.
-        $this->assertSame('Jul 13 7:23 PM', BeanBotLogic::toHouseTime('2026-07-14 02:23:00'));
+        $this->assertSame('Mon Jul 13 7:23 PM', BeanBotLogic::toHouseTime('2026-07-14 02:23:00'));
+    }
+
+    public function test_to_house_time_weekday_follows_pacific_not_utc(): void
+    {
+        // 06:59 UTC on Sep 7 is still 11:59 PM Sunday in Los Angeles (PDT).
+        $this->assertSame('Sun Sep 6 11:59 PM', BeanBotLogic::toHouseTime('2026-09-07 06:59:00'));
+        // One minute later the house has rolled to Monday.
+        $this->assertSame('Mon Sep 7 12:00 AM', BeanBotLogic::toHouseTime('2026-09-07 07:00:00'));
     }
 
     public function test_to_house_time_passes_garbage_through_unchanged(): void

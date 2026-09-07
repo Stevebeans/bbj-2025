@@ -104,8 +104,10 @@ class BeanBotLogic
 
     /**
      * Format a stored UTC timestamp ('Y-m-d H:i:s') as Pacific house time
-     * ('M j g:i A', e.g. "Jul 13 7:23 PM"). Posts are stored in UTC but the
-     * house (and Steve) run on America/Los_Angeles, so model-facing report
+     * ('D M j g:i A', e.g. "Mon Jul 13 7:23 PM"). The weekday is deliberate:
+     * without it the model infers the day from the date and lands on last year's
+     * calendar (9/6 recap called Sunday "Saturday"). Posts are stored in UTC but
+     * the house (and Steve) run on America/Los_Angeles, so model-facing report
      * lines read in house time. Invalid input is returned unchanged.
      */
     public static function toHouseTime(string $utcDateTime): string
@@ -114,6 +116,6 @@ class BeanBotLogic
         if ($utc === false || $utc->format('Y-m-d H:i:s') !== $utcDateTime) {
             return $utcDateTime;
         }
-        return $utc->setTimezone(new \DateTimeZone('America/Los_Angeles'))->format('M j g:i A');
+        return $utc->setTimezone(new \DateTimeZone('America/Los_Angeles'))->format('D M j g:i A');
     }
 }
