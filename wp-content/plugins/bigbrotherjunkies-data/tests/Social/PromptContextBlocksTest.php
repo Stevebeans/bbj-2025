@@ -156,4 +156,17 @@ class PromptContextBlocksTest extends TestCase
     {
         $this->assertSame('', PromptContextBlocks::communityBlock());
     }
+
+    public function test_prepend_blocks_skips_empty_blocks_and_separates_with_blank_lines(): void
+    {
+        $out = PromptContextBlocks::prependBlocks("Season: Big Brother 28.\nreports...", ['Today is Sunday.', '', 'Game state: Week 9.']);
+        $this->assertSame("Today is Sunday.\n\nGame state: Week 9.\n\nSeason: Big Brother 28.\nreports...", $out);
+    }
+
+    public function test_prepend_blocks_leaves_message_untouched_when_all_blocks_empty(): void
+    {
+        $message = "Season: Big Brother 28.\nreports...";
+        $this->assertSame($message, PromptContextBlocks::prependBlocks($message, ['', '']));
+        $this->assertSame($message, PromptContextBlocks::prependBlocks($message, []));
+    }
 }

@@ -44,6 +44,13 @@ Produce the post in this exact layout:
    Catchy and funny when the material allows it, never forced.
 The post ends after the payoff paragraphs. No closing question, no call to comment.
 
+Your input opens with the date, a game-state line from the site's weekly editor, and a HOUSE
+UPDATES block written by bigbrotherjunkies.com's own feed watchers. House updates are the
+primary account of the day; trusted reports corroborate and add detail. When a house update
+and a report conflict, prefer the house update and say the reports differ. Never contradict
+the game-state line: it is who holds HOH and veto, who is nominated, and who has been evicted.
+Use the stated day of the week; do not infer it from the date.
+
 Rules: the Big Brother house is in Los Angeles. Reports come from fans posting anywhere in the
 world; ignore any report that is not about events inside the house or the game (weather, local
 news, the poster's personal life). Base the post on trusted reports; you may include a tag-post
@@ -84,6 +91,13 @@ things sit flat and never announce or explain a joke. The comedy comes from HOW 
 described, never from inventing or exaggerating them. No millennial slang, no exclamation
 points, and never mean-spirited toward houseguests - the reader should feel like a sharp
 friend is catching them up, not like anyone is being mocked.
+
+Your input opens with the date, a game-state line from the site's weekly editor, and a HOUSE
+UPDATES block written by bigbrotherjunkies.com's own feed watchers. House updates are the
+primary account of the day; trusted reports corroborate and add detail. When a house update
+and a report conflict, prefer the house update and say the reports differ. Never contradict
+the game-state line: it is who holds HOH and veto, who is nominated, and who has been evicted.
+Use the stated day of the week; do not infer it from the date.
 
 Rules: the Big Brother house is in Los Angeles. The accounts you receive reports from are fans
 posting from their own homes anywhere in the world; a report about weather, local news, or the
@@ -345,7 +359,20 @@ PROMPT;
             );
         }
 
-        return implode("\n", $lines);
+        // Facts the model otherwise guesses (and got wrong on 9/6/2026): the
+        // day, the week's state, and what the site's own feed watchers wrote.
+        // See PromptContextBlocks. Order = trust order; the system prompt
+        // tells the model house updates are the primary account.
+        $now    = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $botId  = (int) (BeanBotService::settings()['author_user_id'] ?? 0);
+        $blocks = [
+            PromptContextBlocks::dateHeader($now),
+            PromptContextBlocks::gameStateLine($now),
+            PromptContextBlocks::houseUpdatesBlock((string) $bounds['from'], (string) $bounds['to'], $botId),
+            PromptContextBlocks::communityBlock(),
+        ];
+
+        return PromptContextBlocks::prependBlocks(implode("\n", $lines), $blocks);
     }
 
     /**

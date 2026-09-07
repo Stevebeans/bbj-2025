@@ -209,4 +209,20 @@ class PromptContextBlocks
     {
         return '';
     }
+
+    /**
+     * Non-empty blocks, blank-line separated, ahead of the existing message.
+     * No blocks → the message is returned byte-identical (Bean Bot's prompt
+     * must not change when its toggle is off).
+     *
+     * @param array<int,string> $blocks
+     */
+    public static function prependBlocks(string $message, array $blocks): string
+    {
+        $blocks = array_values(array_filter($blocks, static fn($b): bool => trim((string) $b) !== ''));
+        if ($blocks === []) {
+            return $message;
+        }
+        return implode("\n\n", $blocks) . "\n\n" . $message;
+    }
 }
