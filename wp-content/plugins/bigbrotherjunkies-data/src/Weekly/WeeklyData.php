@@ -226,9 +226,14 @@ class WeeklyData
     /**
      * Per-season list of weeks for the season-page breakdown.
      * Returns: [{ week_num, start_date, end_date, summary,
-     *            hoh:[names], pov:[names], noms:[names], evicted:[names],
+     *            hoh:[names], pov:[names], noms:[names], evicted:[names], saved:[names],
      *            faces:{ hoh:[face], pov:[face], noms:[face], evicted:[face] } }]
      * where face = { id, name, slug, photo }. (ordered by week_num)
+     *
+     * `saved` names players still marked nom=1 on their row (the weekly
+     * editor does not clear it) who were rescued by the veto per
+     * `saved_by_player_id`; consumers must exclude them from "still
+     * nominated" (see PromptContextBlocks::gameStateLineFromWeeks).
      *
      * `faces` is sourced from the SAME junction rows as getPlayerTimeline()
      * (bbj_week_comps for hoh/pov, bbj_weeks_players for nom/evicted), so the
@@ -298,7 +303,7 @@ class WeeklyData
 
             // Noms / Evicted — per-player status rows.
             $statusRows = $wpdb->get_results($wpdb->prepare(
-                "SELECT p.post_title AS name, wp.nom, wp.evicted,
+                "SELECT p.post_title AS name, wp.nom, wp.evicted, wp.saved_by_player_id,
                         wp.player_id, p.post_name AS player_slug, bp.profile_picture
                    FROM {$wplayers} wp
                    INNER JOIN {$posts}  p  ON p.ID = wp.player_id
@@ -308,7 +313,7 @@ class WeeklyData
                 $weekId
             ), ARRAY_A) ?: [];
 
-            $noms = $evicted = [];
+            $noms = $evicted = $saved = [];
             $nomFaces = $evictedFaces = [];
             foreach ($statusRows as $s) {
                 if ((int) $s['nom'] === 1) {
@@ -318,6 +323,12 @@ class WeeklyData
                 if ((int) $s['evicted'] === 1) {
                     $evicted[]      = $s['name'];
                     $evictedFaces[] = $toFace($s);
+                }
+                // Veto-saved nominee: nom stays 1 on the row after the save,
+                // so the weekly editor and season power-map both need this
+                // to tell "still on the block" from "saved by the veto".
+                if ((int) ($s['saved_by_player_id'] ?? 0) > 0) {
+                    $saved[] = $s['name'];
                 }
             }
 
@@ -330,6 +341,7 @@ class WeeklyData
                 'pov'        => $pov,
                 'noms'       => $noms,
                 'evicted'    => $evicted,
+                'saved'      => $saved,
                 'faces'      => [
                     'hoh'     => $hohFaces,
                     'pov'     => $povFaces,

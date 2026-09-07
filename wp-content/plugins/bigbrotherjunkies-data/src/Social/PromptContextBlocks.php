@@ -30,8 +30,10 @@ class PromptContextBlocks
      * $todayYmd (house date); falls back to the newest week and says so.
      * Blank fields are omitted rather than guessed. Returns '' with no rows.
      *
-     * v1 limitation: the weekly rows do not expose who a veto was used on,
-     * so only HOH, veto holder, nominees and evictions are stated.
+     * A missing 'saved' key is treated as [] so older-shaped week rows still
+     * work. When several weeks in $weeks bracket $todayYmd, the LAST one in
+     * input order wins — this relies on WeeklyData::getSeasonWeeks ordering
+     * its rows by week_num ASC, so "last" means "latest week".
      */
     public static function gameStateLineFromWeeks(array $weeks, string $todayYmd): string
     {
@@ -50,12 +52,12 @@ class PromptContextBlocks
 
         $isCurrent = $current !== null;
         if ($current === null) {
-            usort($weeks, static fn(array $a, array $b): int => ((int) $a['week_num']) <=> ((int) $b['week_num']));
+            usort($weeks, static fn(array $a, array $b): int => ((int) ($a['week_num'] ?? 0)) <=> ((int) ($b['week_num'] ?? 0)));
             $current = $weeks[count($weeks) - 1];
         }
 
         $range = self::dateRange((string) ($current['start_date'] ?? ''), (string) ($current['end_date'] ?? ''));
-        $label = 'Week ' . (int) $current['week_num'] . ($range !== '' ? " ({$range})" : '');
+        $label = 'Week ' . (int) ($current['week_num'] ?? 0) . ($range !== '' ? " ({$range})" : '');
 
         $parts = [];
         $parts[] = $isCurrent
@@ -70,8 +72,13 @@ class PromptContextBlocks
         if (!empty($current['pov'])) {
             $parts[] = 'Veto holder: ' . $names($current['pov']) . '.';
         }
-        if (!empty($current['noms'])) {
-            $parts[] = 'Nominees: ' . $names($current['noms']) . '.';
+        $saved     = $current['saved'] ?? [];
+        $nominees  = array_values(array_diff($current['noms'] ?? [], $saved));
+        if (!empty($nominees)) {
+            $parts[] = 'Nominees: ' . $names($nominees) . '.';
+        }
+        if (!empty($saved)) {
+            $parts[] = 'Veto used on: ' . $names($saved) . ' (off the block).';
         }
         if (!empty($current['evicted'])) {
             $parts[] = ($isCurrent ? 'Evicted this week: ' : 'Evicted: ') . $names($current['evicted']) . '.';

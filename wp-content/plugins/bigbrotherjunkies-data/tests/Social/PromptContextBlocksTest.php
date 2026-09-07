@@ -57,6 +57,7 @@ class PromptContextBlocksTest extends TestCase
             'pov'        => [],
             'noms'       => [],
             'evicted'    => [],
+            'saved'      => [],
             'faces'      => ['hoh' => [], 'pov' => [], 'noms' => [], 'evicted' => []],
         ], $over);
     }
@@ -69,6 +70,25 @@ class PromptContextBlocksTest extends TestCase
         ];
         $this->assertSame(
             'Game state: Week 9 (Sep 4 to Sep 10). HOH: Barrett. Veto holder: Yash. Nominees: Dee, Devens. Evicted this week: none yet.',
+            PromptContextBlocks::gameStateLineFromWeeks($weeks, '2026-09-06')
+        );
+    }
+
+    public function test_game_state_drops_veto_saved_players_from_nominees(): void
+    {
+        // Prod season 73685 week 9: Yash Patel was nominated (nom=1) and then
+        // saved by the veto (saved_by_player_id set), but nom=1 stays on his
+        // row in the weekly editor. He must not read as a current nominee.
+        $weeks = [
+            $this->week(9, '2026-09-04', '2026-09-10', [
+                'hoh'   => ['Barrett'],
+                'pov'   => ['Yash'],
+                'noms'  => ['LaTrice', 'Devens', 'Taylor', 'Yash'],
+                'saved' => ['Yash'],
+            ]),
+        ];
+        $this->assertSame(
+            'Game state: Week 9 (Sep 4 to Sep 10). HOH: Barrett. Veto holder: Yash. Nominees: LaTrice, Devens, Taylor. Veto used on: Yash (off the block). Evicted this week: none yet.',
             PromptContextBlocks::gameStateLineFromWeeks($weeks, '2026-09-06')
         );
     }
