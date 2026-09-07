@@ -53,7 +53,7 @@ class BeanBotService
 
     /**
      * Option defaults. `enabled=false` so a fresh deploy never auto-posts.
-     * The first five keys are user-settable via REST; the rest are
+     * The first six keys are user-settable via REST; the rest are
      * service-managed (cursor, cap bookkeeping, run state).
      * `post_as_user_id` 0 = publish under the Bean Bot user (author_user_id
      * below is the service-side cache of that bot user, a different thing).
@@ -63,6 +63,7 @@ class BeanBotService
         'interval_minutes' => 30,
         'max_per_day'      => 24,
         'bluesky_enabled'  => true,
+        'context_blocks'   => false, // prepend date + game-state lines to the cycle prompt
         'post_as_user_id'  => 0,
         'cursor_post_id'   => 0,
         'posts_today'      => 0,
@@ -135,6 +136,9 @@ PROMPT;
         }
         if (array_key_exists('bluesky_enabled', $patch)) {
             $current['bluesky_enabled'] = (bool) $patch['bluesky_enabled'];
+        }
+        if (array_key_exists('context_blocks', $patch)) {
+            $current['context_blocks'] = (bool) $patch['context_blocks'];
         }
         if (array_key_exists('post_as_user_id', $patch)) {
             $postAs = (int) $patch['post_as_user_id'];
@@ -306,6 +310,15 @@ PROMPT;
 
         // 3. Build the user message (entities decoded for Claude).
         $userMessage = self::buildUserMessage($rows, $from, $to);
+        if (!empty($settings['context_blocks'])) {
+            // Off by default: Bean Bot's voice is tuned and these two lines are
+            // the only additions allowed (pure facts, no new sources).
+            $nowUtc      = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+            $userMessage = PromptContextBlocks::prependBlocks($userMessage, [
+                PromptContextBlocks::dateHeader($nowUtc),
+                PromptContextBlocks::gameStateLine($nowUtc),
+            ]);
+        }
         $system      = apply_filters('bbjd_bean_bot_feed_prompt', self::FEED_PROMPT);
 
         // 4. Ask Claude.
