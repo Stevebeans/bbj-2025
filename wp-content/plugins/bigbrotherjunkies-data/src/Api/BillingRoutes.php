@@ -116,65 +116,83 @@ class BillingRoutes
         $stripe = new StripeService();
         $paypal = new PayPalService();
 
+        $windowOpen = FoundersWindow::isOpen();
+        $founders = FoundersWindow::settings();
+        $foundersPayload = [
+            'window_open'         => $windowOpen,
+            'closes_at'           => $founders['closes_at'],
+            'lifetime_cap'        => (int) $founders['lifetime_cap'],
+            'lifetime_spots_left' => FoundersWindow::lifetimeSpotsLeft(),
+            'badge_price_cents'   => FoundingBadge::PRICE_CENTS,
+            'badge_count'         => FoundingBadge::count(),
+        ];
+
+        $plans = [
+            [
+                'id' => 'monthly',
+                'name' => 'Monthly',
+                'price' => '$6.95',
+                'price_cents' => 695,
+                'interval' => 'month',
+                'description' => 'Cancel anytime',
+                'badge' => 'Supporter',
+                'tier' => 'supporter',
+                'popular' => false,
+            ],
+            [
+                'id' => 'annual',
+                'name' => 'All-Access Pass',
+                'price' => '$45',
+                'price_cents' => 4500,
+                'interval' => 'year',
+                'description' => 'Ad-free everything on every show we cover, locked in through BB29.',
+                'badge' => 'Supporter',
+                'tier' => 'supporter',
+                'popular' => true,
+            ],
+            [
+                'id' => 'lifetime',
+                'name' => 'Lifetime',
+                'price' => '$99',
+                'price_cents' => 9900,
+                'interval' => null,
+                'description' => 'One-time, never expires',
+                'badge' => 'Lifetime',
+                'tier' => 'supporter',
+                'popular' => false,
+            ],
+            [
+                'id' => 'full_bean_monthly',
+                'name' => 'Full Bean Monthly',
+                'price' => '$14.99',
+                'price_cents' => 1499,
+                'interval' => 'month',
+                'description' => 'Everything in Supporter + the smartest Bean (unlimited chats & memory)',
+                'badge' => 'Full Bean',
+                'tier' => 'full_bean',
+                'popular' => false,
+            ],
+            [
+                'id' => 'full_bean_annual',
+                'name' => 'Full Bean Annual',
+                'price' => '$119',
+                'price_cents' => 11900,
+                'interval' => 'year',
+                'description' => 'A full year of the smartest Bean, ad-free. Best value.',
+                'badge' => 'Full Bean',
+                'tier' => 'full_bean',
+                'popular' => false,
+            ],
+        ];
+
+        if (!$windowOpen) {
+            $plans = array_values(array_filter($plans, static fn (array $plan): bool => $plan['id'] !== 'lifetime'));
+        }
+
         return new \WP_REST_Response([
             'success' => true,
-            'plans' => [
-                [
-                    'id' => 'monthly',
-                    'name' => 'Monthly',
-                    'price' => '$6.95',
-                    'price_cents' => 695,
-                    'interval' => 'month',
-                    'description' => 'Cancel anytime',
-                    'badge' => 'Supporter',
-                    'tier' => 'supporter',
-                    'popular' => false,
-                ],
-                [
-                    'id' => 'annual',
-                    'name' => 'All-Access Pass',
-                    'price' => '$45',
-                    'price_cents' => 4500,
-                    'interval' => 'year',
-                    'description' => 'Ad-free everything on every show we cover, locked in through BB29.',
-                    'badge' => 'Supporter',
-                    'tier' => 'supporter',
-                    'popular' => true,
-                ],
-                [
-                    'id' => 'lifetime',
-                    'name' => 'Lifetime',
-                    'price' => '$99',
-                    'price_cents' => 9900,
-                    'interval' => null,
-                    'description' => 'One-time, never expires',
-                    'badge' => 'Lifetime',
-                    'tier' => 'supporter',
-                    'popular' => false,
-                ],
-                [
-                    'id' => 'full_bean_monthly',
-                    'name' => 'Full Bean Monthly',
-                    'price' => '$14.99',
-                    'price_cents' => 1499,
-                    'interval' => 'month',
-                    'description' => 'Everything in Supporter + the smartest Bean (unlimited chats & memory)',
-                    'badge' => 'Full Bean',
-                    'tier' => 'full_bean',
-                    'popular' => false,
-                ],
-                [
-                    'id' => 'full_bean_annual',
-                    'name' => 'Full Bean Annual',
-                    'price' => '$119',
-                    'price_cents' => 11900,
-                    'interval' => 'year',
-                    'description' => 'A full year of the smartest Bean, ad-free. Best value.',
-                    'badge' => 'Full Bean',
-                    'tier' => 'full_bean',
-                    'popular' => false,
-                ],
-            ],
+            'plans' => $plans,
+            'founders' => $foundersPayload,
             'stripe_configured' => $stripe->isConfigured(),
             'stripe_publishable_key' => $stripe->getPublishableKey(),
             'paypal_configured' => $paypal->isConfigured(),
