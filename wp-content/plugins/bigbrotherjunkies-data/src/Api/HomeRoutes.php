@@ -4,6 +4,7 @@ namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
 use BigBrotherJunkies\Data\FeedUpdates\FeedUpdateCreator;
+use BigBrotherJunkies\Data\FeedUpdates\ShowQuery;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 
 /**
@@ -62,6 +63,17 @@ class HomeRoutes
                     'default' => '',
                     'type' => 'string',
                     'enum' => ['', 'feed', 'show'],
+                ],
+                'show' => [
+                    'default' => '',
+                    'type' => 'string',
+                    // Wrapped: WP calls sanitize_callback as (value, $request, $key) — passing
+                    // sanitize_title directly makes $request land in its $fallback_title param,
+                    // and on the '' default sanitize_title('') falls back to it, returning the
+                    // WP_REST_Request object instead of a string.
+                    'sanitize_callback' => static function ($value) {
+                        return sanitize_title((string) $value);
+                    },
                 ],
             ],
         ]);
@@ -186,12 +198,21 @@ class HomeRoutes
     {
         global $wpdb;
 
+        // BB-only: exclude posts carrying a bbj_show term (raw SQL, so the
+        // ShowQuery::excludeAll() tax_query fragment can't be reused directly —
+        // this is its NOT EXISTS equivalent against the term tables).
         $rows = $wpdb->get_results(
             "SELECT post_name AS slug, post_modified_gmt AS modified
              FROM {$wpdb->posts}
              WHERE post_type = 'live-feed-updates'
                AND post_status = 'publish'
                AND post_name <> ''
+               AND NOT EXISTS (
+                   SELECT 1 FROM {$wpdb->term_relationships} tr
+                   INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                   WHERE tr.object_id = {$wpdb->posts}.ID
+                     AND tt.taxonomy = '" . ShowQuery::TAXONOMY . "'
+               )
              ORDER BY post_modified_gmt DESC",
             ARRAY_A
         );
@@ -322,6 +343,11 @@ class HomeRoutes
         // Need found_rows for accurate load-more pagination.
         $args['no_found_rows'] = false;
 
+        // Show isolation: '' = BB-only (default), 'any' = every show incl. BB,
+        // a slug = that show only. NOT EXISTS on bbj_show is what keeps ~14k
+        // legacy (untagged) posts classified as BB for free.
+        $args['tax_query'] = [ShowQuery::forParam((string) $request->get_param('show'))];
+
         $query = new \WP_Query($args);
 
         $updates = [];
@@ -392,6 +418,7 @@ class HomeRoutes
                 'recent_comments' => $formattedComments,
                 'thread' => LiveThreadState::threadSummaryForUpdate($postId),
                 'mode' => get_post_meta($postId, '_feed_update_mode', true) ?: 'feed',
+                'show' => ShowQuery::slugFor($postId),
                 'votes' => [
                     'total' => $totalVotes,
                     'user_vote' => $userVote,
@@ -451,6 +478,7 @@ class HomeRoutes
         $request->set_param('date_range', 'all');
         $request->set_param('search', '');
         $request->set_param('mode', '');
+        $request->set_param('show', ''); // BB-only — keeps show-tagged updates off the live poller
 
         $payload = $this->getFeedUpdates($request);
 
@@ -713,6 +741,7 @@ class HomeRoutes
         $listReq->set_param('per_page', 20);
         $listReq->set_param('offset', 0);
         $listReq->set_param('sort', 'newest');
+        $listReq->set_param('show', ''); // BB-only — keeps show-tagged updates off the BB hub
         $thread = $this->getFeedUpdates($listReq);
 
         $featured = $thread['updates'][0] ?? null;
@@ -1043,6 +1072,7 @@ class HomeRoutes
                     'day' => $date->format('j'),
                 ],
             ],
+            'tax_query' => [ShowQuery::excludeAll()], // BB-only
         ]);
 
         $updates = [];

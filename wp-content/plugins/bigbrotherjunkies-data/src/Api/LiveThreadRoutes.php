@@ -4,6 +4,7 @@ namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Comments\AvatarUploader;
 use BigBrotherJunkies\Data\FeedUpdates\FeedUpdateCreator;
+use BigBrotherJunkies\Data\FeedUpdates\ShowQuery;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 use WP_REST_Request;
@@ -184,6 +185,7 @@ class LiveThreadRoutes
             'orderby'        => 'date',
             'order'          => 'ASC',
             'date_query'     => [$dateQuery],
+            'tax_query'      => [ShowQuery::excludeAll()], // BB-only
         ]);
 
         $items = array_map([$this, 'serializeFeedUpdate'], $updates);
@@ -242,6 +244,7 @@ class LiveThreadRoutes
             'orderby'        => 'date',
             'order'          => 'ASC',
             'date_query'     => [$dateQuery],
+            'tax_query'      => [ShowQuery::excludeAll()], // BB-only
         ]);
 
         return new WP_REST_Response([
@@ -307,6 +310,7 @@ class LiveThreadRoutes
             'video'          => FeedUpdateCreator::videoField($update->ID),
             'comment_count'  => (int) get_comments_number($update),
             'mode'           => get_post_meta($update->ID, '_feed_update_mode', true) ?: 'feed',
+            'show'           => ShowQuery::slugFor($update->ID),
             'votes'          => [
                 'total'     => $totalVotes,
                 'user_vote' => $userVote,
