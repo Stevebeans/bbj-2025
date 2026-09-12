@@ -246,7 +246,7 @@ class StripeService
             return ['error' => 'User not found'];
         }
 
-        $sep = str_contains($successUrl, '?') ? '&' : '?';
+        $sep = strpos($successUrl, '?') !== false ? '&' : '?';
 
         $params = [
             'mode' => 'payment',
