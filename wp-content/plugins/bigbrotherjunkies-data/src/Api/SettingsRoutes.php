@@ -588,7 +588,7 @@ class SettingsRoutes
                     ],
                     [
                         'question' => 'What\'s the difference between plans?',
-                        'answer' => 'Monthly ($6.95/mo) and Season Pass ($35/yr) both give Supporter status. Lifetime ($99 one-time) gives permanent access and a special Lifetime badge.',
+                        'answer' => 'Monthly ($6.95/mo) and the All-Access Pass ($45/yr) both give Supporter status. Lifetime ($99 one-time) gives permanent access and a special Lifetime badge.',
                     ],
                     [
                         'question' => 'Can I upgrade from Monthly to Lifetime?',
