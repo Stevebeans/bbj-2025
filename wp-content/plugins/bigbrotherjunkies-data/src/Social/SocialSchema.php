@@ -50,11 +50,13 @@ class SocialSchema
             reposts INT(10) UNSIGNED NOT NULL DEFAULT 0,
             replies INT(10) UNSIGNED NOT NULL DEFAULT 0,
             quotes INT(10) UNSIGNED NOT NULL DEFAULT 0,
+            show_slug VARCHAR(32) NOT NULL DEFAULT '',
             PRIMARY KEY (id),
             UNIQUE KEY uniq_uri (uri),
             KEY idx_source_posted (source, posted_at),
             KEY idx_summarized (summarized),
-            KEY idx_posted (posted_at)
+            KEY idx_posted (posted_at),
+            KEY idx_show (show_slug)
         ) " . self::charset() . ";";
     }
 

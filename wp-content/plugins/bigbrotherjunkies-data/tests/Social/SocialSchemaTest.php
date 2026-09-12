@@ -31,7 +31,7 @@ class SocialSchemaTest extends TestCase
         }
         $this->assertStringContainsString('KEY idx_player (player_id)', $sql);
         $this->assertStringContainsString('KEY idx_season_day (season_id, said_on)', $sql);
-        $this->assertSame('1.3.0', SocialStore::DB_VERSION);
+        $this->assertSame('1.4.0', SocialStore::DB_VERSION);
     }
 
     public function test_posts_schema_has_engagement_columns_and_index(): void
@@ -41,5 +41,12 @@ class SocialSchemaTest extends TestCase
             $this->assertStringContainsString("{$col} INT(10) UNSIGNED NOT NULL DEFAULT 0", $sql);
         }
         $this->assertStringContainsString('KEY idx_posted (posted_at)', $sql);
+    }
+
+    public function test_posts_schema_has_show_slug_column_and_index(): void
+    {
+        $sql = SocialSchema::getAllSchemas()[SocialSchema::TABLE_POSTS];
+        $this->assertStringContainsString("show_slug VARCHAR(32) NOT NULL DEFAULT ''", $sql);
+        $this->assertStringContainsString('KEY idx_show (show_slug)', $sql);
     }
 }

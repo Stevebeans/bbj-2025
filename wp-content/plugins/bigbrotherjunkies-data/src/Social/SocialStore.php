@@ -19,7 +19,7 @@ class SocialStore
 {
     public const OPTION            = 'bbjd_social_monitor';
     public const DB_VERSION_OPTION = 'bbj_social_db_version';
-    public const DB_VERSION        = '1.3.0';
+    public const DB_VERSION        = '1.4.0';
 
     /** Action Scheduler recurring hook + group for the poller. */
     public const POLL_HOOK = 'bbjd_social_poll';
@@ -51,6 +51,10 @@ class SocialStore
         'queue_spacing_minutes' => 20,
         // "Nick = Real Name" lines mapping community nicknames to houseguests.
         'fan_nicknames'         => [],
+        // Per-show Bluesky sources beyond the default BB tag/handles above
+        // (Survivor first). Each row: {show, tag, handles[]}. Polled by the
+        // same global schedule; see poll().
+        'show_sources'          => [],
     ];
 
     // -----------------------------------------------------------------------
@@ -136,9 +140,46 @@ class SocialStore
         if (array_key_exists('fan_nicknames', $patch)) {
             $current['fan_nicknames'] = self::normalizeFanNicknames($patch['fan_nicknames']);
         }
+        if (array_key_exists('show_sources', $patch)) {
+            $current['show_sources'] = self::normalizeShowSources($patch['show_sources']);
+        }
 
         update_option(self::OPTION, $current);
         return $current;
+    }
+
+    /**
+     * Whitelist + sanitize per-show Bluesky sources (Survivor, etc). Each row
+     * needs a non-empty `show` slug (sanitize_title); `tag`/`handles` reuse
+     * the same normalizers as the default BB fields. Max 5 sources.
+     *
+     * @param mixed $rows
+     * @return array<int,array{show:string,tag:string,handles:string[]}>
+     */
+    private static function normalizeShowSources($rows): array
+    {
+        if (!is_array($rows)) {
+            return [];
+        }
+        $out = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $show = sanitize_title((string) ($row['show'] ?? ''));
+            if ($show === '') {
+                continue;
+            }
+            $out[] = [
+                'show'    => $show,
+                'tag'     => self::normalizeTag((string) ($row['tag'] ?? '')),
+                'handles' => self::normalizeHandles($row['handles'] ?? []),
+            ];
+            if (count($out) >= 5) {
+                break;
+            }
+        }
+        return $out;
     }
 
     /**
@@ -287,9 +328,15 @@ class SocialStore
      * 'trusted' upgrades an existing 'tag' row (trusted wins); otherwise the
      * existing row is left untouched.
      *
+     * $show tags the row's show_slug ('' = BB, the default for every existing
+     * caller). Note: uniq_uri means a post seen by both the BB config and a
+     * show config (e.g. a shared tag/handle) keeps its FIRST attribution on a
+     * duplicate uri - the ON DUPLICATE KEY branch below never touches
+     * show_slug, so a later poll can't reclassify an already-stored post.
+     *
      * @return int number of rows actually inserted (updates not counted)
      */
-    public static function insertPosts(array $rows, string $source): int
+    public static function insertPosts(array $rows, string $source, string $show = ''): int
     {
         global $wpdb;
 
@@ -306,8 +353,8 @@ class SocialStore
             $result = $wpdb->query($wpdb->prepare(
                 "INSERT INTO {$table}
                     (source, uri, cid, handle, display_name, text, posted_at, fetched_at, summarized,
-                     likes, reposts, replies, quotes)
-                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %d, %d, %d, %d)
+                     likes, reposts, replies, quotes, show_slug)
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %d, %d, %d, %d, %s)
                  ON DUPLICATE KEY UPDATE
                     source  = IF(VALUES(source) = 'trusted', 'trusted', source),
                     likes   = VALUES(likes),
@@ -325,7 +372,8 @@ class SocialStore
                 (int) ($row['likes'] ?? 0),
                 (int) ($row['reposts'] ?? 0),
                 (int) ($row['replies'] ?? 0),
-                (int) ($row['quotes'] ?? 0)
+                (int) ($row['quotes'] ?? 0),
+                $show
             ));
 
             // 1 = fresh insert, 2 = existing row updated (source upgrade or count refresh), 0 = identical duplicate. Only 1 is new.
@@ -392,6 +440,41 @@ class SocialStore
             $result['errors'][] = $msg;
         }
 
+        // Per-show sources (Survivor, etc): same trusted-handles + tag-search
+        // shape as the BB loop above, tagged with the show's slug. Polling
+        // cadence stays global - this just grows the one poll() run.
+        foreach ((array) $settings['show_sources'] as $src) {
+            $show = (string) $src['show'];
+            foreach ((array) $src['handles'] as $handle) {
+                try {
+                    $feed = BlueskyReader::authorFeed((string) $handle);
+                    $result['trusted'] += self::insertPosts($feed['rows'], 'trusted', $show);
+                    if ($feed['error'] !== null) {
+                        $result['errors'][] = $show . '/' . $handle . ': ' . $feed['error'];
+                    }
+                } catch (\Throwable $e) {
+                    $msg = $show . '/' . $handle . ': ' . $e->getMessage();
+                    error_log('[BBJ Social] poll ' . $msg);
+                    $result['errors'][] = $msg;
+                }
+            }
+
+            $tag = (string) $src['tag'];
+            if ($tag !== '') {
+                try {
+                    $feed = BlueskyReader::search($tag);
+                    $result['tag'] += self::insertPosts($feed['rows'], 'tag', $show);
+                    if ($feed['error'] !== null) {
+                        $result['errors'][] = $show . '/tag: ' . $feed['error'];
+                    }
+                } catch (\Throwable $e) {
+                    $msg = $show . '/tag: ' . $e->getMessage();
+                    error_log('[BBJ Social] poll ' . $msg);
+                    $result['errors'][] = $msg;
+                }
+            }
+        }
+
         $result['pruned'] = self::prune();
 
         return $result;
@@ -417,7 +500,7 @@ class SocialStore
     /**
      * Paged post list for the admin UI, newest first.
      *
-     * @param array{source?:?string,search?:?string,page?:int,per_page?:int} $args
+     * @param array{source?:?string,search?:?string,show?:?string,page?:int,per_page?:int} $args
      * @return array{items:array<int,array<string,mixed>>,total:int}
      */
     public static function posts(array $args): array
@@ -427,6 +510,7 @@ class SocialStore
 
         $source  = $args['source'] ?? null;
         $search  = $args['search'] ?? null;
+        $show    = $args['show'] ?? null;
         $page    = max(1, (int) ($args['page'] ?? 1));
         $perPage = (int) ($args['per_page'] ?? 50);
         if ($perPage <= 0) {
@@ -444,6 +528,10 @@ class SocialStore
         if (is_string($search) && trim($search) !== '') {
             $where[]  = 'text LIKE %s';
             $params[] = '%' . $wpdb->esc_like(trim($search)) . '%';
+        }
+        if (is_string($show)) {
+            $where[]  = 'show_slug = %s';
+            $params[] = $show;
         }
         $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
@@ -680,9 +768,12 @@ class SocialStore
      * downweighted to 30% so episode-reaction spikes don't bury feed intel;
      * we fetch 3x the limit by raw score, re-rank, then slice.
      *
+     * $show filters to one show's posts ('' = BB, the default; matches
+     * show_slug exactly, so a Survivor board never mixes in BB rows).
+     *
      * @return array<int,array<string,mixed>>
      */
-    public static function topPosts(int $hours, int $limit): array
+    public static function topPosts(int $hours, int $limit, string $show = ''): array
     {
         global $wpdb;
         $table  = SocialSchema::table(SocialSchema::TABLE_POSTS);
@@ -692,9 +783,10 @@ class SocialStore
 
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT *, (likes + 2 * reposts) AS score FROM {$table}
-              WHERE posted_at >= %s
+              WHERE posted_at >= %s AND show_slug = %s
               ORDER BY score DESC, posted_at DESC LIMIT %d",
             $cutoff,
+            $show,
             $limit * 3
         ), ARRAY_A) ?: [];
 

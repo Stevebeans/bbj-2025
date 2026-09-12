@@ -116,6 +116,8 @@ class SocialRoutes
                 'hours' => ['type' => 'integer', 'default' => 24, 'sanitize_callback' => 'absint'],
                 'limit' => ['type' => 'integer', 'default' => 25, 'sanitize_callback' => 'absint'],
                 'sort'  => ['type' => 'string', 'default' => 'top', 'sanitize_callback' => 'sanitize_text_field'],
+                // '' = BB (default), or a show slug (e.g. 'survivor').
+                'show'  => ['type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_title'],
             ],
         ]);
 
@@ -306,9 +308,10 @@ class SocialRoutes
     public function getTopPosts(WP_REST_Request $request): WP_REST_Response
     {
         $limit = (int) $request->get_param('limit');
+        $show  = (string) $request->get_param('show');
         $posts = $request->get_param('sort') === 'trending'
             ? SocialStore::trendingPosts($limit)
-            : SocialStore::topPosts((int) $request->get_param('hours'), $limit);
+            : SocialStore::topPosts((int) $request->get_param('hours'), $limit, $show);
         foreach ($posts as &$p) {
             $p['text']         = html_entity_decode((string) $p['text'], ENT_QUOTES, 'UTF-8');
             $p['display_name'] = html_entity_decode((string) $p['display_name'], ENT_QUOTES, 'UTF-8');
