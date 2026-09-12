@@ -303,12 +303,18 @@ class SubscriptionManager
     /**
      * The same guard, aware of what the member is trying to buy.
      *
-     * Founders decision (2026-09-12): a MONTHLY member may buy Lifetime
-     * mid-cycle. Completing that purchase cancels the monthly subscription
-     * (see supersedeWithLifetime()), so the running plan is not a blocker for
-     * that one target. Annual members stay blocked until the proration
-     * question is decided, and an existing lifetime row always blocks.
-     * Every other target behaves exactly as before.
+     * Founders decision (2026-09-12): a SUPPORTER MONTHLY member may buy
+     * Lifetime mid-cycle. Completing that purchase cancels the monthly
+     * subscription (see supersedeWithLifetime()), so the running plan is not a
+     * blocker for that one target.
+     *
+     * The tier check is load-bearing, not decoration: `full_bean_monthly`
+     * resolves to the same plan_type 'monthly', and Lifetime is a
+     * supporter-tier product. Letting a Full Bean member through would take
+     * $99, cancel their $14.99/mo plan and strip the full_bean role - a paid
+     * downgrade. Full Bean members of either interval stay blocked, as do
+     * annual members (proration is a separate decision) and anyone who
+     * already holds a lifetime row. Every other target is unchanged.
      */
     public function hasBlockingSubscriptionFor(int $userId, string $targetPlan = ''): bool
     {
@@ -320,7 +326,8 @@ class SubscriptionManager
 
         if ($targetPlan === 'lifetime'
             && ($sub['status'] ?? '') === 'active'
-            && ($sub['plan_type'] ?? '') === 'monthly') {
+            && ($sub['plan_type'] ?? '') === 'monthly'
+            && ($sub['tier'] ?? 'supporter') === 'supporter') {
             return false;
         }
 
@@ -332,6 +339,11 @@ class SubscriptionManager
     {
         if ($targetPlan === 'lifetime') {
             $sub = $this->getActiveSubscription($userId);
+
+            if (($sub['tier'] ?? 'supporter') === 'full_bean') {
+                return "Lifetime doesn't include Full Bean. Message Steve if you want to switch.";
+            }
+
             if (($sub['plan_type'] ?? '') === 'annual') {
                 return "You're on an annual plan. Lifetime upgrades for annual members are coming.";
             }
@@ -341,25 +353,32 @@ class SubscriptionManager
     }
 
     /**
-     * The member's live recurring row - never a lifetime row, and optionally
-     * ignoring one id (the lifetime row that was just created).
+     * The member's live recurring row - never a lifetime row, optionally
+     * ignoring one id (the lifetime row that was just created) and optionally
+     * restricted to one tier.
+     *
+     * @param string $tier '' for any tier, or 'supporter' / 'full_bean'.
      */
-    public function getActiveRecurringSubscription(int $userId, int $excludeId = 0): ?array
+    public function getActiveRecurringSubscription(int $userId, int $excludeId = 0, string $tier = ''): ?array
     {
         global $wpdb;
         $table = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
 
-        $row = $wpdb->get_row($wpdb->prepare(
-            "SELECT * FROM {$table}
+        $sql = "SELECT * FROM {$table}
              WHERE user_id = %d
                AND status = 'active'
                AND plan_type <> 'lifetime'
-               AND id <> %d
-             ORDER BY created_at DESC
-             LIMIT 1",
-            $userId,
-            $excludeId
-        ), ARRAY_A);
+               AND id <> %d";
+        $args = [$userId, $excludeId];
+
+        if ($tier !== '') {
+            $sql .= " AND tier = %s";
+            $args[] = $tier;
+        }
+
+        $sql .= " ORDER BY created_at DESC LIMIT 1";
+
+        $row = $wpdb->get_row($wpdb->prepare($sql, $args), ARRAY_A);
 
         return $row ?: null;
     }
@@ -380,7 +399,10 @@ class SubscriptionManager
      */
     public function supersedeWithLifetime(int $userId, int $newLifetimeRowId = 0): bool
     {
-        $old = $this->getActiveRecurringSubscription($userId, $newLifetimeRowId);
+        // Supporter tier only, belt to hasBlockingSubscriptionFor()'s braces:
+        // even if a Full Bean member reached a Lifetime completion somehow,
+        // their $14.99/mo plan is never the thing this cancels.
+        $old = $this->getActiveRecurringSubscription($userId, $newLifetimeRowId, 'supporter');
 
         if (!$old) {
             return false;
@@ -391,7 +413,15 @@ class SubscriptionManager
             ? (string) ($old['paypal_subscription_id'] ?? '')
             : (string) ($old['stripe_subscription_id'] ?? '');
 
-        $result = $this->cancelAtProcessor($old, true);
+        // Offline escape hatch for scripts/founders-money-verify.php ONLY, so
+        // it can exercise this branch without calling Stripe or PayPal. It
+        // lives here rather than in cancelAtProcessor() on purpose: the shared
+        // helper is also what member-facing cancellation uses, and a filter
+        // that silently skips the processor there would tell a member they had
+        // cancelled while the charges kept coming.
+        $result = apply_filters('bbjd_billing_skip_processor_cancel_for_verify', false, $old)
+            ? ['success' => true, 'message' => 'Processor cancel skipped (verify only)']
+            : $this->cancelAtProcessor($old, true);
 
         if (isset($result['error'])) {
             error_log(
@@ -421,18 +451,14 @@ class SubscriptionManager
      * $immediate only means anything to Stripe. PayPal's cancel always stops
      * future billing at once; the caller decides what the local row does.
      *
+     * No bypass filter lives here by design - member-facing cancellation runs
+     * through this method and must always reach the processor.
+     *
      * @return array ['success' => true, ...] or ['error' => string]
      */
     private function cancelAtProcessor(array $subscription, bool $immediate): array
     {
         $processor = $subscription['processor'] ?? '';
-
-        // Escape hatch for offline verification, matching the price guard's
-        // bbjd_billing_skip_price_verification. Default false; only a
-        // deliberate add_filter() in a test harness turns it on.
-        if (apply_filters('bbjd_billing_skip_processor_cancel', false, $subscription, $immediate)) {
-            return ['success' => true, 'message' => 'Processor cancel skipped by filter'];
-        }
 
         if ($processor === 'stripe' && !empty($subscription['stripe_subscription_id'])) {
             $stripe = new StripeService();

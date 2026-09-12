@@ -67,24 +67,45 @@ class FoundingBadge
      * repeat run is inert.
      *
      * Mirrors qualifiesForPlan(): any live annual subscription (either tier)
-     * or any lifetime row.
+     * or any lifetime row. Also covers legacy Lifetime members, who hold the
+     * `lifetime` role and have no bbj_subscriptions row at all because they
+     * predate this billing system - they are the longest-standing members on
+     * the site, so missing them would be exactly the wrong way round.
      *
+     * @param array|null $limitToUserIds VERIFICATION ONLY. Null (the
+     *        production path) means every qualifying member. A list of ids
+     *        narrows the grant to those users, so the local verify script can
+     *        exercise this against a prod clone without badge-stamping real
+     *        members.
      * @return int badges actually granted
      */
-    public static function backfillExisting(): int
+    public static function backfillExisting(?array $limitToUserIds = null): int
     {
         global $wpdb;
         $table = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
 
-        $userIds = (array) $wpdb->get_col(
+        $fromRows = (array) $wpdb->get_col(
             "SELECT DISTINCT user_id FROM {$table}
               WHERE (plan_type = 'annual' AND status = 'active')
                  OR (plan_type = 'lifetime' AND status = 'lifetime')"
         );
 
+        // count_total => false drops the SQL_CALC_FOUND_ROWS pass, which is
+        // the whole cost of this query at 55k users (measured: 407ms -> 0ms).
+        $fromRole = (array) get_users([
+            'role'        => 'lifetime',
+            'fields'      => 'ID',
+            'count_total' => false,
+        ]);
+
+        $candidates = array_unique(array_map('intval', array_merge($fromRows, $fromRole)));
+
+        if ($limitToUserIds !== null) {
+            $candidates = array_intersect($candidates, array_map('intval', $limitToUserIds));
+        }
+
         $granted = 0;
-        foreach ($userIds as $rawId) {
-            $userId = (int) $rawId;
+        foreach ($candidates as $userId) {
             if ($userId <= 0 || self::has($userId)) {
                 continue;
             }
