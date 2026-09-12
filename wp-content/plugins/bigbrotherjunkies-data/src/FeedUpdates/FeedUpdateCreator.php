@@ -142,14 +142,15 @@ class FeedUpdateCreator
         // See $pendingShow docblock: belt-and-suspenders for the tax_input
         // path above - transition_post_status fires synchronously inside
         // wp_insert_post(), so this covers any timing edge the tax_input
-        // ordering doesn't (e.g. term-cache priming).
+        // ordering doesn't (e.g. term-cache priming). try/finally so an
+        // exception out of wp_insert_post() can't leave this set for the
+        // next update created in the same PHP process (wp-cli batches, the
+        // Bean Bot loop).
         self::$pendingShow = $show;
-        $postId = wp_insert_post($postArgs);
-        self::$pendingShow = '';
-
-        if ($viaDraft && !is_wp_error($postId) && $postId) {
-            wp_set_object_terms($postId, $show, 'bbj_show', false);
-            wp_update_post(['ID' => $postId, 'post_status' => 'publish']);
+        try {
+            $postId = wp_insert_post($postArgs);
+        } finally {
+            self::$pendingShow = '';
         }
 
         // wp_insert_post can also fail with 0 (e.g. rejected INSERT) — bail
@@ -166,6 +167,29 @@ class FeedUpdateCreator
                 'social_results' => $socialResults,
                 'image_error'    => null,
             ];
+        }
+
+        if ($viaDraft) {
+            wp_set_object_terms($postId, $show, 'bbj_show', false);
+            // $wp_error=true so a failed publish comes back as WP_Error
+            // instead of silently returning 0 - a show update that fails to
+            // leave 'draft' must fail the whole create() call BEFORE any
+            // cross-posting or cache clearing, not sit around unpublished
+            // while the caller believes it succeeded.
+            $published = wp_update_post(['ID' => $postId, 'post_status' => 'publish'], true);
+            if (is_wp_error($published) || !$published) {
+                $publishError = is_wp_error($published) ? $published->get_error_message() : 'wp_update_post returned 0';
+                error_log('[BBJ Feed] show update publish failed for post ' . $postId . ': ' . $publishError);
+                wp_delete_post($postId, true);
+                return [
+                    'success'        => false,
+                    'post_id'        => null,
+                    'bluesky'        => $socialResults['bluesky'],
+                    'message'        => 'Could not publish the show update: ' . $publishError,
+                    'social_results' => $socialResults,
+                    'image_error'    => null,
+                ];
+            }
         }
 
         // Handle image: a freshly-uploaded file (composer) or a pre-existing
