@@ -592,7 +592,7 @@ class SettingsRoutes
                     ],
                     [
                         'question' => 'Can I upgrade from Monthly to Lifetime?',
-                        'answer' => 'Yes! Just purchase the Lifetime plan and your monthly subscription will be cancelled automatically.',
+                        'answer' => 'Yes, while the founding window is open. Buy the Lifetime plan and your monthly subscription is cancelled automatically. On an annual plan? Lifetime upgrades for annual members are coming, so reach out and we\'ll sort you out.',
                     ],
                     [
                         'question' => 'Can I change my username?',

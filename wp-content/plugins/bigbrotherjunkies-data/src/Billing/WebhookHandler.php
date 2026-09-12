@@ -110,10 +110,21 @@ class WebhookHandler
             return ['error' => 'Invalid plan type', 'status' => 400];
         }
 
+        $isLifetimePurchase = ($planConfig['plan_type'] ?? '') === 'lifetime';
+        $supersedeRecurring = false;
+
         // Check if user already has an active subscription
         if ($this->subscriptionManager->hasActiveSubscription($userId)) {
-            error_log("BBJ Billing: User {$userId} already has active subscription");
-            return ['success' => true, 'message' => 'User already has active subscription'];
+            // One exception: a completed Lifetime purchase is allowed to
+            // supersede a running monthly plan, which is what the checkout
+            // guard let through. Same predicate, so the two agree.
+            if (!$isLifetimePurchase
+                || $this->subscriptionManager->hasBlockingSubscriptionFor($userId, 'lifetime')) {
+                error_log("BBJ Billing: User {$userId} already has active subscription");
+                return ['success' => true, 'message' => 'User already has active subscription'];
+            }
+
+            $supersedeRecurring = true;
         }
 
         $subscriptionData = [
@@ -156,6 +167,10 @@ class WebhookHandler
         $subscriptionId = $this->subscriptionManager->createSubscription($subscriptionData);
 
         if ($subscriptionId) {
+            if ($supersedeRecurring) {
+                $this->subscriptionManager->supersedeWithLifetime($userId, (int) $subscriptionId);
+            }
+
             error_log("BBJ Billing: Created subscription {$subscriptionId} for user {$userId}");
             return ['success' => true, 'subscription_id' => $subscriptionId];
         }

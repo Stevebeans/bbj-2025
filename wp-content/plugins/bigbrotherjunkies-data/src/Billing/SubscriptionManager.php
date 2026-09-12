@@ -142,8 +142,7 @@ class SubscriptionManager
             // Founders window: All-Access and Lifetime include the Founding Junkie badge.
             FoundingBadge::maybeGrantForPlan(
                 (int) $insertData['user_id'],
-                (string) ($insertData['plan_type'] ?? ''),
-                (string) ($insertData['tier'] ?? 'supporter')
+                (string) ($insertData['plan_type'] ?? '')
             );
 
             // Assign role to user
@@ -298,8 +297,156 @@ class SubscriptionManager
      */
     public function hasBlockingSubscription(int $userId): bool
     {
+        return $this->hasBlockingSubscriptionFor($userId, '');
+    }
+
+    /**
+     * The same guard, aware of what the member is trying to buy.
+     *
+     * Founders decision (2026-09-12): a MONTHLY member may buy Lifetime
+     * mid-cycle. Completing that purchase cancels the monthly subscription
+     * (see supersedeWithLifetime()), so the running plan is not a blocker for
+     * that one target. Annual members stay blocked until the proration
+     * question is decided, and an existing lifetime row always blocks.
+     * Every other target behaves exactly as before.
+     */
+    public function hasBlockingSubscriptionFor(int $userId, string $targetPlan = ''): bool
+    {
         $sub = $this->getActiveSubscription($userId);
-        return $sub !== null && empty($sub['cancel_at_period_end']);
+
+        if ($sub === null || !empty($sub['cancel_at_period_end'])) {
+            return false;
+        }
+
+        if ($targetPlan === 'lifetime'
+            && ($sub['status'] ?? '') === 'active'
+            && ($sub['plan_type'] ?? '') === 'monthly') {
+            return false;
+        }
+
+        return true;
+    }
+
+    /** What to tell the member when hasBlockingSubscriptionFor() refuses. */
+    public function blockingMessageFor(int $userId, string $targetPlan = ''): string
+    {
+        if ($targetPlan === 'lifetime') {
+            $sub = $this->getActiveSubscription($userId);
+            if (($sub['plan_type'] ?? '') === 'annual') {
+                return "You're on an annual plan. Lifetime upgrades for annual members are coming.";
+            }
+        }
+
+        return 'You already have an active subscription';
+    }
+
+    /**
+     * The member's live recurring row - never a lifetime row, and optionally
+     * ignoring one id (the lifetime row that was just created).
+     */
+    public function getActiveRecurringSubscription(int $userId, int $excludeId = 0): ?array
+    {
+        global $wpdb;
+        $table = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
+
+        $row = $wpdb->get_row($wpdb->prepare(
+            "SELECT * FROM {$table}
+             WHERE user_id = %d
+               AND status = 'active'
+               AND plan_type <> 'lifetime'
+               AND id <> %d
+             ORDER BY created_at DESC
+             LIMIT 1",
+            $userId,
+            $excludeId
+        ), ARRAY_A);
+
+        return $row ?: null;
+    }
+
+    /**
+     * A completed Lifetime purchase supersedes the member's running recurring
+     * plan: stop the billing at the processor and close the row, so nobody
+     * pays monthly for something they now own outright.
+     *
+     * Called AFTER the lifetime row exists, deliberately: the role-removal
+     * guard inside updateSubscriptionStatus() then sees the live lifetime row
+     * and leaves the member's roles alone.
+     *
+     * Never fatal. The member has already paid; a processor failure closes the
+     * row locally and shouts in the log so the charge can be killed by hand.
+     *
+     * @return bool true when a recurring row was found and closed.
+     */
+    public function supersedeWithLifetime(int $userId, int $newLifetimeRowId = 0): bool
+    {
+        $old = $this->getActiveRecurringSubscription($userId, $newLifetimeRowId);
+
+        if (!$old) {
+            return false;
+        }
+
+        $processor = (string) $old['processor'];
+        $externalId = $processor === 'paypal'
+            ? (string) ($old['paypal_subscription_id'] ?? '')
+            : (string) ($old['stripe_subscription_id'] ?? '');
+
+        $result = $this->cancelAtProcessor($old, true);
+
+        if (isset($result['error'])) {
+            error_log(
+                'BBJ Billing: lifetime upgrade - FAILED to cancel ' . $processor . ' sub '
+                . ($externalId === '' ? '(none stored)' : $externalId) . ' for user ' . $userId
+                . ': ' . $result['error'] . ' - CANCEL IT MANUALLY'
+            );
+        } else {
+            error_log(
+                'BBJ Billing: lifetime upgrade - cancelled monthly ' . $processor . ' sub '
+                . $externalId . ' for user ' . $userId
+            );
+        }
+
+        $this->updateSubscriptionStatus((int) $old['id'], 'canceled', [
+            'canceled_at' => current_time('mysql'),
+        ]);
+
+        return true;
+    }
+
+    /**
+     * Stop future billing for one row at its processor. Shared by
+     * cancelSubscription() and supersedeWithLifetime() so the processor
+     * plumbing lives in exactly one place.
+     *
+     * $immediate only means anything to Stripe. PayPal's cancel always stops
+     * future billing at once; the caller decides what the local row does.
+     *
+     * @return array ['success' => true, ...] or ['error' => string]
+     */
+    private function cancelAtProcessor(array $subscription, bool $immediate): array
+    {
+        $processor = $subscription['processor'] ?? '';
+
+        // Escape hatch for offline verification, matching the price guard's
+        // bbjd_billing_skip_price_verification. Default false; only a
+        // deliberate add_filter() in a test harness turns it on.
+        if (apply_filters('bbjd_billing_skip_processor_cancel', false, $subscription, $immediate)) {
+            return ['success' => true, 'message' => 'Processor cancel skipped by filter'];
+        }
+
+        if ($processor === 'stripe' && !empty($subscription['stripe_subscription_id'])) {
+            $stripe = new StripeService();
+            return $immediate
+                ? $stripe->cancelSubscriptionImmediately($subscription['stripe_subscription_id'])
+                : $stripe->cancelSubscription($subscription['stripe_subscription_id']);
+        }
+
+        if ($processor === 'paypal' && !empty($subscription['paypal_subscription_id'])) {
+            $paypal = new PayPalService();
+            return $paypal->cancelSubscription($subscription['paypal_subscription_id']);
+        }
+
+        return ['error' => 'Unknown subscription processor'];
     }
 
     /**
@@ -317,69 +464,46 @@ class SubscriptionManager
             return ['error' => 'Lifetime subscriptions cannot be canceled'];
         }
 
-        if ($subscription['processor'] === 'stripe' && $subscription['stripe_subscription_id']) {
-            $stripe = new StripeService();
+        $isStripe = $subscription['processor'] === 'stripe' && $subscription['stripe_subscription_id'];
+        $isPayPal = $subscription['processor'] === 'paypal' && $subscription['paypal_subscription_id'];
 
-            if ($immediate) {
-                $result = $stripe->cancelSubscriptionImmediately($subscription['stripe_subscription_id']);
+        if (!$isStripe && !$isPayPal) {
+            return ['error' => 'Unknown subscription processor'];
+        }
 
-                if (isset($result['error'])) {
-                    return $result;
-                }
+        // Only Stripe honours the immediate/period-end distinction; PayPal's
+        // cancel always stops future billing at once.
+        $result = $this->cancelAtProcessor($subscription, $immediate && $isStripe);
 
-                $this->updateSubscriptionStatus($subscription['id'], 'canceled', [
-                    'canceled_at' => current_time('mysql'),
-                ]);
+        if (isset($result['error'])) {
+            return $result;
+        }
 
-                return [
-                    'success' => true,
-                    'message' => 'Subscription has been canceled immediately',
-                ];
-            }
-
-            $result = $stripe->cancelSubscription($subscription['stripe_subscription_id']);
-
-            if (isset($result['error'])) {
-                return $result;
-            }
-
-            $this->updateSubscriptionStatus($subscription['id'], 'active', [
-                'cancel_at_period_end' => 1,
+        if ($isStripe && $immediate) {
+            $this->updateSubscriptionStatus($subscription['id'], 'canceled', [
                 'canceled_at' => current_time('mysql'),
             ]);
 
             return [
                 'success' => true,
-                'message' => 'Subscription will be canceled at the end of the billing period',
-                'cancel_at' => $subscription['current_period_end'],
+                'message' => 'Subscription has been canceled immediately',
             ];
         }
 
-        if ($subscription['processor'] === 'paypal' && $subscription['paypal_subscription_id']) {
-            $paypal = new PayPalService();
-            $result = $paypal->cancelSubscription($subscription['paypal_subscription_id']);
+        // PayPal stops future billing immediately, but the member already
+        // paid through current_period_end — keep access until then, like
+        // Stripe and the FAQ promise. BillingExpiryCron flips the row to
+        // 'expired' (removing the role) once the period lapses.
+        $this->updateSubscriptionStatus($subscription['id'], 'active', [
+            'cancel_at_period_end' => 1,
+            'canceled_at' => current_time('mysql'),
+        ]);
 
-            if (isset($result['error'])) {
-                return $result;
-            }
-
-            // PayPal stops future billing immediately, but the member already
-            // paid through current_period_end — keep access until then, like
-            // Stripe and the FAQ promise. BillingExpiryCron flips the row to
-            // 'expired' (removing the role) once the period lapses.
-            $this->updateSubscriptionStatus($subscription['id'], 'active', [
-                'cancel_at_period_end' => 1,
-                'canceled_at' => current_time('mysql'),
-            ]);
-
-            return [
-                'success' => true,
-                'message' => 'Subscription will be canceled at the end of the billing period',
-                'cancel_at' => $subscription['current_period_end'],
-            ];
-        }
-
-        return ['error' => 'Unknown subscription processor'];
+        return [
+            'success' => true,
+            'message' => 'Subscription will be canceled at the end of the billing period',
+            'cancel_at' => $subscription['current_period_end'],
+        ];
     }
 
     /**
@@ -454,7 +578,7 @@ class SubscriptionManager
 
         // A switch INTO All-Access during the window buys the same thing a
         // fresh All-Access checkout buys, badge included. Same rule, one place.
-        FoundingBadge::maybeGrantForPlan($userId, $target['plan_type'], $target['tier']);
+        FoundingBadge::maybeGrantForPlan($userId, $target['plan_type']);
 
         return [
             'success' => true,

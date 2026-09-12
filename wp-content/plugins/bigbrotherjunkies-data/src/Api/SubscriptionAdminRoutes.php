@@ -131,6 +131,7 @@ class SubscriptionAdminRoutes
     {
         $patch = (array) $request->get_json_params();
         $settings = FoundersWindow::settings();
+        $wasEnabled = !empty($settings['enabled']);
 
         if (array_key_exists('enabled', $patch)) {
             $settings['enabled'] = filter_var($patch['enabled'], FILTER_VALIDATE_BOOLEAN);
@@ -162,7 +163,16 @@ class SubscriptionAdminRoutes
 
         update_option(FoundersWindow::OPTION, $settings);
 
-        return new \WP_REST_Response(self::foundersPayload());
+        // Opening the window retroactively includes the members who already
+        // bought a qualifying plan. Only on the closed->open edge, never on an
+        // ordinary save (cap tweak, date change) - the backfill walks every
+        // annual and lifetime row.
+        $backfilled = 0;
+        if (!$wasEnabled && $settings['enabled']) {
+            $backfilled = FoundingBadge::backfillExisting();
+        }
+
+        return new \WP_REST_Response(array_merge(self::foundersPayload(), ['backfilled' => $backfilled]));
     }
 
     /** Shared GET/POST response shape for /admin/founders. */

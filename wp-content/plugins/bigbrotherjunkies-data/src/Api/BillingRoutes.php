@@ -298,12 +298,14 @@ class BillingRoutes
             }
         }
 
-        // Check if user already has active subscription
+        // Check if user already has active subscription. Target-aware: a
+        // monthly member may buy Lifetime during the founding window, and the
+        // completion path cancels their monthly plan.
         $manager = SubscriptionManager::getInstance();
-        if ($manager->hasBlockingSubscription($userId)) {
+        if ($manager->hasBlockingSubscriptionFor($userId, $planType)) {
             return new \WP_REST_Response([
                 'success' => false,
-                'message' => 'You already have an active subscription',
+                'message' => $manager->blockingMessageFor($userId, $planType),
             ], 400);
         }
 
@@ -359,10 +361,10 @@ class BillingRoutes
         }
 
         $manager = SubscriptionManager::getInstance();
-        if ($manager->hasBlockingSubscription($userId)) {
+        if ($manager->hasBlockingSubscriptionFor($userId, 'lifetime')) {
             return new \WP_REST_Response([
                 'success' => false,
-                'message' => 'You already have an active subscription',
+                'message' => $manager->blockingMessageFor($userId, 'lifetime'),
             ], 400);
         }
 
@@ -433,6 +435,13 @@ class BillingRoutes
                 'amount_cents' => 9900,
                 'currency' => 'USD',
             ]);
+
+            // Lifetime supersedes a running monthly plan: stop the recurring
+            // charge now that they own it outright. After the row exists, so
+            // the role guard sees the live lifetime row.
+            if ($subscriptionId) {
+                $manager->supersedeWithLifetime((int) $result['wp_user_id'], (int) $subscriptionId);
+            }
 
             return new \WP_REST_Response([
                 'success' => true,
