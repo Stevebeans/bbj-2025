@@ -126,13 +126,19 @@ class BillingRoutes
                     'description' => 'Cancel anytime',
                     'badge' => 'Supporter',
                     'tier' => 'supporter',
+                    'popular' => false,
+                ],
+                [
+                    'id' => 'annual',
+                    'name' => 'All-Access Pass',
+                    'price' => '$45',
+                    'price_cents' => 4500,
+                    'interval' => 'year',
+                    'description' => 'Ad-free everything on every show we cover, locked in through BB29.',
+                    'badge' => 'Supporter',
+                    'tier' => 'supporter',
                     'popular' => true,
                 ],
-                // Season Pass (annual, $35) hidden mid-season 2026-08-23 — a
-                // yearly pass sold with most of the season gone is a bad deal.
-                // Existing annual subs keep renewing; new sales return with
-                // the /shows pricing revamp. Also removed from the checkout /
-                // PayPal / changePlan validators below.
                 [
                     'id' => 'lifetime',
                     'name' => 'Lifetime',
@@ -233,7 +239,7 @@ class BillingRoutes
         $successUrl = $params['success_url'] ?? home_url('/checkout/success');
         $cancelUrl = $params['cancel_url'] ?? home_url('/checkout/cancel');
 
-        if (!$planType || !in_array($planType, ['monthly', 'lifetime', 'full_bean_monthly', 'full_bean_annual'])) {
+        if (!$planType || !in_array($planType, ['monthly', 'annual', 'lifetime', 'full_bean_monthly', 'full_bean_annual'])) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'Invalid plan type',
@@ -390,7 +396,7 @@ class BillingRoutes
         $returnUrl = $params['return_url'] ?? home_url('/checkout/success?processor=paypal');
         $cancelUrl = $params['cancel_url'] ?? home_url('/checkout/cancel');
 
-        if (!$planType || !in_array($planType, ['monthly', 'full_bean_monthly', 'full_bean_annual'])) {
+        if (!$planType || !in_array($planType, ['monthly', 'annual', 'full_bean_monthly', 'full_bean_annual'])) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'Invalid plan type for subscription',
@@ -463,7 +469,7 @@ class BillingRoutes
         $params = $request->get_json_params();
         $planType = $params['plan_type'] ?? null;
 
-        if (!$planType || !in_array($planType, ['monthly', 'lifetime', 'full_bean_monthly', 'full_bean_annual'])) {
+        if (!$planType || !in_array($planType, ['monthly', 'annual', 'lifetime', 'full_bean_monthly', 'full_bean_annual'])) {
             return new \WP_REST_Response([
                 'success' => false,
                 'message' => 'Invalid plan type',

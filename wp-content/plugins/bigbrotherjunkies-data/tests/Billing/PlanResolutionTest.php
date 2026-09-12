@@ -19,7 +19,7 @@ class PlanResolutionTest extends TestCase
         $plan = SubscriptionManager::resolvePlan('annual');
         $this->assertSame('annual', $plan['plan_type']);
         $this->assertSame('supporter', $plan['tier']);
-        $this->assertSame(3500, $plan['amount_cents']);
+        $this->assertSame(4500, $plan['amount_cents']);
     }
 
     public function testResolveUnknownKeyReturnsNull(): void
@@ -51,7 +51,7 @@ class PlanResolutionTest extends TestCase
     public function testDisplayNamesAreTierAware(): void
     {
         $this->assertSame('Monthly Supporter', SubscriptionManager::displayName('monthly'));
-        $this->assertSame('Season Pass', SubscriptionManager::displayName('annual', 'supporter'));
+        $this->assertSame('All-Access Pass', SubscriptionManager::displayName('annual', 'supporter'));
         $this->assertSame('Lifetime Member', SubscriptionManager::displayName('lifetime'));
         $this->assertSame('Full Bean Monthly', SubscriptionManager::displayName('monthly', 'full_bean'));
         $this->assertSame('Full Bean Annual', SubscriptionManager::displayName('annual', 'full_bean'));

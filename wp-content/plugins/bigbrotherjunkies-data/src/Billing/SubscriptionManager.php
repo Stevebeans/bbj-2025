@@ -72,7 +72,7 @@ class SubscriptionManager
 
         $names = [
             'monthly' => 'Monthly Supporter',
-            'annual' => 'Season Pass',
+            'annual' => 'All-Access Pass',
             'lifetime' => 'Lifetime Member',
         ];
 

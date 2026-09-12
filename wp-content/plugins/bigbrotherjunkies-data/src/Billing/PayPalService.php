@@ -28,8 +28,8 @@ class PayPalService
             'plan_type' => 'monthly', // ENUM-safe value stored in DB
         ],
         'annual' => [
-            'name' => 'BBJ Season Pass',
-            'amount' => '35.00',
+            'name' => 'BBJ All-Access Pass',
+            'amount' => '45.00',
             'interval' => 'YEAR',
             'interval_count' => 1,
             'role' => 'supporter',

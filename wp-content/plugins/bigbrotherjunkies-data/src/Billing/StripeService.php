@@ -28,8 +28,8 @@ class StripeService
             'plan_type' => 'monthly', // ENUM-safe value stored in DB
         ],
         'annual' => [
-            'name' => 'BBJ Season Pass',
-            'amount' => 3500, // $35.00 in cents
+            'name' => 'BBJ All-Access Pass',
+            'amount' => 4500, // $45.00 in cents
             'interval' => 'year',
             'interval_count' => 1,
             'role' => 'supporter',
@@ -243,7 +243,7 @@ class StripeService
     {
         $descriptions = [
             'monthly' => 'Ad-free browsing, supporter badge, and premium features. Cancel anytime.',
-            'annual' => 'Full season of premium access. Over 58% savings vs monthly!',
+            'annual' => 'Ad-free everything on every show we cover - about 46% off monthly.',
             'lifetime' => 'Premium access forever. One payment, never expires.',
             'full_bean_monthly' => 'Everything in Supporter, plus the smartest Bean (unlimited chats, longer memory). Cancel anytime.',
             'full_bean_annual' => 'A full year of the smartest Bean and ad-free browsing. Best value.',
