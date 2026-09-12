@@ -456,6 +456,7 @@ class CommentRoutes
                 'id' => $userId,
                 'name' => $comment['comment_author'],
                 'avatar' => $avatar,
+                'founding_badge' => \BigBrotherJunkies\Data\Billing\FoundingBadge::has($userId),
                 'is_online' => $isOnline,
                 'is_staff' => $this->isStaffAuthor($userId),
                 'rank' => $rank ? [
@@ -906,6 +907,7 @@ class CommentRoutes
                     'id' => $userId,
                     'name' => $user->display_name,
                     'avatar' => AvatarUploader::getAvatarUrl($userId, 64),
+                    'founding_badge' => \BigBrotherJunkies\Data\Billing\FoundingBadge::has($userId),
                     'is_online' => true, // User posting is obviously online
                     'rank' => [
                         'key' => $rank['key'],

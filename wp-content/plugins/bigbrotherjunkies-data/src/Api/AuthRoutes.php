@@ -1262,6 +1262,7 @@ class AuthRoutes
                 'user_avatar' => AvatarUploader::getAvatarUrl($user->ID, 96),
                 'user_roles' => $user->roles,
                 'is_supporter' => $isSupporter,
+                'founding_badge' => \BigBrotherJunkies\Data\Billing\FoundingBadge::has((int) $user->ID),
                 'rank' => $rank ? [
                     'key' => $rank['key'],
                     'name' => $rank['name'],
@@ -1348,6 +1349,7 @@ class AuthRoutes
                 'user_avatar' => AvatarUploader::getAvatarUrl($user->ID, 96),
                 'user_roles' => $user->roles,
                 'is_supporter' => $isSupporter,
+                'founding_badge' => \BigBrotherJunkies\Data\Billing\FoundingBadge::has((int) $user->ID),
                 'rank' => $rank ? [
                     'key' => $rank['key'],
                     'name' => $rank['name'],
