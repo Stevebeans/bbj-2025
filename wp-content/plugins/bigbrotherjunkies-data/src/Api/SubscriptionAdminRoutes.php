@@ -112,13 +112,20 @@ class SubscriptionAdminRoutes
     }
 
     /**
-     * Patch the Founders window option. `closes_at` is only accepted when it
-     * parses via strtotime() or is the empty string (never-closes); an
-     * unparseable value is rejected and the previous closes_at is kept, so a
-     * typo in the admin card can't silently flip the window to open-ended.
-     * `lifetime_cap` is clamped 1-500. Enabling the window while `opened_at`
-     * is still empty stamps it with current_time('mysql') (site-local, same
-     * clock as bbj_subscriptions.created_at) — see FoundersWindow's docblock.
+     * Patch the Founders window option. `enabled` is validated with
+     * filter_var(..., FILTER_VALIDATE_BOOLEAN) rather than a raw (bool) cast,
+     * since (bool) "false" is true in PHP — a JSON string "false" must not
+     * silently open the window. `closes_at` must be the empty string
+     * (never-closes) or parse via strtotime(); a non-empty value is resolved
+     * against UTC (appending ' UTC' before parsing, matching how
+     * FoundersWindow::isOpenPure() reads it back) and stored as an absolute
+     * 'Y-m-d H:i:s' via gmdate(), so a relative value like "tomorrow" or
+     * "+3 days" is fixed at save time instead of drifting on every later
+     * read. An unparseable value returns 400 with no write at all, rather
+     * than silently reverting to the previous value. `lifetime_cap` is
+     * clamped 1-500. Enabling the window while `opened_at` is still empty
+     * stamps it with current_time('mysql') (site-local, same clock as
+     * bbj_subscriptions.created_at) — see FoundersWindow's docblock.
      */
     public function saveFounders(\WP_REST_Request $request): \WP_REST_Response
     {
@@ -126,13 +133,22 @@ class SubscriptionAdminRoutes
         $settings = FoundersWindow::settings();
 
         if (array_key_exists('enabled', $patch)) {
-            $settings['enabled'] = (bool) $patch['enabled'];
+            $settings['enabled'] = filter_var($patch['enabled'], FILTER_VALIDATE_BOOLEAN);
         }
 
         if (array_key_exists('closes_at', $patch)) {
             $closesAt = trim((string) $patch['closes_at']);
-            if ($closesAt === '' || strtotime($closesAt) !== false) {
-                $settings['closes_at'] = $closesAt;
+            if ($closesAt === '') {
+                $settings['closes_at'] = '';
+            } else {
+                $closesTs = strtotime($closesAt . ' UTC');
+                if ($closesTs === false) {
+                    return new \WP_REST_Response([
+                        'success' => false,
+                        'message' => 'closes_at must be a date like 2026-10-08 16:00:00 (UTC)',
+                    ], 400);
+                }
+                $settings['closes_at'] = gmdate('Y-m-d H:i:s', $closesTs);
             }
         }
 
