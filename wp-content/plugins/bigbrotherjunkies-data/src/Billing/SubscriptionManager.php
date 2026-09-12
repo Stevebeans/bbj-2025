@@ -139,6 +139,13 @@ class SubscriptionManager
         if ($result) {
             $subscriptionId = $wpdb->insert_id;
 
+            // Founders window: All-Access and Lifetime include the Founding Junkie badge.
+            if (FoundersWindow::isOpen()
+                && in_array($insertData['plan_type'] ?? '', ['annual', 'lifetime'], true)
+                && ($insertData['tier'] ?? 'supporter') === 'supporter') {
+                FoundingBadge::grant((int) $insertData['user_id'], $insertData['plan_type']);
+            }
+
             // Assign role to user
             $this->assignSupporterRole(
                 $insertData['user_id'],

@@ -61,6 +61,15 @@ class BillingMigrator
         }
     }
 
+    /** The lifetime role predates this plugin; make sure it exists before we sell it again. */
+    public static function ensureLifetimeRole(): void
+    {
+        if (get_role('lifetime') === null) {
+            $subscriber = get_role('subscriber');
+            add_role('lifetime', 'Lifetime Member', $subscriber ? $subscriber->capabilities : ['read' => true]);
+        }
+    }
+
     /**
      * Check if a table exists
      */

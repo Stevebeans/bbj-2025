@@ -237,6 +237,47 @@ class StripeService
     }
 
     /**
+     * $5 Founding Junkie badge - mode=payment, no plan machinery.
+     */
+    public function createBadgeCheckoutSession(int $userId, string $successUrl, string $cancelUrl): ?array
+    {
+        $user = get_user_by('id', $userId);
+        if (!$user) {
+            return ['error' => 'User not found'];
+        }
+
+        $params = [
+            'mode' => 'payment',
+            'success_url' => $successUrl . '?session_id={CHECKOUT_SESSION_ID}&processor=stripe&sku=founding_badge',
+            'cancel_url' => $cancelUrl,
+            'customer_email' => $user->user_email,
+            'line_items' => [[
+                'quantity' => 1,
+                'price_data' => [
+                    'currency' => 'usd',
+                    'unit_amount' => FoundingBadge::PRICE_CENTS,
+                    'product_data' => [
+                        'name' => 'BBJ Founding Junkie Badge',
+                        'description' => 'One-time founding badge, BB28 era. Shown on your comments, profile, and DMs forever.',
+                    ],
+                ],
+            ]],
+            'metadata' => ['wp_user_id' => (string) $userId, 'plan_type' => 'founding_badge'],
+        ];
+
+        $response = $this->apiRequest('checkout/sessions', $params);
+
+        if ($response && isset($response['id'])) {
+            return [
+                'session_id' => $response['id'],
+                'url' => $response['url'],
+            ];
+        }
+
+        return ['error' => $response['error'] ?? 'Failed to create checkout session'];
+    }
+
+    /**
      * Get plan description for display
      */
     private function getPlanDescription(string $planType): string

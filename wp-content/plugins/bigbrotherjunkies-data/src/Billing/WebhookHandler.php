@@ -70,6 +70,12 @@ class WebhookHandler
             return ['error' => 'Missing metadata', 'status' => 400];
         }
 
+        // Founding badge: grant and stop. Never a subscription row, never a role.
+        if ($planType === 'founding_badge') {
+            FoundingBadge::grant($userId, 'purchase');
+            return ['success' => true, 'message' => 'Founding badge granted'];
+        }
+
         $stripe = new StripeService();
         $planConfig = $stripe->getPlanConfig($planType);
 
@@ -107,6 +113,10 @@ class WebhookHandler
         } else {
             // One-time payment (lifetime)
             $subscriptionData['status'] = 'lifetime';
+
+            if (FoundersWindow::lifetimeSpotsLeft() <= 0) {
+                error_log('BBJ Billing: lifetime cap overshoot - honoring paid checkout for user ' . $userId);
+            }
         }
 
         $subscriptionId = $this->subscriptionManager->createSubscription($subscriptionData);

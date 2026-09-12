@@ -286,6 +286,9 @@ class Plugin
         if (\BigBrotherJunkies\Data\Billing\BillingMigrator::needsMigration()) {
             \BigBrotherJunkies\Data\Billing\BillingMigrator::migrate();
         }
+        // Lifetime role predates this plugin; ensure it exists on every load,
+        // not only when a billing migration is pending.
+        \BigBrotherJunkies\Data\Billing\BillingMigrator::ensureLifetimeRole();
         \BigBrotherJunkies\Data\Push\PushMigrator::migrate();
 
         // Register WP-CLI commands
