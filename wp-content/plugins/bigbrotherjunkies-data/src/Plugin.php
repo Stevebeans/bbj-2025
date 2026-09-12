@@ -78,6 +78,7 @@ use BigBrotherJunkies\Data\Cron\RevisionRetention;
 use BigBrotherJunkies\Data\Cron\BillingExpiryCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
+use BigBrotherJunkies\Data\Taxonomies\ShowTaxonomy;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadCron;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadMigrator;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
@@ -461,6 +462,7 @@ class Plugin
     {
         (new UpdateTypeTaxonomy())->init();
         (new UpdateLocationTaxonomy())->init();
+        (new ShowTaxonomy())->init();
     }
 
     /**
