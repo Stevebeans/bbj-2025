@@ -113,12 +113,44 @@ class FeedUpdateCreator
         if ($authorId > 0) {
             $postArgs['post_author'] = $authorId;
         }
-        // See $pendingShow docblock: the transition_post_status purge listener
-        // fires synchronously inside wp_insert_post(), before the bbj_show term
-        // is set below, so it can't see $show via ShowQuery::slugFor() yet.
+
+        // Show-tagged posts (Survivor, etc.) must carry the bbj_show term
+        // BEFORE the post reaches 'publish' - otherwise the post is briefly
+        // (and for cron/transient-cached readers, up to ~20s) classified as
+        // Big Brother: the transition_post_status purge listener fires the CF
+        // purge for it, and any BB read in that window (including the
+        // feed-updates "recent" poller transient) can capture it as BB.
+        //
+        // wp_insert_post()'s 'tax_input' sets terms BEFORE it fires
+        // transition_post_status - preferred, one insert - but only if the
+        // current user (or lack thereof, under WP-CLI/cron/Bean Bot) can
+        // assign the term; that path silently no-ops otherwise. When it
+        // can't, insert as a draft, set the term directly (wp_set_object_terms
+        // bypasses the capability check), then publish - so the publish
+        // transition always sees the term regardless of execution context.
+        $viaDraft = false;
+        if ($show !== '') {
+            $showTax = get_taxonomy('bbj_show');
+            if ($showTax && current_user_can($showTax->cap->assign_terms)) {
+                $postArgs['tax_input'] = ['bbj_show' => [$show]];
+            } else {
+                $viaDraft = true;
+                $postArgs['post_status'] = 'draft';
+            }
+        }
+
+        // See $pendingShow docblock: belt-and-suspenders for the tax_input
+        // path above - transition_post_status fires synchronously inside
+        // wp_insert_post(), so this covers any timing edge the tax_input
+        // ordering doesn't (e.g. term-cache priming).
         self::$pendingShow = $show;
         $postId = wp_insert_post($postArgs);
         self::$pendingShow = '';
+
+        if ($viaDraft && !is_wp_error($postId) && $postId) {
+            wp_set_object_terms($postId, $show, 'bbj_show', false);
+            wp_update_post(['ID' => $postId, 'post_status' => 'publish']);
+        }
 
         // wp_insert_post can also fail with 0 (e.g. rejected INSERT) — bail
         // BEFORE side effects (image upload, Bluesky) so a failed save can't
@@ -179,7 +211,11 @@ class FeedUpdateCreator
 
         // Tag with a show (Phase 1: Survivor) so it lives outside the Big
         // Brother feed/homepage/live-thread pipeline. Default '' = Big Brother,
-        // unchanged for every existing caller (Bean Bot included).
+        // unchanged for every existing caller (Bean Bot included). By this
+        // point the term is already set (via 'tax_input' or the draft-then-
+        // publish path above, both before the publish transition) - this
+        // call is now a no-op safety net, kept so nothing downstream can ever
+        // observe an untagged show post even if the logic above changes.
         if ($show !== '') {
             wp_set_object_terms($postId, $show, 'bbj_show', false);
         }
