@@ -2,15 +2,18 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\Billing\FoundersWindow;
+use BigBrotherJunkies\Data\Billing\FoundingBadge;
 use BigBrotherJunkies\Data\Billing\SubscriptionManager;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 /**
  * Admin premium-members endpoints (the /admin/premium tab): subscription list
- * with derived fields, aggregate stats + trends, and an end-of-period cancel.
- * Thin REST layer over SubscriptionManager (which owns the Stripe/PayPal
- * calls, DB writes, and role revocation). Gated on `user_management` like the
- * Users tab.
+ * with derived fields, aggregate stats + trends, an end-of-period cancel, and
+ * the Founders window controls (open/close, closes-at, lifetime cap) plus its
+ * spots/badge counters. Thin REST layer over SubscriptionManager and
+ * FoundersWindow/FoundingBadge (which own the Stripe/PayPal calls, DB writes,
+ * and role revocation). Gated on `user_management` like the Users tab.
  */
 class SubscriptionAdminRoutes
 {
@@ -42,6 +45,18 @@ class SubscriptionAdminRoutes
             'callback' => [$this, 'cancelSubscription'],
             'permission_callback' => [$this, 'checkAccess'],
             'args' => ['id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/founders', [
+            'methods' => 'GET',
+            'callback' => [$this, 'getFounders'],
+            'permission_callback' => [$this, 'checkAccess'],
+        ]);
+
+        register_rest_route(self::NAMESPACE, '/admin/founders', [
+            'methods' => 'POST',
+            'callback' => [$this, 'saveFounders'],
+            'permission_callback' => [$this, 'checkAccess'],
         ]);
     }
 
@@ -82,7 +97,68 @@ class SubscriptionAdminRoutes
             'stats' => array_map('intval', $manager->getStats()),
             'trends' => array_map('intval', $manager->getTrendStats()),
             'revenue' => $manager->getRevenueStats(),
+            'founders' => [
+                'spots_sold' => FoundersWindow::lifetimeSpotsSold(),
+                'spots_left' => FoundersWindow::lifetimeSpotsLeft(),
+                'badge_count' => FoundingBadge::count(),
+                'window_open' => FoundersWindow::isOpen(),
+            ],
         ]);
+    }
+
+    public function getFounders(): \WP_REST_Response
+    {
+        return new \WP_REST_Response(self::foundersPayload());
+    }
+
+    /**
+     * Patch the Founders window option. `closes_at` is only accepted when it
+     * parses via strtotime() or is the empty string (never-closes); an
+     * unparseable value is rejected and the previous closes_at is kept, so a
+     * typo in the admin card can't silently flip the window to open-ended.
+     * `lifetime_cap` is clamped 1-500. Enabling the window while `opened_at`
+     * is still empty stamps it with current_time('mysql') (site-local, same
+     * clock as bbj_subscriptions.created_at) — see FoundersWindow's docblock.
+     */
+    public function saveFounders(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $patch = (array) $request->get_json_params();
+        $settings = FoundersWindow::settings();
+
+        if (array_key_exists('enabled', $patch)) {
+            $settings['enabled'] = (bool) $patch['enabled'];
+        }
+
+        if (array_key_exists('closes_at', $patch)) {
+            $closesAt = trim((string) $patch['closes_at']);
+            if ($closesAt === '' || strtotime($closesAt) !== false) {
+                $settings['closes_at'] = $closesAt;
+            }
+        }
+
+        if (array_key_exists('lifetime_cap', $patch)) {
+            $settings['lifetime_cap'] = max(1, min(500, (int) $patch['lifetime_cap']));
+        }
+
+        if ($settings['enabled'] && $settings['opened_at'] === '') {
+            $settings['opened_at'] = current_time('mysql');
+        }
+
+        update_option(FoundersWindow::OPTION, $settings);
+
+        return new \WP_REST_Response(self::foundersPayload());
+    }
+
+    /** Shared GET/POST response shape for /admin/founders. */
+    private static function foundersPayload(): array
+    {
+        return [
+            'settings' => FoundersWindow::settings(),
+            'spots_sold' => FoundersWindow::lifetimeSpotsSold(),
+            'spots_left' => FoundersWindow::lifetimeSpotsLeft(),
+            'badge_count' => FoundingBadge::count(),
+            'window_open' => FoundersWindow::isOpen(),
+        ];
     }
 
     /**

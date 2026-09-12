@@ -5,7 +5,10 @@ namespace BigBrotherJunkies\Data\Billing;
 /**
  * The Founders launch window: gates the Founding Junkie badge and the
  * Lifetime revival. One option, read-heavy, written from admin only.
- * All datetimes UTC 'Y-m-d H:i:s'.
+ * Mixed clocks by design: `closes_at` is UTC 'Y-m-d H:i:s' (compared to
+ * time()); `opened_at` is site-local 'Y-m-d H:i:s' (compared to
+ * bbj_subscriptions.created_at, which createSubscription() writes via
+ * current_time('mysql')) so the spots-sold count stays clock-consistent.
  */
 class FoundersWindow
 {
