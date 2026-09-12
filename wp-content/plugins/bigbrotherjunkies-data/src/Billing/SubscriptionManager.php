@@ -140,11 +140,11 @@ class SubscriptionManager
             $subscriptionId = $wpdb->insert_id;
 
             // Founders window: All-Access and Lifetime include the Founding Junkie badge.
-            if (FoundersWindow::isOpen()
-                && in_array($insertData['plan_type'] ?? '', ['annual', 'lifetime'], true)
-                && ($insertData['tier'] ?? 'supporter') === 'supporter') {
-                FoundingBadge::grant((int) $insertData['user_id'], $insertData['plan_type']);
-            }
+            FoundingBadge::maybeGrantForPlan(
+                (int) $insertData['user_id'],
+                (string) ($insertData['plan_type'] ?? ''),
+                (string) ($insertData['tier'] ?? 'supporter')
+            );
 
             // Assign role to user
             $this->assignSupporterRole(
@@ -451,6 +451,10 @@ class SubscriptionManager
         // Reassign the role — a tier change (supporter <-> full_bean) must
         // grant/revoke the corresponding role immediately.
         $this->assignSupporterRole($userId, $target['plan_type'], $target['tier']);
+
+        // A switch INTO All-Access during the window buys the same thing a
+        // fresh All-Access checkout buys, badge included. Same rule, one place.
+        FoundingBadge::maybeGrantForPlan($userId, $target['plan_type'], $target['tier']);
 
         return [
             'success' => true,

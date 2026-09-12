@@ -29,6 +29,29 @@ class FoundingBadge
         ]));
     }
 
+    /**
+     * The single rule for "this purchase includes the badge": All-Access
+     * (annual) and Lifetime, supporter tier, bought while the window is open.
+     * Both entitlement paths call this - createSubscription() for new buys and
+     * changePlan() for switches - so the two cannot drift apart.
+     */
+    public static function maybeGrantForPlan(int $userId, string $planType, string $tier = 'supporter'): void
+    {
+        if (!self::qualifiesForPlan($planType, $tier)) {
+            return;
+        }
+        if (!FoundersWindow::isOpen()) {
+            return;
+        }
+        self::grant($userId, $planType);
+    }
+
+    /** Pure half of maybeGrantForPlan() - plan/tier eligibility, no window, no WP. */
+    public static function qualifiesForPlan(string $planType, string $tier = 'supporter'): bool
+    {
+        return in_array($planType, ['annual', 'lifetime'], true) && $tier === 'supporter';
+    }
+
     public static function has(int $userId): bool
     {
         return $userId > 0 && get_user_meta($userId, self::META, true) !== '';

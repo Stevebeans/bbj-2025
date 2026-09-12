@@ -51,6 +51,9 @@ class WebhookHandler
             case 'invoice.payment_failed':
                 return $this->handleStripeInvoiceFailed($event['data']['object']);
 
+            case 'charge.refunded':
+                return $this->handleStripeChargeRefunded($event['data']['object']);
+
             default:
                 // Acknowledge but don't process other events
                 return ['success' => true, 'message' => 'Event type not handled'];
@@ -72,6 +75,18 @@ class WebhookHandler
 
         // Founding badge: grant and stop. Never a subscription row, never a role.
         if ($planType === 'founding_badge') {
+            // checkout.session.completed fires before the money settles for
+            // delayed-notification methods. Only 'paid' is an entitlement.
+            $paymentStatus = (string) ($session['payment_status'] ?? '');
+            if ($paymentStatus !== 'paid') {
+                error_log(
+                    'BBJ Billing: founding badge session ' . ($session['id'] ?? '?')
+                    . ' completed with payment_status=' . ($paymentStatus === '' ? '(missing)' : $paymentStatus)
+                    . ' - not granting'
+                );
+                return ['success' => true, 'message' => 'Founding badge payment not settled'];
+            }
+
             $alreadyHad = FoundingBadge::has($userId);
             $granted = FoundingBadge::grant($userId, 'purchase');
 
@@ -125,6 +140,13 @@ class WebhookHandler
         } else {
             // One-time payment (lifetime)
             $subscriptionData['status'] = 'lifetime';
+
+            // The PaymentIntent is the only id a later charge.refunded event
+            // carries that points back at this exact purchase. Store it so a
+            // refund can free the founders spot it consumed.
+            if (!empty($session['payment_intent'])) {
+                $subscriptionData['stripe_payment_intent_id'] = (string) $session['payment_intent'];
+            }
 
             if (FoundersWindow::lifetimeSpotsLeft() <= 0) {
                 error_log('BBJ Billing: lifetime cap overshoot - honoring paid checkout for user ' . $userId);
@@ -261,6 +283,138 @@ class WebhookHandler
 
         error_log("BBJ Billing: Payment failed for subscription {$stripeSubId}");
         return ['success' => true];
+    }
+
+    /**
+     * Handle Stripe charge.refunded.
+     *
+     * Only Lifetime needs this. It is the one purchase that consumes a capped,
+     * publicly-counted founders spot, and no other event in this switch can
+     * give the spot back - a refunded row would keep `status = 'lifetime'`
+     * forever and the "N of 50 left" counter would stay permanently short.
+     * Partial refunds are logged and left alone (the member keeps what they
+     * mostly paid for). The founding badge is deliberately NOT revoked; it is
+     * cosmetic and that call is Steve's. PayPal refunds stay manual.
+     */
+    private function handleStripeChargeRefunded(array $charge): array
+    {
+        $chargeId = (string) ($charge['id'] ?? '?');
+        $amount = (int) ($charge['amount'] ?? 0);
+        $refundedAmount = (int) ($charge['amount_refunded'] ?? 0);
+        $isFullRefund = !empty($charge['refunded']) || ($amount > 0 && $refundedAmount >= $amount);
+
+        if (!$isFullRefund) {
+            error_log(
+                'BBJ Billing: partial refund on charge ' . $chargeId . ' ('
+                . $refundedAmount . ' of ' . $amount . ' cents) - entitlement unchanged'
+            );
+            return ['success' => true, 'message' => 'Partial refund - entitlement unchanged'];
+        }
+
+        $row = $this->findLifetimeRowForCharge($charge);
+
+        if (!$row) {
+            return ['success' => true, 'message' => 'No lifetime subscription matched this refund'];
+        }
+
+        if (!$this->freeRefundedLifetimeRow($row)) {
+            error_log('BBJ Billing: lifetime refund - FAILED to update subscription row ' . (int) $row['id']);
+            return ['error' => 'Failed to release lifetime spot', 'status' => 500];
+        }
+
+        return ['success' => true, 'message' => 'Lifetime refund processed'];
+    }
+
+    /**
+     * Find the live lifetime row a refunded charge belongs to.
+     *
+     * The PaymentIntent is the specific handle and is stored on rows created
+     * from 2026-09 onward. Rows written before that column existed have only
+     * the customer id, so those fall back to a customer match - narrowed to a
+     * charge whose amount is the lifetime price, so refunding some other
+     * charge on the same customer cannot revoke a lifetime membership.
+     */
+    private function findLifetimeRowForCharge(array $charge): ?array
+    {
+        global $wpdb;
+        $table = BillingSchema::table(BillingSchema::TABLE_SUBSCRIPTIONS);
+
+        $paymentIntent = is_string($charge['payment_intent'] ?? null) ? $charge['payment_intent'] : '';
+        if ($paymentIntent !== '') {
+            $row = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$table}
+                  WHERE stripe_payment_intent_id = %s
+                    AND plan_type = 'lifetime'
+                    AND status = 'lifetime'
+                  ORDER BY id DESC LIMIT 1",
+                $paymentIntent
+            ), ARRAY_A);
+
+            if ($row) {
+                return $row;
+            }
+        }
+
+        $customer = is_string($charge['customer'] ?? null) ? $charge['customer'] : '';
+        $lifetimePrice = (int) (StripeService::PLANS['lifetime']['amount'] ?? 0);
+        $amount = (int) ($charge['amount'] ?? 0);
+
+        if ($customer !== '' && $lifetimePrice > 0 && $amount === $lifetimePrice) {
+            $row = $wpdb->get_row($wpdb->prepare(
+                "SELECT * FROM {$table}
+                  WHERE stripe_customer_id = %s
+                    AND processor = 'stripe'
+                    AND plan_type = 'lifetime'
+                    AND status = 'lifetime'
+                  ORDER BY id DESC LIMIT 1",
+                $customer
+            ), ARRAY_A);
+
+            if ($row) {
+                return $row;
+            }
+        }
+
+        error_log(
+            'BBJ Billing: charge.refunded ' . ((string) ($charge['id'] ?? '?'))
+            . ' matched no live lifetime row (payment_intent=' . ($paymentIntent === '' ? '(none)' : $paymentIntent)
+            . ', customer=' . ($customer === '' ? '(none)' : $customer) . ')'
+        );
+
+        return null;
+    }
+
+    /**
+     * Take a refunded lifetime row out of the founders count and strip the role.
+     *
+     * `refunded` is not a value in the bbj_subscriptions.status ENUM
+     * ('active','canceled','past_due','expired','lifetime'), so the row lands
+     * on 'canceled': it is no longer counted by
+     * FoundersWindow::lifetimeSpotsSold(), which only counts status='lifetime'.
+     * updateSubscriptionStatus() also runs the existing role-removal path, so
+     * the `lifetime` role goes with it unless another paid row still needs it.
+     *
+     * Public so the local verify script can drive the transition without
+     * forging a Stripe webhook payload.
+     */
+    public function freeRefundedLifetimeRow(array $row): bool
+    {
+        $subscriptionId = (int) ($row['id'] ?? 0);
+        $userId = (int) ($row['user_id'] ?? 0);
+
+        if ($subscriptionId <= 0) {
+            return false;
+        }
+
+        $updated = $this->subscriptionManager->updateSubscriptionStatus($subscriptionId, 'canceled', [
+            'canceled_at' => current_time('mysql'),
+        ]);
+
+        if ($updated) {
+            error_log('BBJ Billing: lifetime refund - freed a founders spot for user ' . $userId);
+        }
+
+        return $updated;
     }
 
     /**

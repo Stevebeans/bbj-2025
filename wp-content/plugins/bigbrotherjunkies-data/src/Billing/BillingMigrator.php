@@ -8,7 +8,8 @@ namespace BigBrotherJunkies\Data\Billing;
 class BillingMigrator
 {
     public const DB_VERSION_OPTION = 'bbj_billing_db_version';
-    public const CURRENT_VERSION = '1.1.0';
+    // 1.2.0: bbj_subscriptions.stripe_payment_intent_id (lifetime refunds must be matchable).
+    public const CURRENT_VERSION = '1.2.0';
 
     /** The Full Bean role slug ($14.99 tier: Sonnet, unlimited, memory, ad-free). */
     public const FULL_BEAN_ROLE = 'full_bean';

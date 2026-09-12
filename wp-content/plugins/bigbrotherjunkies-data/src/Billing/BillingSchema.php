@@ -37,6 +37,7 @@ class BillingSchema
             stripe_subscription_id VARCHAR(255) DEFAULT NULL,
             paypal_subscription_id VARCHAR(255) DEFAULT NULL,
             paypal_payer_id VARCHAR(255) DEFAULT NULL,
+            stripe_payment_intent_id VARCHAR(255) DEFAULT NULL,
             plan_type ENUM('monthly', 'annual', 'lifetime') NOT NULL,
             tier ENUM('supporter', 'full_bean') NOT NULL DEFAULT 'supporter',
             processor ENUM('stripe', 'paypal') NOT NULL,
@@ -53,6 +54,7 @@ class BillingSchema
             KEY idx_user (user_id),
             KEY idx_stripe_customer (stripe_customer_id),
             KEY idx_stripe_sub (stripe_subscription_id),
+            KEY idx_stripe_pi (stripe_payment_intent_id),
             KEY idx_paypal_sub (paypal_subscription_id),
             KEY idx_status (status),
             KEY idx_tier (tier)

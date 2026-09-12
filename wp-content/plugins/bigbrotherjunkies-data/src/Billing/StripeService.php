@@ -14,6 +14,9 @@ class StripeService
     private bool $testMode;
     private array $priceIds;
 
+    /** Shown to the member when a stored Stripe Price cannot be trusted. */
+    public const PRICE_UNAVAILABLE_MESSAGE = 'This plan is temporarily unavailable. Please contact support.';
+
     /**
      * Plan configuration
      */
@@ -252,6 +255,10 @@ class StripeService
             'mode' => 'payment',
             'success_url' => $successUrl . $sep . 'session_id={CHECKOUT_SESSION_ID}&processor=stripe&sku=founding_badge',
             'cancel_url' => $cancelUrl,
+            // Card only, like every other session here. Delayed-notification
+            // methods complete the session before the money settles, which the
+            // badge webhook must not treat as paid.
+            'payment_method_types' => ['card'],
             'customer_email' => $user->user_email,
             'line_items' => [[
                 'quantity' => 1,
@@ -456,6 +463,93 @@ class StripeService
     }
 
     /**
+     * Verify that the stored Stripe Price ID for a plan still bills what
+     * self::PLANS says it should. Only the stored-Price paths need this:
+     * createCheckoutSession() builds inline price_data from PLANS and is
+     * therefore always correct, but updateSubscription() (plan switches)
+     * hands Stripe a Price object out of bbjd_api_settings, which can hold a
+     * retired price. A stale ID there silently bills the old amount while the
+     * local row records the new one.
+     *
+     * One Stripe GET per price id per hour (transient-cached). Fails CLOSED:
+     * a mismatch or an unreadable price refuses the switch rather than
+     * risking a wrong charge.
+     *
+     * @return string|null Error message to hand back to the caller, or null when the price is good.
+     */
+    private function assertConfiguredPriceMatches(string $planType): ?string
+    {
+        if (!isset(self::PLANS[$planType])) {
+            return 'Invalid plan type';
+        }
+
+        // Escape hatch for tests/offline environments (no network in the suite).
+        if (apply_filters('bbjd_billing_skip_price_verification', false, $planType)) {
+            return null;
+        }
+
+        $priceId = $this->getStripePriceId($planType);
+        if (!$priceId) {
+            // Nothing stored: the caller's own "not configured" branch reports it.
+            return null;
+        }
+
+        $expected = (int) self::PLANS[$planType]['amount'];
+        $cacheKey = 'bbjd_stripe_price_' . md5($priceId);
+        $cached = get_transient($cacheKey);
+
+        if (is_array($cached) && isset($cached['unit_amount'])) {
+            $price = $cached;
+        } else {
+            $response = $this->apiRequest('prices/' . rawurlencode($priceId), [], 'GET');
+
+            if (!is_array($response) || isset($response['error']) || !isset($response['unit_amount'])) {
+                error_log(
+                    'BBJ Billing: could not read configured Stripe price for ' . $planType
+                    . ' (' . $priceId . ') - refusing checkout: '
+                    . (is_array($response) ? ($response['error'] ?? 'malformed price response') : 'no response')
+                );
+                return self::PRICE_UNAVAILABLE_MESSAGE;
+            }
+
+            $price = [
+                'unit_amount' => (int) $response['unit_amount'],
+                'interval'    => $response['recurring']['interval'] ?? null,
+                'currency'    => strtolower((string) ($response['currency'] ?? '')),
+            ];
+            set_transient($cacheKey, $price, HOUR_IN_SECONDS);
+        }
+
+        if ((int) $price['unit_amount'] !== $expected) {
+            error_log(
+                'BBJ Billing: configured Stripe price for ' . $planType . ' is '
+                . (int) $price['unit_amount'] . '¢, expected ' . $expected . '¢ - refusing checkout'
+            );
+            return self::PRICE_UNAVAILABLE_MESSAGE;
+        }
+
+        $wantInterval = self::PLANS[$planType]['interval'];
+        if ($wantInterval !== null && ($price['interval'] ?? null) !== $wantInterval) {
+            error_log(
+                'BBJ Billing: configured Stripe price for ' . $planType . ' bills per '
+                . var_export($price['interval'] ?? null, true) . ', expected ' . $wantInterval
+                . ' - refusing checkout'
+            );
+            return self::PRICE_UNAVAILABLE_MESSAGE;
+        }
+
+        if ($price['currency'] !== '' && $price['currency'] !== 'usd') {
+            error_log(
+                'BBJ Billing: configured Stripe price for ' . $planType . ' is in '
+                . $price['currency'] . ', expected usd - refusing checkout'
+            );
+            return self::PRICE_UNAVAILABLE_MESSAGE;
+        }
+
+        return null;
+    }
+
+    /**
      * Update a subscription to a new plan (swap the price)
      */
     public function updateSubscription(string $subscriptionId, string $newPlanType): array
@@ -463,6 +557,13 @@ class StripeService
         $newPriceId = $this->getStripePriceId($newPlanType);
         if (!$newPriceId) {
             return ['error' => 'Price ID not configured for this plan. Contact support.'];
+        }
+
+        // The stored Price ID is the only place a wrong amount can enter the
+        // system unnoticed. Verify it against PLANS before Stripe bills anyone.
+        $priceError = $this->assertConfiguredPriceMatches($newPlanType);
+        if ($priceError !== null) {
+            return ['error' => $priceError];
         }
 
         // Get current subscription to find the subscription item
