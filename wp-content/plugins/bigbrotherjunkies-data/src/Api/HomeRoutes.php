@@ -710,29 +710,42 @@ class HomeRoutes
             } catch (\Exception $e) { /* leave 0 */ }
         }
 
-        // Counts
+        // Counts. BB-hub only: exclude posts carrying a bbj_show term (same
+        // raw-SQL NOT EXISTS the sitemap query uses above) so Survivor (etc.)
+        // updates don't inflate the Big Brother today/week/season tallies.
+        $showExclusion =
+            "AND NOT EXISTS (
+                SELECT 1 FROM {$wpdb->term_relationships} tr
+                INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                WHERE tr.object_id = {$wpdb->posts}.ID
+                  AND tt.taxonomy = '" . ShowQuery::TAXONOMY . "'
+            )";
         $today = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM {$wpdb->posts}
               WHERE post_type='live-feed-updates' AND post_status='publish'
-                AND DATE(post_date)=CURDATE()"
+                AND DATE(post_date)=CURDATE()
+                {$showExclusion}"
         );
         $weekCount = (int) $wpdb->get_var(
             "SELECT COUNT(*) FROM {$wpdb->posts}
               WHERE post_type='live-feed-updates' AND post_status='publish'
-                AND post_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)"
+                AND post_date >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+                {$showExclusion}"
         );
         $seasonCount = 0;
         if ($startDate && $startDate !== '0000-00-00') {
             $seasonCount = (int) $wpdb->get_var($wpdb->prepare(
                 "SELECT COUNT(*) FROM {$wpdb->posts}
                   WHERE post_type='live-feed-updates' AND post_status='publish'
-                    AND post_date >= %s",
+                    AND post_date >= %s
+                    {$showExclusion}",
                 $startDate . ' 00:00:00'
             ));
         } else {
             $seasonCount = (int) $wpdb->get_var(
                 "SELECT COUNT(*) FROM {$wpdb->posts}
-                  WHERE post_type='live-feed-updates' AND post_status='publish'"
+                  WHERE post_type='live-feed-updates' AND post_status='publish'
+                    {$showExclusion}"
             );
         }
 

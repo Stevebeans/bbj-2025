@@ -36,7 +36,8 @@ class FeedUpdateCreator
      *   mode?:string,
      *   update_type?:mixed,
      *   post_to_facebook?:bool,
-     *   image_file?:?array
+     *   image_file?:?array,
+     *   show?:string
      * } $args
      * @return array{
      *   success:bool,
@@ -62,6 +63,7 @@ class FeedUpdateCreator
         $postToFacebook = (bool) ($args['post_to_facebook'] ?? false);
         $imageFile      = $args['image_file'] ?? null;
         $videoFile      = $args['video_file'] ?? null;
+        $show           = sanitize_title((string) ($args['show'] ?? ''));
 
         // Default (nothing posted) social result — also the failure return shape.
         $socialResults = [
@@ -153,6 +155,13 @@ class FeedUpdateCreator
             }
         }
 
+        // Tag with a show (Phase 1: Survivor) so it lives outside the Big
+        // Brother feed/homepage/live-thread pipeline. Default '' = Big Brother,
+        // unchanged for every existing caller (Bean Bot included).
+        if ($show !== '') {
+            wp_set_object_terms($postId, $show, 'bbj_show', false);
+        }
+
         // Get hashtag for social posts
         $hashtag  = self::getSeasonHashtag();
         $imageUrl = $imageId ? wp_get_attachment_url($imageId) : null;
@@ -189,15 +198,18 @@ class FeedUpdateCreator
         // Clear caches
         do_action('breeze_clear_all_cache');
 
-        // Attach to active live thread (if any)
-        $updateTime = current_time('timestamp', true); // UTC, matches post_date_gmt
-        $threadId = LiveThreadState::findThreadForUpdate($updateTime);
-        if ($threadId > 0) {
-            update_post_meta($postId, '_bbjd_thread_post_id', $threadId);
-            Revalidation::revalidateTag("live-thread-{$threadId}");
-            $thread = get_post($threadId);
-            if ($thread) {
-                Revalidation::revalidatePost($thread->post_name);
+        // Attach to active live thread (if any) — a show-tagged update (e.g.
+        // Survivor) must never join a Big Brother eviction-night thread.
+        if ($show === '') {
+            $updateTime = current_time('timestamp', true); // UTC, matches post_date_gmt
+            $threadId = LiveThreadState::findThreadForUpdate($updateTime);
+            if ($threadId > 0) {
+                update_post_meta($postId, '_bbjd_thread_post_id', $threadId);
+                Revalidation::revalidateTag("live-thread-{$threadId}");
+                $thread = get_post($threadId);
+                if ($thread) {
+                    Revalidation::revalidatePost($thread->post_name);
+                }
             }
         }
 

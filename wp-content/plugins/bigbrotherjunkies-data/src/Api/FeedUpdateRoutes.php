@@ -147,6 +147,12 @@ class FeedUpdateRoutes
         $postToBluesky = (bool) $request->get_param('post_to_bluesky');
         $postToFacebook = (bool) $request->get_param('post_to_facebook');
 
+        // Show slug (Phase 1: '' = Big Brother, 'survivor' = Survivor). No
+        // registered `args` array on this route, so sanitize at the read
+        // site — sanitize_title's 2nd param ($fallback_title) means it must
+        // NOT be wired up as a REST sanitize_callback directly.
+        $show = sanitize_title((string) ($request->get_param('show') ?? ''));
+
         // At minimum we need a title OR some content/details; otherwise nothing to save
         $hasTitle   = !empty($adminTitle);
         $hasContent = !empty($adminDetails) || !empty($legacyContent);
@@ -180,6 +186,7 @@ class FeedUpdateRoutes
             'post_to_facebook' => $postToFacebook,
             'image_file'       => $files['image'] ?? null,
             'video_file'       => $files['video'] ?? null,
+            'show'             => $show,
         ]);
 
         if (empty($result['success'])) {
