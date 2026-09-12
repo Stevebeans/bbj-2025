@@ -198,21 +198,16 @@ class HomeRoutes
     {
         global $wpdb;
 
-        // BB-only: exclude posts carrying a bbj_show term (raw SQL, so the
-        // ShowQuery::excludeAll() tax_query fragment can't be reused directly —
-        // this is its NOT EXISTS equivalent against the term tables).
+        // Site-wide, not a BB surface: show-tagged updates (Survivor, etc.)
+        // are deliberately INCLUDED here (Ruling I6) even though their
+        // permalink still sits under /live-feed-updates/{slug} for Phase 1 —
+        // otherwise they'd be non-indexed orphans with no sitemap entry at all.
         $rows = $wpdb->get_results(
             "SELECT post_name AS slug, post_modified_gmt AS modified
              FROM {$wpdb->posts}
              WHERE post_type = 'live-feed-updates'
                AND post_status = 'publish'
                AND post_name <> ''
-               AND NOT EXISTS (
-                   SELECT 1 FROM {$wpdb->term_relationships} tr
-                   INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
-                   WHERE tr.object_id = {$wpdb->posts}.ID
-                     AND tt.taxonomy = '" . ShowQuery::TAXONOMY . "'
-               )
              ORDER BY post_modified_gmt DESC",
             ARRAY_A
         );
@@ -343,10 +338,14 @@ class HomeRoutes
         // Need found_rows for accurate load-more pagination.
         $args['no_found_rows'] = false;
 
-        // Show isolation: '' = BB-only (default), 'any' = every show incl. BB,
-        // a slug = that show only. NOT EXISTS on bbj_show is what keeps ~14k
+        // Show isolation: '' = BB-only (default), 'any' = show-tagged posts
+        // only (excludes BB), a slug = that show only, 'all' = BB + every
+        // show (admin manager). NOT EXISTS on bbj_show is what keeps ~14k
         // legacy (untagged) posts classified as BB for free.
-        $args['tax_query'] = [ShowQuery::forParam((string) $request->get_param('show'))];
+        $showFragment = ShowQuery::forParam((string) $request->get_param('show'));
+        if ($showFragment !== []) {
+            $args['tax_query'] = [$showFragment];
+        }
 
         $query = new \WP_Query($args);
 

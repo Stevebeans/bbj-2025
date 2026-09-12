@@ -79,6 +79,8 @@ use BigBrotherJunkies\Data\Cron\BillingExpiryCron;
 use BigBrotherJunkies\Data\Taxonomies\UpdateTypeTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\UpdateLocationTaxonomy;
 use BigBrotherJunkies\Data\Taxonomies\ShowTaxonomy;
+use BigBrotherJunkies\Data\FeedUpdates\ShowQuery;
+use BigBrotherJunkies\Data\FeedUpdates\FeedUpdateCreator;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadCron;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadMigrator;
 use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
@@ -212,6 +214,18 @@ class Plugin
             if ($post->post_type === 'post') {
                 Revalidation::revalidatePost($post->post_name);
             } elseif ($post->post_type === 'live-feed-updates') {
+                // Show-tagged updates (Survivor, etc.) never appear on the
+                // homepage or the BB hub, so purging/re-rendering those paths
+                // for them is pure cost with no reader-visible benefit. Check
+                // the term first; fall back to FeedUpdateCreator::pendingShow()
+                // for the one window where this fires before the term is set
+                // (FeedUpdateCreator::create() calls wp_insert_post() with
+                // post_status=publish BEFORE wp_set_object_terms()).
+                $isShowPost = ShowQuery::slugFor($post->ID) !== null
+                    || FeedUpdateCreator::pendingShow() !== '';
+                if ($isShowPost) {
+                    return;
+                }
                 // Drop the live-poller micro-cache first so the next 30s poll
                 // sees this post immediately (otherwise up to 20s staler).
                 delete_transient(HomeRoutes::RECENT_TRANSIENT);

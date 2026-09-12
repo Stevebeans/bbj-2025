@@ -2,6 +2,8 @@
 
 namespace BigBrotherJunkies\Data\Social;
 
+use BigBrotherJunkies\Data\FeedUpdates\ShowQuery;
+
 /**
  * Context blocks shared by every model-facing prompt in the Social module
  * (blog recap, FB drafts, Bean Bot). Each block states a fact the model
@@ -189,12 +191,23 @@ class PromptContextBlocks
     {
         try {
             global $wpdb;
+            // BB-only context: exclude posts carrying a bbj_show term (same
+            // raw-SQL NOT EXISTS shape as HomeRoutes::getFeedHub's $showExclusion)
+            // so Survivor updates never read as Big Brother house events.
+            $showExclusion =
+                "AND NOT EXISTS (
+                    SELECT 1 FROM {$wpdb->term_relationships} tr
+                    INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                    WHERE tr.object_id = p.ID
+                      AND tt.taxonomy = '" . ShowQuery::TAXONOMY . "'
+                )";
             $sql = "SELECT p.post_date_gmt AS posted_at, u.display_name AS author, p.post_content AS text
                       FROM {$wpdb->posts} p
                       LEFT JOIN {$wpdb->users} u ON u.ID = p.post_author
                      WHERE p.post_type = 'live-feed-updates'
                        AND p.post_status = 'publish'
-                       AND p.post_date_gmt BETWEEN %s AND %s";
+                       AND p.post_date_gmt BETWEEN %s AND %s
+                       {$showExclusion}";
             $args = [$fromUtc, $toUtc];
             if ($excludeAuthorId > 0) {
                 $sql   .= ' AND p.post_author <> %d';

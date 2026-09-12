@@ -28,6 +28,13 @@ class ShowQuery
 
     public static function forParam(string $show): array
     {
+        if ($show === 'all') {
+            // Admin-only: BB + every show together, i.e. no tax filter at all.
+            // Callers must skip adding 'tax_query' when this fragment is empty
+            // (an empty array as the sole tax_query clause is harmless to
+            // WP_Query, but omitting it avoids the no-op array entirely).
+            return [];
+        }
         if ($show === 'any') {
             return self::anyShow();
         }

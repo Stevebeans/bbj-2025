@@ -117,7 +117,9 @@ class SocialRoutes
                 'limit' => ['type' => 'integer', 'default' => 25, 'sanitize_callback' => 'absint'],
                 'sort'  => ['type' => 'string', 'default' => 'top', 'sanitize_callback' => 'sanitize_text_field'],
                 // '' = BB (default), or a show slug (e.g. 'survivor').
-                'show'  => ['type' => 'string', 'default' => '', 'sanitize_callback' => 'sanitize_title'],
+                'show'  => ['type' => 'string', 'default' => '', 'sanitize_callback' => static function ($value) {
+                    return sanitize_title((string) $value);
+                }],
             ],
         ]);
 
@@ -310,7 +312,7 @@ class SocialRoutes
         $limit = (int) $request->get_param('limit');
         $show  = (string) $request->get_param('show');
         $posts = $request->get_param('sort') === 'trending'
-            ? SocialStore::trendingPosts($limit)
+            ? SocialStore::trendingPosts($limit, $show)
             : SocialStore::topPosts((int) $request->get_param('hours'), $limit, $show);
         foreach ($posts as &$p) {
             $p['text']         = html_entity_decode((string) $p['text'], ENT_QUOTES, 'UTF-8');

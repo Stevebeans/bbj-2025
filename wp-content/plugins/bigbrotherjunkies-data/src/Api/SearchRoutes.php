@@ -2,6 +2,8 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\FeedUpdates\ShowQuery;
+
 /**
  * Search API Routes
  *
@@ -157,6 +159,8 @@ class SearchRoutes
             's' => $searchQuery,
             'posts_per_page' => $perPage,
             'post_status' => 'publish',
+            // Search is a BB-facing surface; Survivor updates must not leak in.
+            'tax_query' => [ShowQuery::excludeAll()],
         ]);
 
         while ($query->have_posts()) {

@@ -25,6 +25,23 @@ use BigBrotherJunkies\Data\Utils\Revalidation;
 class FeedUpdateCreator
 {
     /**
+     * The show slug for the post currently being inserted, readable by the
+     * transition_post_status purge listener (Plugin.php::revalidateFeedUpdate)
+     * for the one window where ShowQuery::slugFor() can't see it yet: this
+     * class calls wp_insert_post() with post_status=publish BEFORE calling
+     * wp_set_object_terms() below, so the publish transition fires with no
+     * bbj_show term on the post yet. Set just before wp_insert_post(), read
+     * and cleared by the listener (or cleared here as a fallback) so it never
+     * leaks into an unrelated post's transition later in the same request.
+     */
+    private static string $pendingShow = '';
+
+    public static function pendingShow(): string
+    {
+        return self::$pendingShow;
+    }
+
+    /**
      * Create a live-feed update and run its cross-posting side effects.
      *
      * @param array{
@@ -96,7 +113,12 @@ class FeedUpdateCreator
         if ($authorId > 0) {
             $postArgs['post_author'] = $authorId;
         }
+        // See $pendingShow docblock: the transition_post_status purge listener
+        // fires synchronously inside wp_insert_post(), before the bbj_show term
+        // is set below, so it can't see $show via ShowQuery::slugFor() yet.
+        self::$pendingShow = $show;
         $postId = wp_insert_post($postArgs);
+        self::$pendingShow = '';
 
         // wp_insert_post can also fail with 0 (e.g. rejected INSERT) — bail
         // BEFORE side effects (image upload, Bluesky) so a failed save can't

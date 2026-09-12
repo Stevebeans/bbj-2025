@@ -728,9 +728,12 @@ class SocialStore
      * Surfaces young-but-climbing posts before they win the day board.
      * Airing-window posts are flagged and downweighted like topPosts().
      *
+     * $show filters to one show's posts ('' = BB, the default; matches
+     * show_slug exactly, so a Survivor board never mixes in BB rows).
+     *
      * @return array<int,array<string,mixed>>
      */
-    public static function trendingPosts(int $limit): array
+    public static function trendingPosts(int $limit, string $show = ''): array
     {
         global $wpdb;
         $table  = SocialSchema::table(SocialSchema::TABLE_POSTS);
@@ -741,9 +744,10 @@ class SocialStore
             "SELECT *, (likes + 2 * reposts) AS score,
                     (likes + 2 * reposts) / GREATEST(TIMESTAMPDIFF(MINUTE, posted_at, UTC_TIMESTAMP()), 10) AS velocity
                FROM {$table}
-              WHERE posted_at >= %s AND (likes + 2 * reposts) >= 5
+              WHERE posted_at >= %s AND (likes + 2 * reposts) >= 5 AND show_slug = %s
               ORDER BY velocity DESC, posted_at DESC LIMIT %d",
             $cutoff,
+            $show,
             $limit * 3
         ), ARRAY_A) ?: [];
 
