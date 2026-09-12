@@ -402,6 +402,10 @@ class BillingRoutes
         $manager = SubscriptionManager::getInstance();
 
         if ($result['wp_user_id'] && $result['plan_type'] === 'lifetime') {
+            if (FoundersWindow::lifetimeSpotsLeft() <= 0) {
+                error_log('BBJ Billing: lifetime cap overshoot - honoring paid checkout for user ' . $result['wp_user_id']);
+            }
+
             $subscriptionId = $manager->createSubscription([
                 'user_id' => $result['wp_user_id'],
                 'paypal_payer_id' => $result['payer_id'],

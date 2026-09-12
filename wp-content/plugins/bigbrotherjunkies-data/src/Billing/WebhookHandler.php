@@ -72,7 +72,19 @@ class WebhookHandler
 
         // Founding badge: grant and stop. Never a subscription row, never a role.
         if ($planType === 'founding_badge') {
-            FoundingBadge::grant($userId, 'purchase');
+            $alreadyHad = FoundingBadge::has($userId);
+            $granted = FoundingBadge::grant($userId, 'purchase');
+
+            if ($alreadyHad) {
+                error_log('BBJ Billing: founding badge duplicate payment - user ' . $userId . ' already held the badge (session ' . ($session['id'] ?? '?') . ')');
+                return ['success' => true, 'message' => 'Founding badge already held - duplicate payment logged'];
+            }
+
+            if (!$granted) {
+                error_log('BBJ Billing: founding badge grant FAILED for user ' . $userId . ' (session ' . ($session['id'] ?? '?') . ')');
+                return ['success' => true, 'message' => 'Founding badge grant failed - logged'];
+            }
+
             return ['success' => true, 'message' => 'Founding badge granted'];
         }
 

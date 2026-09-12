@@ -246,9 +246,11 @@ class StripeService
             return ['error' => 'User not found'];
         }
 
+        $sep = str_contains($successUrl, '?') ? '&' : '?';
+
         $params = [
             'mode' => 'payment',
-            'success_url' => $successUrl . '?session_id={CHECKOUT_SESSION_ID}&processor=stripe&sku=founding_badge',
+            'success_url' => $successUrl . $sep . 'session_id={CHECKOUT_SESSION_ID}&processor=stripe&sku=founding_badge',
             'cancel_url' => $cancelUrl,
             'customer_email' => $user->user_email,
             'line_items' => [[
