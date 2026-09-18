@@ -15,6 +15,22 @@ class ConductLogic
     public const DURATIONS = ['24h' => 24, '72h' => 72, '7d' => 168];
     public const REASONS   = ['spam', 'abuse', 'off_topic', 'misinformation', 'other'];
 
+    /**
+     * "Sit out the rest of the season": a fixed-date timeout that lifts at the
+     * end of finale day (Oct 5, 2026, America/New_York = EDT) no matter when
+     * it is applied. Bump this each season.
+     */
+    public const SEASON         = 'season';
+    public const SEASON_END_UTC = '2026-10-06 03:59:59';
+
+    public static function expiresAtFor(string $duration, int $nowTs): string
+    {
+        if ($duration === self::SEASON) {
+            return self::SEASON_END_UTC;
+        }
+        return gmdate('Y-m-d H:i:s', $nowTs + self::DURATIONS[$duration] * 3600);
+    }
+
     public static function scopeCovers(string $scope, string $gate): bool
     {
         return $scope === 'both' || $scope === $gate;
@@ -44,7 +60,7 @@ class ConductLogic
             if (!in_array($scope, self::SCOPES, true)) {
                 return ['ok' => false, 'reason' => 'bad_scope'];
             }
-            if (!isset(self::DURATIONS[$duration])) {
+            if (!isset(self::DURATIONS[$duration]) && $duration !== self::SEASON) {
                 return ['ok' => false, 'reason' => 'bad_duration'];
             }
         }
@@ -67,8 +83,11 @@ class ConductLogic
             'dm_init'    => 'starting new private message conversations',
             'both'       => 'posting comments and starting new private message conversations',
         ][$scope] ?? 'posting';
+        $howLong = $durationLabel === self::SEASON
+            ? 'until the end of the season (October 5)'
+            : "for {$durationLabel}";
         $body = "Following reports from other members, your access to {$what} has been "
-            . "suspended for {$durationLabel}. The suspension lifts automatically. "
+            . "suspended {$howLong}. The suspension lifts automatically. "
             . "Continued behavior like this after it lifts can lead to a longer suspension or a ban.";
         return self::withNote($body, $note);
     }
