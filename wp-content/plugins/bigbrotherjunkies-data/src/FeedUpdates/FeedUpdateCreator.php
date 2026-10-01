@@ -91,7 +91,7 @@ class FeedUpdateCreator
         // Resolve title: caller-supplied headline wins, else auto-generate from mode.
         $postTitle = ($providedTitle !== null && $providedTitle !== '')
             ? (string) $providedTitle
-            : self::generateTitle($mode);
+            : self::generateTitle($mode, $show);
 
         $postContent = $content;
 
@@ -245,7 +245,8 @@ class FeedUpdateCreator
         }
 
         // Get hashtag for social posts
-        $hashtag  = self::getSeasonHashtag();
+        // (show-tagged posts must not carry the BB season tag)
+        $hashtag  = $show === '' ? self::getSeasonHashtag() : '';
         $imageUrl = $imageId ? wp_get_attachment_url($imageId) : null;
 
         // Post to Bluesky
@@ -425,15 +426,22 @@ class FeedUpdateCreator
     /**
      * Generate SEO-friendly title for feed update
      * Format: "BB27 Feed Update - Jan 30, 3:45 PM PT" or "BB27 Show Update - Jan 30, 2025"
+     * Show-tagged posts (Survivor, etc.): "Survivor Update - Jan 30, 3:45 PM PT"
      */
-    private static function generateTitle(string $mode): string
+    private static function generateTitle(string $mode, string $show = ''): string
     {
-        // Get season abbreviation (e.g., "BB27")
-        $seasonAbbr = self::getSeasonAbbreviation();
-
         // Get current BB Time (Pacific)
         $timezone = new \DateTimeZone('America/Los_Angeles');
         $now = new \DateTime('now', $timezone);
+
+        if ($show !== '') {
+            $term = get_term_by('slug', $show, 'bbj_show');
+            $showName = ($term && !is_wp_error($term)) ? $term->name : ucfirst($show);
+            return "{$showName} Update - " . $now->format('M j, g:i A') . ' PT';
+        }
+
+        // Get season abbreviation (e.g., "BB27")
+        $seasonAbbr = self::getSeasonAbbreviation();
 
         // Format based on mode
         $typeLabel = $mode === 'show' ? 'Show Update' : 'Feed Update';
