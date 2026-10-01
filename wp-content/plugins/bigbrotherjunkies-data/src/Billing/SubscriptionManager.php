@@ -29,6 +29,44 @@ class SubscriptionManager
      * Resolve a checkout/plan key (e.g. 'full_bean_monthly') to ENUM-safe
      * DB values + role. Returns null for unknown keys.
      */
+    /**
+     * Paid-through date (UTC 'Y-m-d H:i:s') from a PayPal subscription
+     * payload. Prefers billing_info.next_billing_time; PayPal drops that
+     * field once a subscription is cancelled, so fall back to the last
+     * payment + one plan cycle. Null when nothing usable (lifetime, API
+     * error payloads, unparseable dates).
+     */
+    public static function paypalPeriodEnd(array $paypalSub, string $planType): ?string
+    {
+        $cycle = ['monthly' => 'P1M', 'annual' => 'P1Y'][$planType] ?? null;
+        if ($cycle === null) {
+            return null;
+        }
+
+        $info = $paypalSub['billing_info'] ?? [];
+
+        if (!empty($info['next_billing_time'])) {
+            $next = self::parseUtc((string) $info['next_billing_time']);
+            return $next ? $next->format('Y-m-d H:i:s') : null;
+        }
+
+        if (!empty($info['last_payment']['time'])) {
+            $last = self::parseUtc((string) $info['last_payment']['time']);
+            return $last ? $last->add(new \DateInterval($cycle))->format('Y-m-d H:i:s') : null;
+        }
+
+        return null;
+    }
+
+    private static function parseUtc(string $iso): ?\DateTimeImmutable
+    {
+        try {
+            return (new \DateTimeImmutable($iso))->setTimezone(new \DateTimeZone('UTC'));
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
     public static function resolvePlan(string $planKey): ?array
     {
         $plan = StripeService::PLANS[$planKey] ?? null;

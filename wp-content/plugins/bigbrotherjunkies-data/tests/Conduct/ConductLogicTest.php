@@ -57,6 +57,36 @@ class ConductLogicTest extends TestCase
         $this->assertSame(['24h' => 24, '72h' => 72, '7d' => 168], ConductLogic::DURATIONS);
     }
 
+    public function test_season_is_a_valid_timeout_duration(): void
+    {
+        $this->assertTrue(ConductLogic::validAction('timeout', 'both', 'season')['ok']);
+        $this->assertSame('bad_duration', ConductLogic::validAction('timeout', 'both', 'offseason')['reason']);
+    }
+
+    public function test_expires_at_for_hour_durations_is_relative_to_now(): void
+    {
+        $now = gmmktime(12, 0, 0, 9, 18, 2026);
+        $this->assertSame('2026-09-19 12:00:00', ConductLogic::expiresAtFor('24h', $now));
+        $this->assertSame('2026-09-25 12:00:00', ConductLogic::expiresAtFor('7d', $now));
+    }
+
+    public function test_expires_at_for_season_is_end_of_finale_day_eastern(): void
+    {
+        // Oct 5, 2026 23:59:59 America/New_York (EDT, UTC-4) = Oct 6 03:59:59 UTC,
+        // regardless of when the timeout is applied.
+        $this->assertSame('2026-10-06 03:59:59', ConductLogic::expiresAtFor('season', gmmktime(12, 0, 0, 9, 18, 2026)));
+        $this->assertSame('2026-10-06 03:59:59', ConductLogic::expiresAtFor('season', gmmktime(0, 0, 0, 10, 4, 2026)));
+        $this->assertSame(ConductLogic::SEASON_END_UTC, ConductLogic::expiresAtFor('season', time()));
+    }
+
+    public function test_timeout_body_reads_naturally_for_each_duration(): void
+    {
+        $season = ConductLogic::timeoutBody('both', 'season', '');
+        $this->assertStringContainsString('until the end of the season (October 5)', $season);
+        $this->assertStringNotContainsString('for season', $season);
+        $this->assertStringContainsString('for 72h', ConductLogic::timeoutBody('both', '72h', ''));
+    }
+
     public function test_bodies_include_note_and_avoid_emdash(): void
     {
         foreach ([

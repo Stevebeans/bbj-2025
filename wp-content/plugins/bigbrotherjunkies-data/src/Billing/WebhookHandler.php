@@ -519,8 +519,9 @@ class WebhookHandler
             'currency' => 'USD',
         ];
 
-        if (isset($subscription['billing_info']['next_billing_time'])) {
-            $subscriptionData['current_period_end'] = date('Y-m-d H:i:s', strtotime($subscription['billing_info']['next_billing_time']));
+        $periodEnd = SubscriptionManager::paypalPeriodEnd($subscription, (string) $subscriptionData['plan_type']);
+        if ($periodEnd) {
+            $subscriptionData['current_period_end'] = $periodEnd;
         }
 
         $subscriptionId = $this->subscriptionManager->createSubscription($subscriptionData);
@@ -542,12 +543,15 @@ class WebhookHandler
 
         // Fires for our own period-end cancels (moments after the API call)
         // AND when a member cancels from PayPal's own UI. Either way they've
-        // paid through current_period_end — keep access until it lapses;
-        // BillingExpiryCron handles the expiry.
-        $periodEnd = $existingSub['current_period_end'] ?? null;
+        // paid through the current period — keep access until it lapses;
+        // BillingExpiryCron handles the expiry. Trust PayPal's dates over the
+        // stored row: renewals didn't advance current_period_end before
+        // 2026-09-18, and a missed renewal webhook would leave it stale again.
+        $periodEnd = $this->latestPayPalPeriodEnd($existingSub, $subscription);
         if ($periodEnd && strtotime($periodEnd) > time()) {
             $this->subscriptionManager->updateSubscriptionStatus($existingSub['id'], 'active', [
                 'cancel_at_period_end' => 1,
+                'current_period_end'   => $periodEnd,
                 'canceled_at' => !empty($existingSub['canceled_at']) ? $existingSub['canceled_at'] : current_time('mysql'),
             ]);
             error_log("BBJ Billing: PayPal subscription {$subscription['id']} cancelled - access retained until {$periodEnd}");
@@ -582,14 +586,74 @@ class WebhookHandler
     }
 
     /**
-     * Handle PayPal PAYMENT.SALE.COMPLETED (for one-time payments)
+     * Handle PayPal PAYMENT.SALE.COMPLETED. Subscription renewals carry
+     * billing_agreement_id (the I-... subscription id): advance the paid
+     * period from PayPal's own dates so a later cancel keeps access through
+     * what the member actually paid for. One-time sales have no agreement id
+     * and are just acknowledged.
      */
     private function handlePayPalPaymentCompleted(array $payment): array
     {
-        // This is called for subscription renewals and one-time payments
-        // For subscriptions, we just acknowledge it
         error_log("BBJ Billing: PayPal payment completed: " . ($payment['id'] ?? 'unknown'));
+
+        $subId = $payment['billing_agreement_id'] ?? null;
+        if (!$subId) {
+            return ['success' => true];
+        }
+
+        $existingSub = $this->subscriptionManager->findByPayPalSubscriptionId($subId);
+        if (!$existingSub || !in_array($existingSub['status'], ['active', 'past_due'], true)) {
+            return ['success' => true, 'message' => 'Subscription not found or not renewable'];
+        }
+
+        $fetched = (new PayPalService())->getSubscription($subId);
+        if (!is_array($fetched) || !empty($fetched['error'])) {
+            // Non-2xx makes PayPal retry the event, so a transient API blip
+            // doesn't leave the period stale for a whole cycle.
+            error_log("BBJ Billing: could not fetch PayPal subscription {$subId} after payment");
+            return ['error' => 'PayPal lookup failed', 'status' => 503];
+        }
+
+        $periodEnd = SubscriptionManager::paypalPeriodEnd($fetched, (string) $existingSub['plan_type']);
+        if (!$periodEnd) {
+            return ['success' => true, 'message' => 'No period end from PayPal'];
+        }
+
+        $update = ['status' => 'active', 'current_period_end' => $periodEnd];
+        $lastPaid = $fetched['billing_info']['last_payment']['time'] ?? null;
+        if ($lastPaid && ($ts = strtotime($lastPaid)) !== false) {
+            $update['current_period_start'] = gmdate('Y-m-d H:i:s', $ts);
+        }
+        $this->subscriptionManager->updateByPayPalSubscriptionId($subId, $update);
+
+        $was = $existingSub['current_period_end'] ?: 'NULL';
+        error_log("BBJ Billing: PayPal subscription {$subId} renewed - period end {$was} -> {$periodEnd}");
         return ['success' => true];
+    }
+
+    /**
+     * Best available paid-through date for a PayPal row: PayPal's own dates
+     * from the webhook resource, else a live lookup, else the stored value.
+     * Never earlier than what's already stored.
+     */
+    private function latestPayPalPeriodEnd(array $row, array $paypalSub): ?string
+    {
+        $planType = (string) ($row['plan_type'] ?? '');
+        $fresh = SubscriptionManager::paypalPeriodEnd($paypalSub, $planType);
+
+        if ($fresh === null && !empty($row['paypal_subscription_id'])) {
+            $fetched = (new PayPalService())->getSubscription($row['paypal_subscription_id']);
+            if (is_array($fetched) && empty($fetched['error'])) {
+                $fresh = SubscriptionManager::paypalPeriodEnd($fetched, $planType);
+            }
+        }
+
+        $stored = $row['current_period_end'] ?: null;
+        if ($fresh === null || $stored === null) {
+            return $fresh ?? $stored;
+        }
+        // Same 'Y-m-d H:i:s' UTC format on both sides, so string max is date max.
+        return max($fresh, $stored);
     }
 
     /**

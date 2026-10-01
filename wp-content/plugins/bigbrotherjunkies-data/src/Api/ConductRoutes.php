@@ -2,6 +2,7 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
+use BigBrotherJunkies\Data\Conduct\ConductLogic;
 use BigBrotherJunkies\Data\Conduct\ConductStore;
 use BigBrotherJunkies\Data\Messages\DmStore;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
@@ -46,16 +47,28 @@ class ConductRoutes
                 'scope'    => ['type' => 'string', 'default' => '',
                                'enum' => ['', 'commenting', 'dm_init', 'both']],
                 'duration' => ['type' => 'string', 'default' => '',
-                               'enum' => ['', '24h', '72h', '7d']],
+                               'enum' => ['', '24h', '72h', '7d', ConductLogic::SEASON]],
                 'note'     => ['type' => 'string', 'default' => '',
                                'sanitize_callback' => 'sanitize_textarea_field'],
             ],
+        ]);
+        // One-click "sit out the rest of the season" from the comment card.
+        // Comment mods get this without being handed the whole conduct ladder.
+        register_rest_route(self::NAMESPACE, '/admin/conduct/members/(?P<user_id>\d+)/season-timeout', [
+            'methods'             => 'POST',
+            'callback'            => [$this, 'seasonTimeout'],
+            'permission_callback' => [$this, 'checkCommentModAccess'],
         ]);
     }
 
     public function checkAccess(): bool
     {
         return PermissionChecker::userCan('conduct_moderation');
+    }
+
+    public function checkCommentModAccess(): bool
+    {
+        return PermissionChecker::userCan('comment_moderation') || $this->checkAccess();
     }
 
     private function canSeeProtected(): bool
@@ -121,9 +134,7 @@ class ConductRoutes
             $note
         );
         if (!$result['ok']) {
-            $reason = (string) ($result['reason'] ?? 'error');
-            $status = ['protected' => 403, 'no_user' => 404][$reason] ?? 400;
-            return new \WP_REST_Response(['message' => 'Could not apply action (' . $reason . ').'], $status);
+            return $this->actionFailed($result);
         }
         if ($action !== 'lift') {
             ConductStore::resolveOpenReportsFor($userId, $moderatorId, $action);
@@ -134,5 +145,38 @@ class ConductRoutes
             'actions' => ConductStore::historyFor($userId),
             'active'  => ConductStore::activeRestrictions($userId),
         ], 200);
+    }
+
+    public function seasonTimeout(\WP_REST_Request $request): \WP_REST_Response
+    {
+        $userId = (int) $request->get_param('user_id');
+        if (DmStore::isProtectedTarget($userId) && !$this->canSeeProtected()) {
+            return new \WP_REST_Response(['message' => 'Reports about moderators are handled by the site admin.'], 403);
+        }
+        $moderatorId = get_current_user_id();
+        $result = ConductStore::applyAction(
+            $userId,
+            $moderatorId,
+            'timeout',
+            'both',
+            ConductLogic::SEASON,
+            'Season timeout applied from a comment.'
+        );
+        if (!$result['ok']) {
+            return $this->actionFailed($result);
+        }
+        ConductStore::resolveOpenReportsFor($userId, $moderatorId, 'timeout');
+        return new \WP_REST_Response([
+            'success'    => true,
+            'dm_sent'    => $result['dm_sent'] ?? false,
+            'expires_at' => ConductLogic::SEASON_END_UTC,
+        ], 200);
+    }
+
+    private function actionFailed(array $result): \WP_REST_Response
+    {
+        $reason = (string) ($result['reason'] ?? 'error');
+        $status = ['protected' => 403, 'no_user' => 404][$reason] ?? 400;
+        return new \WP_REST_Response(['message' => 'Could not apply action (' . $reason . ').'], $status);
     }
 }

@@ -190,7 +190,7 @@ class ConductStore
             $actionId = self::record($userId, $moderatorId, 'warning', '', null, $note);
             $body = ConductLogic::warningBody($note);
         } elseif ($action === 'timeout') {
-            $expires = gmdate('Y-m-d H:i:s', time() + ConductLogic::DURATIONS[$duration] * 3600);
+            $expires = ConductLogic::expiresAtFor($duration, time());
             $actionId = self::record($userId, $moderatorId, 'timeout', $scope, $expires, $note);
             $body = ConductLogic::timeoutBody($scope, $duration, $note);
         } elseif ($action === 'ban') {
