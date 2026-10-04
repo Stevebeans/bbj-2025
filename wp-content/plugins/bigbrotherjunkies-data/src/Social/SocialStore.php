@@ -611,25 +611,29 @@ class SocialStore
      * CAP_TAG (same caps + capped-logging as unsummarizedWindow). READ-ONLY:
      * unlike unsummarizedWindow(), this never filters or updates the
      * `summarized` flag, so it cannot disturb the digest's or Bean Bot's cursor.
+     * Matches show_slug exactly ('' = BB), so a BB draft never reads Survivor
+     * rows and vice versa.
      *
      * @return array{trusted:array<int,array<string,mixed>>,tag:array<int,array<string,mixed>>}
      */
-    public static function postsInWindow(string $fromUtc, string $toUtc): array
+    public static function postsInWindow(string $fromUtc, string $toUtc, string $show = ''): array
     {
         global $wpdb;
         $table = SocialSchema::table(SocialSchema::TABLE_POSTS);
 
         $trusted = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$table} WHERE source = 'trusted' AND posted_at BETWEEN %s AND %s
+            "SELECT * FROM {$table} WHERE source = 'trusted' AND show_slug = %s AND posted_at BETWEEN %s AND %s
               ORDER BY posted_at DESC, id DESC LIMIT %d",
+            $show,
             $fromUtc,
             $toUtc,
             self::CAP_TRUSTED
         ), ARRAY_A) ?: [];
 
         $tag = $wpdb->get_results($wpdb->prepare(
-            "SELECT * FROM {$table} WHERE source = 'tag' AND posted_at BETWEEN %s AND %s
+            "SELECT * FROM {$table} WHERE source = 'tag' AND show_slug = %s AND posted_at BETWEEN %s AND %s
               ORDER BY posted_at DESC, id DESC LIMIT %d",
+            $show,
             $fromUtc,
             $toUtc,
             self::CAP_TAG
@@ -637,7 +641,8 @@ class SocialStore
 
         if (count($trusted) >= self::CAP_TRUSTED) {
             $totalTrusted = (int) $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM {$table} WHERE source = 'trusted' AND posted_at BETWEEN %s AND %s",
+                "SELECT COUNT(*) FROM {$table} WHERE source = 'trusted' AND show_slug = %s AND posted_at BETWEEN %s AND %s",
+                $show,
                 $fromUtc,
                 $toUtc
             ));
@@ -647,7 +652,8 @@ class SocialStore
         }
         if (count($tag) >= self::CAP_TAG) {
             $totalTag = (int) $wpdb->get_var($wpdb->prepare(
-                "SELECT COUNT(*) FROM {$table} WHERE source = 'tag' AND posted_at BETWEEN %s AND %s",
+                "SELECT COUNT(*) FROM {$table} WHERE source = 'tag' AND show_slug = %s AND posted_at BETWEEN %s AND %s",
+                $show,
                 $fromUtc,
                 $toUtc
             ));
@@ -868,7 +874,7 @@ class SocialStore
         $now   = current_time('mysql', true);
 
         $kind = (string) ($row['kind'] ?? 'digest');
-        if (!in_array($kind, ['digest', 'facebook', 'blog', 'quote_cand', 'house_tx'], true)) {
+        if (!in_array($kind, ['digest', 'facebook', 'blog', 'blog_surv', 'quote_cand', 'house_tx'], true)) {
             $kind = 'digest';
         }
 

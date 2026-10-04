@@ -4,6 +4,7 @@ namespace BigBrotherJunkies\Data\Api;
 
 use BigBrotherJunkies\Data\Social\BeanBotService;
 use BigBrotherJunkies\Data\Social\DraftService;
+use BigBrotherJunkies\Data\Social\DraftShows;
 use BigBrotherJunkies\Data\Social\HouseTranscriptService;
 use BigBrotherJunkies\Data\Social\PromptContext;
 use BigBrotherJunkies\Data\Social\QueueBridge;
@@ -33,7 +34,7 @@ use WP_REST_Response;
  *  - GET  /social/quotes             approved quotes for a season or player
  *  - POST /social/quotes             approve/insert a quote
  *  - DELETE /social/quotes/{id}      remove an approved quote
- *  - POST /social/draft              generate a facebook/blog draft over a time window
+ *  - POST /social/draft              generate a facebook/blog draft over a time window (blog: optional show)
  *
  * Every route is gated by PermissionChecker::userCan('social_monitor'). The
  * admin page is client-fetched. Only the quote CRUD routes trigger a
@@ -218,6 +219,13 @@ class SocialRoutes
             'methods'             => 'POST',
             'callback'            => [$this, 'runDraft'],
             'permission_callback' => [$this, 'checkAccess'],
+            'args'                => [
+                // '' = BB (default), or a show slug (blog only; validated in
+                // DraftService against DraftShows).
+                'show' => ['type' => 'string', 'default' => '', 'sanitize_callback' => static function ($value) {
+                    return sanitize_title((string) $value);
+                }],
+            ],
         ]);
 
         register_rest_route(self::NAMESPACE, '/social/draft-batch', [
@@ -386,9 +394,9 @@ class SocialRoutes
 
     public function getSummaries(WP_REST_Request $request): WP_REST_Response
     {
-        // Optional ?kind= filter, whitelisted to the three known kinds.
+        // Optional ?kind= filter, whitelisted to the known kinds.
         $kind = (string) $request->get_param('kind');
-        $kind = in_array($kind, ['digest', 'facebook', 'blog'], true) ? $kind : null;
+        $kind = in_array($kind, array_merge(['digest', 'facebook'], DraftShows::blogKinds()), true) ? $kind : null;
 
         // Stored content is wp_encode_emoji'd (utf8mb3-safe); decode it here so
         // GET matches what POST /social/summarize already returns, otherwise a
@@ -417,7 +425,7 @@ class SocialRoutes
         $kind   = is_string($params['kind'] ?? null) ? $params['kind'] : '';
         $window = is_string($params['window'] ?? null) ? $params['window'] : 'today';
 
-        $result = DraftService::generate($kind, $window);
+        $result = DraftService::generate($kind, $window, (string) $request->get_param('show'));
         $status = !empty($result['success']) ? 200 : 400;
         return new WP_REST_Response($result, $status);
     }

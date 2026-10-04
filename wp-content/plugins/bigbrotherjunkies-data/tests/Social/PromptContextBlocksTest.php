@@ -167,6 +167,17 @@ class PromptContextBlocksTest extends TestCase
         $this->assertStringEndsWith('…', $line);
     }
 
+    public function test_house_updates_header_is_overridable_for_other_shows(): void
+    {
+        $rows = [['posted_at' => '2026-09-30 03:00:00', 'author' => 'Steve', 'text' => 'Tribal tonight']];
+        $this->assertSame(PromptContextBlocks::HOUSE_UPDATES_HEADER, explode("
+", PromptContextBlocks::formatHouseUpdates($rows))[0]);
+        $out = PromptContextBlocks::formatHouseUpdates($rows, PromptContextBlocks::HOUSE_UPDATES_CAP, PromptContextBlocks::SHOW_UPDATES_HEADER);
+        $this->assertSame(PromptContextBlocks::SHOW_UPDATES_HEADER, explode("
+", $out)[0]);
+        $this->assertStringNotContainsString('HOUSE', $out);
+    }
+
     public function test_house_updates_block_is_empty_with_no_rows(): void
     {
         $this->assertSame('', PromptContextBlocks::formatHouseUpdates([]));

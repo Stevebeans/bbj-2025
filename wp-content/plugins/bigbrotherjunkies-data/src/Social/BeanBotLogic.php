@@ -69,6 +69,10 @@ class BeanBotLogic
             case '24h':
                 $from = $now->sub(new \DateInterval('P1D'))->setTimezone($utc);
                 break;
+            case '7d':
+                // Weekly-episode shows (Survivor): the week since the last airing.
+                $from = $now->sub(new \DateInterval('P7D'))->setTimezone($utc);
+                break;
             case 'today':
             default:
                 $from = $now->setTimezone($siteTz)->setTime(0, 0, 0)->setTimezone($utc);

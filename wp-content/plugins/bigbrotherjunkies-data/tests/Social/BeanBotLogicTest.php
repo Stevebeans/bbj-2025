@@ -61,6 +61,7 @@ class BeanBotLogicTest extends TestCase
         $tz = new \DateTimeZone('America/Los_Angeles');
         $this->assertSame('2026-07-13 08:00:00', BeanBotLogic::windowBounds('12h', $now, $tz)['from']);
         $this->assertSame('2026-07-12 20:00:00', BeanBotLogic::windowBounds('24h', $now, $tz)['from']);
+        $this->assertSame('2026-07-06 20:00:00', BeanBotLogic::windowBounds('7d', $now, $tz)['from']);
         $this->assertSame(
             BeanBotLogic::windowBounds('today', $now, $tz)['from'],
             BeanBotLogic::windowBounds('bogus', $now, $tz)['from']
