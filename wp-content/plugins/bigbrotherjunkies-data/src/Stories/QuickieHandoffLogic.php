@@ -18,7 +18,9 @@ class QuickieHandoffLogic
         $url = (string) ($item['url'] ?? '');
         switch ($item['source'] ?? '') {
             case 'instagram':
-                return "📸 " . self::creditHandle($item) . " on Instagram\n" . $url;
+                // Link back to the creator's profile, not the single post.
+                $profile = 'https://www.instagram.com/' . ltrim((string) ($item['source_key'] ?? ''), '@') . '/';
+                return "📸 " . self::creditHandle($item) . " on Instagram\n" . $profile;
             case 'reddit':
                 return 'via ' . self::creditHandle($item) . ' on r/' . (string) $item['source_key'] . "\n" . $url;
             case 'bluesky':

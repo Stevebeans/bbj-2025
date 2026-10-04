@@ -15,7 +15,7 @@ class QuickieHandoffLogicTest extends TestCase
 
     public function test_credit_line_names_handle_platform_and_link(): void
     {
-        $this->assertSame("📸 @janellepierzina on Instagram\nhttps://www.instagram.com/p/AAA111/", QuickieHandoffLogic::creditLine($this->ig()));
+        $this->assertSame("📸 @janellepierzina on Instagram\nhttps://www.instagram.com/janellepierzina/", QuickieHandoffLogic::creditLine($this->ig()));
         $rss = ['source' => 'rss', 'source_key' => 'https://example.com/feed', 'author' => 'Staff Writer', 'url' => 'https://example.com/a', 'title' => 'T', 'excerpt' => 'E'];
         $this->assertSame("via Staff Writer\nhttps://example.com/a", QuickieHandoffLogic::creditLine($rss));
         $reddit = ['source' => 'reddit', 'source_key' => 'BigBrother', 'author' => 'u/feedwatcher', 'url' => 'https://www.reddit.com/r/BigBrother/comments/a1/x/', 'title' => 'T', 'excerpt' => 'E'];
@@ -28,7 +28,7 @@ class QuickieHandoffLogicTest extends TestCase
         $this->assertStringStartsWith("Podcast drops Thursday. Who should be my first guest?", $cap);
         $this->assertStringNotContainsString('#BB28', $cap);
         $this->assertStringNotContainsString('Link in bio', $cap);
-        $this->assertStringEndsWith("📸 @janellepierzina on Instagram\nhttps://www.instagram.com/p/AAA111/", $cap);
+        $this->assertStringEndsWith("📸 @janellepierzina on Instagram\nhttps://www.instagram.com/janellepierzina/", $cap);
     }
 
     public function test_has_credit_requires_the_handle(): void
