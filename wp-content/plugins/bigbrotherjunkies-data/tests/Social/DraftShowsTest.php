@@ -47,6 +47,7 @@ class DraftShowsTest extends TestCase
         $this->assertStringContainsString('never "S51"', $p);
         $this->assertStringNotContainsString('{SEASON}', $p);
         $this->assertStringContainsString('beyond the sources', $p);
+        $this->assertStringContainsString('NEWS block', $p);
         $this->assertStringContainsString('Tribal Council', $p);
         $this->assertStringContainsString('Never invent or guess who was voted out', $p);
         $this->assertStringNotContainsString('—', $p);

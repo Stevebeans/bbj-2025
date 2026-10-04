@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Social;
 
 use BigBrotherJunkies\Data\FeedUpdates\ShowQuery;
+use BigBrotherJunkies\Data\Stories\ItemStore;
 
 /**
  * Context blocks shared by every model-facing prompt in the Social module
@@ -167,11 +168,11 @@ class PromptContextBlocks
     }
 
     /** Collapse whitespace; cap length with an ellipsis. */
-    private static function squash(string $text): string
+    private static function squash(string $text, int $max = self::HOUSE_UPDATE_MAX_CHARS): string
     {
         $text = trim((string) preg_replace('/\s+/u', ' ', $text));
-        if (mb_strlen($text) > self::HOUSE_UPDATE_MAX_CHARS) {
-            $text = rtrim(mb_substr($text, 0, self::HOUSE_UPDATE_MAX_CHARS)) . '…';
+        if (mb_strlen($text) > $max) {
+            $text = rtrim(mb_substr($text, 0, $max)) . '…';
         }
         return $text;
     }
@@ -232,6 +233,58 @@ class PromptContextBlocks
             return self::formatHouseUpdates($rows, self::HOUSE_UPDATES_CAP, $show === '' ? self::HOUSE_UPDATES_HEADER : self::SHOW_UPDATES_HEADER);
         } catch (\Throwable $e) {
             error_log('[bbjd] PromptContextBlocks::houseUpdatesBlock failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    public const NEWS_HEADER         = '=== NEWS (headlines and excerpts from news sites and fan outlets; newest first) ===';
+    public const NEWS_CAP            = 30;
+    public const NEWS_EXCERPT_CHARS  = 200;
+
+    /**
+     * Stories Inbox items as model-facing lines, newest first (input order is
+     * re-sorted, so callers need not pre-sort). Rows use the bbj_story_items
+     * shape: published_at (UTC), source, author, title, excerpt, url.
+     * Each line: "[house time] author (source): title - excerpt <url>".
+     */
+    public static function formatNews(array $rows, int $cap = self::NEWS_CAP): string
+    {
+        if ($rows === []) {
+            return '';
+        }
+        usort($rows, static fn(array $a, array $b): int => strcmp((string) $b['published_at'], (string) $a['published_at']));
+        $rows = array_slice($rows, 0, max(1, $cap));
+
+        $lines = [self::NEWS_HEADER];
+        foreach ($rows as $row) {
+            $source  = trim((string) ($row['source'] ?? ''));
+            $author  = trim((string) ($row['author'] ?? ''));
+            $who     = $author !== '' ? ($source !== '' ? "{$author} ({$source})" : $author) : ($source !== '' ? $source : 'News');
+            $title   = self::squash(strip_tags((string) ($row['title'] ?? '')));
+            $excerpt = self::squash(strip_tags((string) ($row['excerpt'] ?? '')), self::NEWS_EXCERPT_CHARS);
+            $text    = $title !== '' && $excerpt !== '' ? "{$title} - {$excerpt}" : $title . $excerpt;
+            $url     = trim((string) ($row['url'] ?? ''));
+            $lines[] = sprintf(
+                '[%s] %s: %s%s',
+                BeanBotLogic::toHouseTime((string) $row['published_at']),
+                $who,
+                $text,
+                $url !== '' ? " <{$url}>" : ''
+            );
+        }
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Wrapper: the show's non-dismissed Stories Inbox items in the window.
+     * Not unit-tested (uses $wpdb); all formatting is in formatNews.
+     */
+    public static function newsBlock(string $show, string $fromUtc, string $toUtc): string
+    {
+        try {
+            return self::formatNews(ItemStore::forDraftWindow($show, $fromUtc, $toUtc, self::NEWS_CAP));
+        } catch (\Throwable $e) {
+            error_log('[bbjd] PromptContextBlocks::newsBlock failed: ' . $e->getMessage());
             return '';
         }
     }

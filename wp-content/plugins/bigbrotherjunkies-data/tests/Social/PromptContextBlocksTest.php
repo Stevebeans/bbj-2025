@@ -178,6 +178,43 @@ class PromptContextBlocksTest extends TestCase
         $this->assertStringNotContainsString('HOUSE', $out);
     }
 
+    public function test_news_lines_are_newest_first_with_attribution_and_url(): void
+    {
+        $rows = [
+            ['published_at' => '2026-09-30 03:00:00', 'source' => 'rss', 'author' => 'Inside Survivor', 'title' => 'Older', 'excerpt' => 'First item.', 'url' => 'https://a.example/1'],
+            ['published_at' => '2026-10-01 16:30:00', 'source' => 'reddit', 'author' => '', 'title' => 'Newer', 'excerpt' => '', 'url' => 'https://b.example/2'],
+        ];
+        $lines = explode("
+", PromptContextBlocks::formatNews($rows));
+        $this->assertSame(PromptContextBlocks::NEWS_HEADER, $lines[0]);
+        $this->assertSame('[Thu Oct 1 9:30 AM] reddit: Newer <https://b.example/2>', $lines[1]);
+        $this->assertSame('[Tue Sep 29 8:00 PM] Inside Survivor (rss): Older - First item. <https://a.example/1>', $lines[2]);
+    }
+
+    public function test_news_strips_tags_trims_excerpt_and_caps_rows(): void
+    {
+        $long = '<p>' . str_repeat('word ', 100) . '</p>'; // 500 chars of text
+        $rows = [];
+        for ($i = 0; $i < 5; $i++) {
+            $rows[] = ['published_at' => "2026-10-01 0{$i}:00:00", 'source' => 'rss', 'author' => 'EW', 'title' => "T{$i}", 'excerpt' => $long, 'url' => ''];
+        }
+        $lines = explode("
+", PromptContextBlocks::formatNews($rows, 3));
+        $this->assertCount(4, $lines); // header + 3 newest
+        $this->assertStringContainsString('EW (rss): T4 - word', $lines[1]);
+        $this->assertStringNotContainsString('<p>', $lines[1]);
+        $this->assertStringEndsWith('…', $lines[1]); // no url -> excerpt ellipsis ends the line
+        $excerpt = substr($lines[1], strpos($lines[1], ' - ') + 3);
+        // Up to 200 chars (trailing space rtrimmed) plus the ellipsis.
+        $this->assertLessThanOrEqual(PromptContextBlocks::NEWS_EXCERPT_CHARS + 1, mb_strlen($excerpt));
+        $this->assertGreaterThan(PromptContextBlocks::NEWS_EXCERPT_CHARS - 5, mb_strlen($excerpt));
+    }
+
+    public function test_news_block_is_empty_with_no_rows(): void
+    {
+        $this->assertSame('', PromptContextBlocks::formatNews([]));
+    }
+
     public function test_house_updates_block_is_empty_with_no_rows(): void
     {
         $this->assertSame('', PromptContextBlocks::formatHouseUpdates([]));

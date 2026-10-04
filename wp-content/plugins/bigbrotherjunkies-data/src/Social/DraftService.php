@@ -152,6 +152,10 @@ bigbrotherjunkies.com's own Survivor writers. Site updates are the primary accou
 reports corroborate and add detail. When a site update and a report conflict, prefer the site
 update and say the reports differ. Use the stated day of the week; do not infer it from the
 date.
+It may also include a NEWS block: headlines and short excerpts from news sites and fan
+outlets. Treat news items as reported facts and attribute them to the outlet ("according to
+Inside Survivor"); prefer items that several outlets or the other sources corroborate, and
+never add detail beyond what a headline or excerpt actually says. Do not paste URLs.
 
 Facts: state only what the sources actually say. You know nothing about this season's cast,
 tribes, or results beyond the sources; do not fill gaps from memory of this or any other
@@ -339,14 +343,16 @@ PROMPT;
         $trusted = $posts['trusted'];
         $tag     = $posts['tag'];
         $updates = self::updatesBlock($bounds, $show);
+        // Stories Inbox news only feeds show drafts; BB stays byte-identical.
+        $news = $show === '' ? '' : PromptContextBlocks::newsBlock($show, (string) $bounds['from'], (string) $bounds['to']);
 
-        // BB needs collected posts; a Survivor recap can stand on the site's
-        // own Survivor updates alone (Bluesky volume is thin between episodes).
-        if (empty($trusted) && empty($tag) && ($show === '' || $updates === '')) {
+        // BB needs collected posts; a show recap can stand on the site's own
+        // updates or the news alone (Bluesky volume is thin between episodes).
+        if (empty($trusted) && empty($tag) && ($show === '' || ($updates === '' && $news === ''))) {
             return ['success' => false, 'message' => 'No collected posts in that window.'];
         }
 
-        $userMessage = self::buildUserMessage($bounds, $trusted, $tag, $show, $updates);
+        $userMessage = self::buildUserMessage($bounds, $trusted, $tag, $show, $updates, $news);
         if ($kind === 'blog' && $show !== '') {
             $system = apply_filters('bbjd_bean_bot_show_blog_prompt', DraftShows::blogPrompt($show), $show);
         } elseif ($kind === 'blog') {
@@ -400,7 +406,7 @@ PROMPT;
      * @param array<int,array<string,mixed>> $trusted
      * @param array<int,array<string,mixed>> $tag
      */
-    private static function buildUserMessage(array $bounds, array $trusted, array $tag, string $show = '', ?string $updates = null): string
+    private static function buildUserMessage(array $bounds, array $trusted, array $tag, string $show = '', ?string $updates = null, string $news = ''): string
     {
         $lines   = [];
         $lines[] = sprintf(
@@ -442,6 +448,7 @@ PROMPT;
             PromptContextBlocks::dateHeader($now),
             $show === '' ? PromptContextBlocks::gameStateLine($now) : '',
             $updates ?? self::updatesBlock($bounds, $show),
+            $news,
             PromptContextBlocks::communityBlock(),
         ];
 
