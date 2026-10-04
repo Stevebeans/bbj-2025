@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/">
+<channel>
+  <title>Example BB News</title>
+  <item>
+    <title>Janelle announces new podcast</title>
+    <link>https://example.com/janelle-podcast</link>
+    <description><![CDATA[<p>Big Brother legend <b>Janelle</b> is launching a weekly show.</p>]]></description>
+    <pubDate>Tue, 01 Sep 2026 14:05:00 +0000</pubDate>
+    <dc:creator>Staff Writer</dc:creator>
+    <media:thumbnail url="https://example.com/janelle.jpg"/>
+  </item>
+  <item>
+    <title>No link item is skipped</title>
+    <description>x</description>
+    <pubDate>Tue, 01 Sep 2026 13:00:00 +0000</pubDate>
+  </item>
+</channel>
+</rss>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/" xmlns="http://www.w3.org/2005/Atom">
+  <title>Taylor Hale</title>
+  <entry>
+    <id>yt:video:abc123</id>
+    <title>My BB28 finale predictions</title>
+    <link rel="alternate" href="https://www.youtube.com/watch?v=abc123"/>
+    <author><name>Taylor Hale</name></author>
+    <published>2026-09-01T10:00:00+00:00</published>
+    <media:group>
+      <media:description>Breaking down who I think wins.</media:description>
+      <media:thumbnail url="https://i.ytimg.com/vi/abc123/hqdefault.jpg" width="480" height="360"/>
+    </media:group>
+  </entry>
+</feed>

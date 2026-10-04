@@ -73,6 +73,7 @@ use BigBrotherJunkies\Data\Api\EditorRoutes;
 use BigBrotherJunkies\Data\Api\LiveThreadRoutes;
 use BigBrotherJunkies\Data\Api\UserAdminRoutes;
 use BigBrotherJunkies\Data\Api\BrandSafetyRoutes;
+use BigBrotherJunkies\Data\Api\StoriesRoutes;
 use BigBrotherJunkies\Data\Cron\ContentEngineCron;
 use BigBrotherJunkies\Data\Cron\RevisionRetention;
 use BigBrotherJunkies\Data\Cron\BillingExpiryCron;
@@ -681,6 +682,11 @@ class Plugin
         \BigBrotherJunkies\Data\Social\SocialStore::maybeMigrate();
         $socialRoutes = new SocialRoutes();
         $socialRoutes->init();
+
+        // Stories subsystem (inbox + sources; engine in Batch B)
+        \BigBrotherJunkies\Data\Stories\Schema::maybeMigrate();
+        $storiesRoutes = new StoriesRoutes();
+        $storiesRoutes->init();
 
         // Direct messages
         \BigBrotherJunkies\Data\Messages\DmStore::maybeMigrate();
