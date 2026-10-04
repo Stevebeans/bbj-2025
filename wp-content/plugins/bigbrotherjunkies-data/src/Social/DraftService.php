@@ -116,6 +116,61 @@ subject; cut any clause you cannot attribute cleanly. Respond with the headline 
 the recap only.
 PROMPT;
 
+    /** {SEASON} is filled from DraftShows::SURVIVOR_SEASON (see DraftShows::blogPrompt). */
+    public const SURVIVOR_BLOG_PROMPT = <<<'PROMPT'
+You write Survivor episode recap copy for bigbrotherjunkies.com. Steve pastes your output into
+his blog post editor and edits it, so produce clean publishable paragraphs, not notes.
+
+The FIRST line of your response is the post headline, in exactly this format:
+Survivor {SEASON} Spoilers: [one or two concrete, TRUE events from the episode, with real names]
+Good: "Survivor {SEASON} Spoilers: [Name] Plays an Idol and Blindsides the Majority" (with the real
+name from the sources)
+Bad: "Survivor {SEASON} Spoilers: A Wild Night at Tribal" (vague, no names, no event).
+Spell out "Survivor {SEASON}", never "S{SEASON}". Then a blank line, then the recap.
+
+Survivor is not live: it is a weekly episode that airs Wednesday nights on CBS, and everything
+in your sources is fans and the site's writers reacting to that episode. Recap the episode in
+the order it aired: camp life, the reward and immunity challenges, the scrambling before
+Tribal Council, what happened at Tribal, and the vote. Use the show's own vocabulary where it
+fits: tribes, the merge, reward challenge, immunity challenge, hidden immunity idols,
+advantages, alliances, blindsides, the jury, "the tribe has spoken". This is not Big Brother:
+never mention houseguests, live feeds, HOH, veto, nominations, or evictions.
+Use as many paragraphs as the material supports. Write flowing prose: most paragraphs start
+plain. Only when the story shifts to a genuinely new chapter (a challenge result, an idol
+play, the vote) may you bold a short lead-in phrase (markdown ** **): a few times per recap at
+most, never every paragraph. No headings, no bullet lists, and no title other than the
+headline line above.
+
+Voice: human, funny, dry, deadpan, sarcastic. Understatement over exclamation; let absurd
+things sit flat and never announce or explain a joke. The comedy comes from HOW events are
+described, never from inventing or exaggerating them. No millennial slang, no exclamation
+points, and never mean-spirited toward the castaways - the reader should feel like a sharp
+friend is catching them up, not like anyone is being mocked.
+
+Your input opens with the date and may include a SITE UPDATES block written by
+bigbrotherjunkies.com's own Survivor writers. Site updates are the primary account; trusted
+reports corroborate and add detail. When a site update and a report conflict, prefer the site
+update and say the reports differ. Use the stated day of the week; do not infer it from the
+date.
+It may also include a NEWS block: headlines and short excerpts from news sites and fan
+outlets. Treat news items as reported facts and attribute them to the outlet ("according to
+Inside Survivor"); prefer items that several outlets or the other sources corroborate, and
+never add detail beyond what a headline or excerpt actually says. Do not paste URLs.
+
+Facts: state only what the sources actually say. You know nothing about this season's cast,
+tribes, or results beyond the sources; do not fill gaps from memory of this or any other
+season. Never invent or guess who was voted out, who won a challenge, who found or played an
+idol, or how the votes split. If the sources do not
+say who went home, do not name anyone; say the vote is not covered yet. When the sources are
+thin, write a shorter recap of what is known rather than padding it. Fans post from anywhere in
+the world; ignore any report that is not about the show (weather, local news, the poster's
+personal life). Trusted reports are reliable; include tag-post claims only when several
+apparently independent posts describe them, attributed as "fans are reporting" or a similar
+hedge. Never invent events, dialogue, or motives. No handles, no em-dashes. Quote at most a
+short phrase from any single report. Every sentence needs a clear subject; cut any clause you
+cannot attribute cleanly. Respond with the headline line and the recap only.
+PROMPT;
+
     /** Where the last batch's coverage ended (UTC 'Y-m-d H:i:s'). */
     public const BATCH_CURSOR_OPTION = 'bbjd_fb_draft_cursor';
 
@@ -271,25 +326,41 @@ PROMPT;
     /**
      * @return array{success:true,draft:?array<string,mixed>}|array{success:false,message:string}
      */
-    public static function generate(string $kind, string $window): array
+    public static function generate(string $kind, string $window, string $show = ''): array
     {
         if (!in_array($kind, self::ALLOWED_KINDS, true)) {
             return ['success' => false, 'message' => 'Invalid draft kind.'];
         }
+        if (!DraftShows::isKnown($show)) {
+            return ['success' => false, 'message' => 'Unknown show.'];
+        }
+        if ($show !== '' && $kind !== 'blog') {
+            return ['success' => false, 'message' => 'Only blog drafts support a show.'];
+        }
 
         $bounds  = BeanBotLogic::windowBounds($window, new \DateTimeImmutable('now', new \DateTimeZone('UTC')), wp_timezone());
-        $posts   = SocialStore::postsInWindow((string) $bounds['from'], (string) $bounds['to']);
+        $posts   = SocialStore::postsInWindow((string) $bounds['from'], (string) $bounds['to'], $show);
         $trusted = $posts['trusted'];
         $tag     = $posts['tag'];
+        $updates = self::updatesBlock($bounds, $show);
+        // Stories Inbox news only feeds show drafts; BB stays byte-identical.
+        $news = $show === '' ? '' : PromptContextBlocks::newsBlock($show, (string) $bounds['from'], (string) $bounds['to']);
 
-        if (empty($trusted) && empty($tag)) {
+        // BB needs collected posts; a show recap can stand on the site's own
+        // updates or the news alone (Bluesky volume is thin between episodes).
+        if (empty($trusted) && empty($tag) && ($show === '' || ($updates === '' && $news === ''))) {
             return ['success' => false, 'message' => 'No collected posts in that window.'];
         }
 
-        $userMessage = self::buildUserMessage($bounds, $trusted, $tag);
-        $system      = $kind === 'blog'
-            ? apply_filters('bbjd_bean_bot_blog_prompt', self::BLOG_PROMPT)
-            : apply_filters('bbjd_bean_bot_fb_prompt', self::FB_PROMPT);
+        $userMessage = self::buildUserMessage($bounds, $trusted, $tag, $show, $updates, $news);
+        if ($kind === 'blog' && $show !== '') {
+            $system = apply_filters('bbjd_bean_bot_show_blog_prompt', DraftShows::blogPrompt($show), $show);
+        } elseif ($kind === 'blog') {
+            $system = apply_filters('bbjd_bean_bot_blog_prompt', self::BLOG_PROMPT);
+        } else {
+            $system = apply_filters('bbjd_bean_bot_fb_prompt', self::FB_PROMPT);
+        }
+        $storedKind = $kind === 'blog' ? DraftShows::blogKind($show) : $kind;
 
         $settings = SocialStore::settings();
         $client   = new AnthropicClient();
@@ -309,7 +380,7 @@ PROMPT;
         $content = (string) $result['text'];
 
         $summaryId = SocialStore::insertSummary([
-            'kind'          => $kind,
+            'kind'          => $storedKind,
             'window_from'   => $bounds['from'],
             'window_to'     => $bounds['to'],
             'model'         => (string) $settings['model'],
@@ -318,7 +389,7 @@ PROMPT;
             'content'       => $content,
         ]);
 
-        $drafts   = SocialStore::summaries(1, $kind);
+        $drafts   = SocialStore::summaries(1, $storedKind);
         $draftRow = $drafts[0] ?? null;
         if ($draftRow !== null && (int) ($draftRow['id'] ?? 0) === $summaryId) {
             $draftRow['content'] = html_entity_decode((string) $draftRow['content'], ENT_QUOTES, 'UTF-8');
@@ -335,15 +406,17 @@ PROMPT;
      * @param array<int,array<string,mixed>> $trusted
      * @param array<int,array<string,mixed>> $tag
      */
-    private static function buildUserMessage(array $bounds, array $trusted, array $tag): string
+    private static function buildUserMessage(array $bounds, array $trusted, array $tag, string $show = '', ?string $updates = null, string $news = ''): string
     {
         $lines   = [];
         $lines[] = sprintf(
-            'Season: Big Brother 28. Window: %s to %s PT. %d trusted reports, %d public tag posts. Times on each report line are Pacific house time.',
+            'Season: %s. Window: %s to %s PT. %d trusted reports, %d public tag posts. Times on each report line are Pacific %s.',
+            DraftShows::label($show),
             BeanBotLogic::toHouseTime((string) $bounds['from']),
             BeanBotLogic::toHouseTime((string) $bounds['to']),
             count($trusted),
-            count($tag)
+            count($tag),
+            $show === '' ? 'house time' : 'time'
         );
         $lines[] = '';
         $lines[] = '=== TRUSTED REPORTS (reliable) ===';
@@ -368,17 +441,30 @@ PROMPT;
         // Facts the model otherwise guesses (and got wrong on 9/6/2026): the
         // day, the week's state, and what the site's own feed watchers wrote.
         // See PromptContextBlocks. Order = trust order; the system prompt
-        // tells the model house updates are the primary account.
+        // tells the model house updates are the primary account. Other shows
+        // get no BB game-state line and their own show-tagged updates.
         $now    = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
-        $botId  = (int) (BeanBotService::settings()['author_user_id'] ?? 0);
         $blocks = [
             PromptContextBlocks::dateHeader($now),
-            PromptContextBlocks::gameStateLine($now),
-            PromptContextBlocks::houseUpdatesBlock((string) $bounds['from'], (string) $bounds['to'], $botId),
+            $show === '' ? PromptContextBlocks::gameStateLine($now) : '',
+            $updates ?? self::updatesBlock($bounds, $show),
+            $news,
             PromptContextBlocks::communityBlock(),
         ];
 
         return PromptContextBlocks::prependBlocks(implode("\n", $lines), $blocks);
+    }
+
+    /**
+     * The site's own human feed updates for the window: untagged (BB) ones
+     * for '', or only the $show-tagged ones. Bean Bot's author is excluded.
+     *
+     * @param array{from:string,to:string} $bounds
+     */
+    private static function updatesBlock(array $bounds, string $show): string
+    {
+        $botId = (int) (BeanBotService::settings()['author_user_id'] ?? 0);
+        return PromptContextBlocks::houseUpdatesBlock((string) $bounds['from'], (string) $bounds['to'], $botId, $show);
     }
 
     /**

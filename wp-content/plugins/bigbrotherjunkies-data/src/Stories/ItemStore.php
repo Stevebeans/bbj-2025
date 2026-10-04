@@ -97,6 +97,26 @@ class ItemStore
         return ['items' => array_map([self::class, 'decode'], $rows ?: []), 'total' => $total];
     }
 
+    /**
+     * Non-dismissed items for one show published inside a UTC window, newest
+     * first, for the show blog-draft NEWS block (DraftService). Read-only.
+     */
+    public static function forDraftWindow(string $show, string $fromUtc, string $toUtc, int $limit = 30): array
+    {
+        global $wpdb;
+        $t    = Schema::table(Schema::TABLE_ITEMS);
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM {$t}
+              WHERE show_slug = %s AND inbox_status <> 'dismissed' AND published_at BETWEEN %s AND %s
+              ORDER BY published_at DESC, id DESC LIMIT %d",
+            $show,
+            $fromUtc,
+            $toUtc,
+            max(1, $limit)
+        ), ARRAY_A);
+        return array_map([self::class, 'decode'], $rows ?: []);
+    }
+
     public static function setInboxStatus(int $id, string $status, ?int $queueId = null): void
     {
         global $wpdb;

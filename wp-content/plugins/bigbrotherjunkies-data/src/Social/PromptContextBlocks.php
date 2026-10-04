@@ -3,6 +3,7 @@
 namespace BigBrotherJunkies\Data\Social;
 
 use BigBrotherJunkies\Data\FeedUpdates\ShowQuery;
+use BigBrotherJunkies\Data\Stories\ItemStore;
 
 /**
  * Context blocks shared by every model-facing prompt in the Social module
@@ -129,6 +130,7 @@ class PromptContextBlocks
     }
 
     public const HOUSE_UPDATES_HEADER = '=== HOUSE UPDATES (bigbrotherjunkies.com feed watchers; primary account of the day) ===';
+    public const SHOW_UPDATES_HEADER  = '=== SITE UPDATES (bigbrotherjunkies.com writers; primary account) ===';
     public const HOUSE_UPDATES_CAP    = 60;
     public const HOUSE_UPDATE_MAX_CHARS = 600;
 
@@ -137,7 +139,7 @@ class PromptContextBlocks
      * Rows: ['posted_at' => UTC 'Y-m-d H:i:s', 'author' => string, 'text' => string].
      * Chronological; over $cap keeps the newest and says how many were dropped.
      */
-    public static function formatHouseUpdates(array $rows, int $cap = self::HOUSE_UPDATES_CAP): string
+    public static function formatHouseUpdates(array $rows, int $cap = self::HOUSE_UPDATES_CAP, string $header = self::HOUSE_UPDATES_HEADER): string
     {
         if ($rows === []) {
             return '';
@@ -150,7 +152,7 @@ class PromptContextBlocks
             $rows    = array_slice($rows, $omitted);
         }
 
-        $lines   = [self::HOUSE_UPDATES_HEADER];
+        $lines   = [$header];
         if ($omitted > 0) {
             $lines[] = sprintf('(%d earlier updates omitted)', $omitted);
         }
@@ -166,11 +168,11 @@ class PromptContextBlocks
     }
 
     /** Collapse whitespace; cap length with an ellipsis. */
-    private static function squash(string $text): string
+    private static function squash(string $text, int $max = self::HOUSE_UPDATE_MAX_CHARS): string
     {
         $text = trim((string) preg_replace('/\s+/u', ' ', $text));
-        if (mb_strlen($text) > self::HOUSE_UPDATE_MAX_CHARS) {
-            $text = rtrim(mb_substr($text, 0, self::HOUSE_UPDATE_MAX_CHARS)) . '…';
+        if (mb_strlen($text) > $max) {
+            $text = rtrim(mb_substr($text, 0, $max)) . '…';
         }
         return $text;
     }
@@ -186,29 +188,36 @@ class PromptContextBlocks
      * indistinguishable from a human watcher's, so they would enter this
      * block. `post_as_user_id` must stay 0 until a bot marker exists on the
      * post; FeedUpdateCreator::isBotAuthor has the same limitation.
+     *
+     * $show '' (default) = BB: posts with NO bbj_show term. Any other slug =
+     * only posts tagged with that show, under SHOW_UPDATES_HEADER.
      */
-    public static function houseUpdatesBlock(string $fromUtc, string $toUtc, int $excludeAuthorId): string
+    public static function houseUpdatesBlock(string $fromUtc, string $toUtc, int $excludeAuthorId, string $show = ''): string
     {
         try {
             global $wpdb;
-            // BB-only context: exclude posts carrying a bbj_show term (same
-            // raw-SQL NOT EXISTS shape as HomeRoutes::getFeedHub's $showExclusion)
-            // so Survivor updates never read as Big Brother house events.
-            $showExclusion =
-                "AND NOT EXISTS (
-                    SELECT 1 FROM {$wpdb->term_relationships} tr
+            // Same raw-SQL EXISTS shape as HomeRoutes::getFeedHub's
+            // $showExclusion: BB context excludes every show-tagged post so
+            // Survivor updates never read as Big Brother house events.
+            $termSql = "SELECT 1 FROM {$wpdb->term_relationships} tr
                     INNER JOIN {$wpdb->term_taxonomy} tt ON tt.term_taxonomy_id = tr.term_taxonomy_id
+                    INNER JOIN {$wpdb->terms} t ON t.term_id = tt.term_id
                     WHERE tr.object_id = p.ID
-                      AND tt.taxonomy = '" . ShowQuery::TAXONOMY . "'
-                )";
+                      AND tt.taxonomy = '" . ShowQuery::TAXONOMY . "'";
+            $args = [$fromUtc, $toUtc];
+            if ($show === '') {
+                $showFilter = "AND NOT EXISTS ({$termSql})";
+            } else {
+                $showFilter = "AND EXISTS ({$termSql} AND t.slug = %s)";
+                $args[]     = $show;
+            }
             $sql = "SELECT p.post_date_gmt AS posted_at, u.display_name AS author, p.post_content AS text
                       FROM {$wpdb->posts} p
                       LEFT JOIN {$wpdb->users} u ON u.ID = p.post_author
                      WHERE p.post_type = 'live-feed-updates'
                        AND p.post_status = 'publish'
                        AND p.post_date_gmt BETWEEN %s AND %s
-                       {$showExclusion}";
-            $args = [$fromUtc, $toUtc];
+                       {$showFilter}";
             if ($excludeAuthorId > 0) {
                 $sql   .= ' AND p.post_author <> %d';
                 $args[] = $excludeAuthorId;
@@ -221,9 +230,61 @@ class PromptContextBlocks
                 $row['text']   = html_entity_decode(wp_strip_all_tags((string) $row['text']), ENT_QUOTES, 'UTF-8');
             }
             unset($row);
-            return self::formatHouseUpdates($rows);
+            return self::formatHouseUpdates($rows, self::HOUSE_UPDATES_CAP, $show === '' ? self::HOUSE_UPDATES_HEADER : self::SHOW_UPDATES_HEADER);
         } catch (\Throwable $e) {
             error_log('[bbjd] PromptContextBlocks::houseUpdatesBlock failed: ' . $e->getMessage());
+            return '';
+        }
+    }
+
+    public const NEWS_HEADER         = '=== NEWS (headlines and excerpts from news sites and fan outlets; newest first) ===';
+    public const NEWS_CAP            = 30;
+    public const NEWS_EXCERPT_CHARS  = 200;
+
+    /**
+     * Stories Inbox items as model-facing lines, newest first (input order is
+     * re-sorted, so callers need not pre-sort). Rows use the bbj_story_items
+     * shape: published_at (UTC), source, author, title, excerpt, url.
+     * Each line: "[house time] author (source): title - excerpt <url>".
+     */
+    public static function formatNews(array $rows, int $cap = self::NEWS_CAP): string
+    {
+        if ($rows === []) {
+            return '';
+        }
+        usort($rows, static fn(array $a, array $b): int => strcmp((string) $b['published_at'], (string) $a['published_at']));
+        $rows = array_slice($rows, 0, max(1, $cap));
+
+        $lines = [self::NEWS_HEADER];
+        foreach ($rows as $row) {
+            $source  = trim((string) ($row['source'] ?? ''));
+            $author  = trim((string) ($row['author'] ?? ''));
+            $who     = $author !== '' ? ($source !== '' ? "{$author} ({$source})" : $author) : ($source !== '' ? $source : 'News');
+            $title   = self::squash(strip_tags((string) ($row['title'] ?? '')));
+            $excerpt = self::squash(strip_tags((string) ($row['excerpt'] ?? '')), self::NEWS_EXCERPT_CHARS);
+            $text    = $title !== '' && $excerpt !== '' ? "{$title} - {$excerpt}" : $title . $excerpt;
+            $url     = trim((string) ($row['url'] ?? ''));
+            $lines[] = sprintf(
+                '[%s] %s: %s%s',
+                BeanBotLogic::toHouseTime((string) $row['published_at']),
+                $who,
+                $text,
+                $url !== '' ? " <{$url}>" : ''
+            );
+        }
+        return implode("\n", $lines);
+    }
+
+    /**
+     * Wrapper: the show's non-dismissed Stories Inbox items in the window.
+     * Not unit-tested (uses $wpdb); all formatting is in formatNews.
+     */
+    public static function newsBlock(string $show, string $fromUtc, string $toUtc): string
+    {
+        try {
+            return self::formatNews(ItemStore::forDraftWindow($show, $fromUtc, $toUtc, self::NEWS_CAP));
+        } catch (\Throwable $e) {
+            error_log('[bbjd] PromptContextBlocks::newsBlock failed: ' . $e->getMessage());
             return '';
         }
     }
