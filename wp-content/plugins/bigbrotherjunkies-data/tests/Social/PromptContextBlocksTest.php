@@ -170,11 +170,9 @@ class PromptContextBlocksTest extends TestCase
     public function test_house_updates_header_is_overridable_for_other_shows(): void
     {
         $rows = [['posted_at' => '2026-09-30 03:00:00', 'author' => 'Steve', 'text' => 'Tribal tonight']];
-        $this->assertSame(PromptContextBlocks::HOUSE_UPDATES_HEADER, explode("
-", PromptContextBlocks::formatHouseUpdates($rows))[0]);
+        $this->assertSame(PromptContextBlocks::HOUSE_UPDATES_HEADER, explode("\n", PromptContextBlocks::formatHouseUpdates($rows))[0]);
         $out = PromptContextBlocks::formatHouseUpdates($rows, PromptContextBlocks::HOUSE_UPDATES_CAP, PromptContextBlocks::SHOW_UPDATES_HEADER);
-        $this->assertSame(PromptContextBlocks::SHOW_UPDATES_HEADER, explode("
-", $out)[0]);
+        $this->assertSame(PromptContextBlocks::SHOW_UPDATES_HEADER, explode("\n", $out)[0]);
         $this->assertStringNotContainsString('HOUSE', $out);
     }
 
@@ -184,8 +182,7 @@ class PromptContextBlocksTest extends TestCase
             ['published_at' => '2026-09-30 03:00:00', 'source' => 'rss', 'author' => 'Inside Survivor', 'title' => 'Older', 'excerpt' => 'First item.', 'url' => 'https://a.example/1'],
             ['published_at' => '2026-10-01 16:30:00', 'source' => 'reddit', 'author' => '', 'title' => 'Newer', 'excerpt' => '', 'url' => 'https://b.example/2'],
         ];
-        $lines = explode("
-", PromptContextBlocks::formatNews($rows));
+        $lines = explode("\n", PromptContextBlocks::formatNews($rows));
         $this->assertSame(PromptContextBlocks::NEWS_HEADER, $lines[0]);
         $this->assertSame('[Thu Oct 1 9:30 AM] reddit: Newer <https://b.example/2>', $lines[1]);
         $this->assertSame('[Tue Sep 29 8:00 PM] Inside Survivor (rss): Older - First item. <https://a.example/1>', $lines[2]);
@@ -198,8 +195,7 @@ class PromptContextBlocksTest extends TestCase
         for ($i = 0; $i < 5; $i++) {
             $rows[] = ['published_at' => "2026-10-01 0{$i}:00:00", 'source' => 'rss', 'author' => 'EW', 'title' => "T{$i}", 'excerpt' => $long, 'url' => ''];
         }
-        $lines = explode("
-", PromptContextBlocks::formatNews($rows, 3));
+        $lines = explode("\n", PromptContextBlocks::formatNews($rows, 3));
         $this->assertCount(4, $lines); // header + 3 newest
         $this->assertStringContainsString('EW (rss): T4 - word', $lines[1]);
         $this->assertStringNotContainsString('<p>', $lines[1]);
