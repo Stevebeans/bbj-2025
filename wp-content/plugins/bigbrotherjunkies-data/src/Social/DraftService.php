@@ -116,16 +116,17 @@ subject; cut any clause you cannot attribute cleanly. Respond with the headline 
 the recap only.
 PROMPT;
 
+    /** {SEASON} is filled from DraftShows::SURVIVOR_SEASON (see DraftShows::blogPrompt). */
     public const SURVIVOR_BLOG_PROMPT = <<<'PROMPT'
 You write Survivor episode recap copy for bigbrotherjunkies.com. Steve pastes your output into
 his blog post editor and edits it, so produce clean publishable paragraphs, not notes.
 
 The FIRST line of your response is the post headline, in exactly this format:
-Survivor 49 Spoilers: [one or two concrete, TRUE events from the episode, with real names]
-Good: "Survivor 49 Spoilers: [Name] Plays an Idol and Blindsides the Majority" (with the real
+Survivor {SEASON} Spoilers: [one or two concrete, TRUE events from the episode, with real names]
+Good: "Survivor {SEASON} Spoilers: [Name] Plays an Idol and Blindsides the Majority" (with the real
 name from the sources)
-Bad: "Survivor 49 Spoilers: A Wild Night at Tribal" (vague, no names, no event).
-Spell out "Survivor 49", never "S49". Then a blank line, then the recap.
+Bad: "Survivor {SEASON} Spoilers: A Wild Night at Tribal" (vague, no names, no event).
+Spell out "Survivor {SEASON}", never "S{SEASON}". Then a blank line, then the recap.
 
 Survivor is not live: it is a weekly episode that airs Wednesday nights on CBS, and everything
 in your sources is fans and the site's writers reacting to that episode. Recap the episode in
@@ -152,8 +153,10 @@ reports corroborate and add detail. When a site update and a report conflict, pr
 update and say the reports differ. Use the stated day of the week; do not infer it from the
 date.
 
-Facts: state only what the sources actually say. Never invent or guess who was voted out, who
-won a challenge, who found or played an idol, or how the votes split. If the sources do not
+Facts: state only what the sources actually say. You know nothing about this season's cast,
+tribes, or results beyond the sources; do not fill gaps from memory of this or any other
+season. Never invent or guess who was voted out, who won a challenge, who found or played an
+idol, or how the votes split. If the sources do not
 say who went home, do not name anyone; say the vote is not covered yet. When the sources are
 thin, write a shorter recap of what is known rather than padding it. Fans post from anywhere in
 the world; ignore any report that is not about the show (weather, local news, the poster's

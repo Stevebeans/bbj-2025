@@ -29,8 +29,7 @@ class DraftShowsTest extends TestCase
         // A distinct kind keeps Survivor recaps out of WeekSummaryService's
         // BB-only ['digest', 'blog'] read.
         $this->assertSame('blog_surv', DraftShows::blogKind('survivor'));
-        $this->assertSame(DraftService::SURVIVOR_BLOG_PROMPT, DraftShows::blogPrompt('survivor'));
-        $this->assertSame('Survivor 49', DraftShows::label('survivor'));
+        $this->assertSame('Survivor 51', DraftShows::label('survivor'));
     }
 
     public function test_blog_kinds_fit_the_summary_kind_column(): void
@@ -43,8 +42,11 @@ class DraftShowsTest extends TestCase
 
     public function test_survivor_prompt_uses_survivor_vocabulary_not_big_brother(): void
     {
-        $p = DraftService::SURVIVOR_BLOG_PROMPT;
-        $this->assertStringContainsString('Survivor 49 Spoilers:', $p);
+        $p = DraftShows::blogPrompt('survivor');
+        $this->assertStringContainsString('Survivor 51 Spoilers:', $p);
+        $this->assertStringContainsString('never "S51"', $p);
+        $this->assertStringNotContainsString('{SEASON}', $p);
+        $this->assertStringContainsString('beyond the sources', $p);
         $this->assertStringContainsString('Tribal Council', $p);
         $this->assertStringContainsString('Never invent or guess who was voted out', $p);
         $this->assertStringNotContainsString('—', $p);

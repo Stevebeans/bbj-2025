@@ -14,9 +14,12 @@ namespace BigBrotherJunkies\Data\Social;
  */
 class DraftShows
 {
+    /** Current Survivor season: bump this one line each new season. */
+    public const SURVIVOR_SEASON = 51;
+
     private const SHOWS = [
         ''         => ['label' => 'Big Brother 28', 'blog_kind' => 'blog'],
-        'survivor' => ['label' => 'Survivor 49', 'blog_kind' => 'blog_surv'],
+        'survivor' => ['label' => 'Survivor ' . self::SURVIVOR_SEASON, 'blog_kind' => 'blog_surv'],
     ];
 
     public static function isKnown(string $show): bool
@@ -44,6 +47,8 @@ class DraftShows
 
     public static function blogPrompt(string $show): string
     {
-        return $show === 'survivor' ? DraftService::SURVIVOR_BLOG_PROMPT : DraftService::BLOG_PROMPT;
+        return $show === 'survivor'
+            ? str_replace('{SEASON}', (string) self::SURVIVOR_SEASON, DraftService::SURVIVOR_BLOG_PROMPT)
+            : DraftService::BLOG_PROMPT;
     }
 }
