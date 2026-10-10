@@ -612,7 +612,9 @@ class EditorRoutes
 
         // Filter to only real season categories (slug starts with "big-brother-" or "celebrity-big-brother")
         // Exclude junk like "bb19", "bb18-cast-members", "big-brother-19-spoilers"
-        $seasonSlugs = ['big-brother-', 'celebrity-big-brother'];
+        // "other-shows" (Survivor, The Amazing Race, ...) rides the same picker:
+        // pick it as the "season", then the show as the post type.
+        $seasonSlugs = ['big-brother-', 'celebrity-big-brother', 'other-shows'];
         $excludePatterns = ['spoilers', 'cast-members'];
 
         $filtered = array_filter($parentCategories, function ($cat) use ($seasonSlugs, $excludePatterns) {
@@ -628,6 +630,10 @@ class EditorRoutes
 
         // Sort by season number descending (extract number from name, special seasons get 0)
         usort($filtered, function ($a, $b) {
+            // Other Shows first: it's where off-season posts go.
+            if ($a->slug === 'other-shows' || $b->slug === 'other-shows') {
+                return $a->slug === 'other-shows' ? -1 : 1;
+            }
             $numA = (int) preg_replace('/\D/', '', $a->name);
             $numB = (int) preg_replace('/\D/', '', $b->name);
             return $numB - $numA;
