@@ -6,8 +6,6 @@ use BigBrotherJunkies\Data\Billing\StripeService;
 use BigBrotherJunkies\Data\Billing\PayPalService;
 use BigBrotherJunkies\Data\Billing\SubscriptionManager;
 use BigBrotherJunkies\Data\Billing\WebhookHandler;
-use BigBrotherJunkies\Data\Billing\FoundersWindow;
-use BigBrotherJunkies\Data\Billing\FoundingBadge;
 
 /**
  * Billing REST API Routes
@@ -116,17 +114,6 @@ class BillingRoutes
         $stripe = new StripeService();
         $paypal = new PayPalService();
 
-        $windowOpen = FoundersWindow::isOpen();
-        $founders = FoundersWindow::settings();
-        $foundersPayload = [
-            'window_open'         => $windowOpen,
-            'closes_at'           => $founders['closes_at'],
-            'lifetime_cap'        => (int) $founders['lifetime_cap'],
-            'lifetime_spots_left' => FoundersWindow::lifetimeSpotsLeft(),
-            'badge_price_cents'   => FoundingBadge::PRICE_CENTS,
-            'badge_count'         => FoundingBadge::count(),
-        ];
-
         $plans = [
             [
                 'id' => 'monthly',
@@ -142,10 +129,10 @@ class BillingRoutes
             [
                 'id' => 'annual',
                 'name' => 'All-Access Pass',
-                'price' => '$45',
-                'price_cents' => 4500,
+                'price' => '$35',
+                'price_cents' => 3500,
                 'interval' => 'year',
-                'description' => 'Ad-free everything on every show we cover, locked in through BB29.',
+                'description' => 'Ad-free everything on every show we cover, for a full year.',
                 'badge' => 'Supporter',
                 'tier' => 'supporter',
                 'popular' => true,
@@ -185,14 +172,9 @@ class BillingRoutes
             ],
         ];
 
-        if (!$windowOpen) {
-            $plans = array_values(array_filter($plans, static fn (array $plan): bool => $plan['id'] !== 'lifetime'));
-        }
-
         return new \WP_REST_Response([
             'success' => true,
             'plans' => $plans,
-            'founders' => $foundersPayload,
             'stripe_configured' => $stripe->isConfigured(),
             'stripe_publishable_key' => $stripe->getPublishableKey(),
             'paypal_configured' => $paypal->isConfigured(),
@@ -259,29 +241,6 @@ class BillingRoutes
         $successUrl = $params['success_url'] ?? home_url('/checkout/success');
         $cancelUrl = $params['cancel_url'] ?? home_url('/checkout/cancel');
 
-        // Founding Junkie badge: one-time cosmetic SKU, window-gated, never a
-        // subscription - handled before the plan validator and the blocking-sub
-        // guard on purpose (existing supporters can and should buy it).
-        if ($planType === 'founding_badge') {
-            if (!FoundersWindow::isOpen()) {
-                return new \WP_REST_Response(['success' => false, 'message' => 'The founding window has closed.'], 400);
-            }
-            if (FoundingBadge::has($userId)) {
-                return new \WP_REST_Response(['success' => false, 'message' => 'You already have the Founding Junkie badge.'], 400);
-            }
-            $stripe = new StripeService();
-            if (!$stripe->isConfigured()) {
-                return new \WP_REST_Response(['success' => false, 'message' => 'Payment processing is not configured'], 500);
-            }
-            $result = $stripe->createBadgeCheckoutSession($userId, $successUrl, $cancelUrl);
-            if (isset($result['error'])) {
-                return new \WP_REST_Response(['success' => false, 'message' => $result['error']], 400);
-            }
-            return new \WP_REST_Response([
-                'success' => true, 'session_id' => $result['session_id'], 'checkout_url' => $result['url'],
-            ], 200);
-        }
-
         if (!$planType || !in_array($planType, ['monthly', 'annual', 'lifetime', 'full_bean_monthly', 'full_bean_annual'])) {
             return new \WP_REST_Response([
                 'success' => false,
@@ -289,17 +248,8 @@ class BillingRoutes
             ], 400);
         }
 
-        if ($planType === 'lifetime') {
-            if (!FoundersWindow::isOpen()) {
-                return new \WP_REST_Response(['success' => false, 'message' => 'The Lifetime window has closed.'], 400);
-            }
-            if (FoundersWindow::lifetimeSpotsLeft() <= 0) {
-                return new \WP_REST_Response(['success' => false, 'message' => 'Lifetime is sold out.'], 400);
-            }
-        }
-
         // Check if user already has active subscription. Target-aware: a
-        // monthly member may buy Lifetime during the founding window, and the
+        // monthly member may buy Lifetime, and the
         // completion path cancels their monthly plan.
         $manager = SubscriptionManager::getInstance();
         if ($manager->hasBlockingSubscriptionFor($userId, $planType)) {
@@ -351,13 +301,6 @@ class BillingRoutes
                 'success' => false,
                 'message' => 'Use create-paypal-subscription for recurring plans',
             ], 400);
-        }
-
-        if (!FoundersWindow::isOpen()) {
-            return new \WP_REST_Response(['success' => false, 'message' => 'The Lifetime window has closed.'], 400);
-        }
-        if (FoundersWindow::lifetimeSpotsLeft() <= 0) {
-            return new \WP_REST_Response(['success' => false, 'message' => 'Lifetime is sold out.'], 400);
         }
 
         $manager = SubscriptionManager::getInstance();
@@ -422,10 +365,6 @@ class BillingRoutes
         $manager = SubscriptionManager::getInstance();
 
         if ($result['wp_user_id'] && $result['plan_type'] === 'lifetime') {
-            if (FoundersWindow::lifetimeSpotsLeft() <= 0) {
-                error_log('BBJ Billing: lifetime cap overshoot - honoring paid checkout for user ' . $result['wp_user_id']);
-            }
-
             $subscriptionId = $manager->createSubscription([
                 'user_id' => $result['wp_user_id'],
                 'paypal_payer_id' => $result['payer_id'],

@@ -29,7 +29,7 @@ class PayPalService
         ],
         'annual' => [
             'name' => 'BBJ All-Access Pass',
-            'amount' => '45.00',
+            'amount' => '35.00',
             'interval' => 'YEAR',
             'interval_count' => 1,
             'role' => 'supporter',

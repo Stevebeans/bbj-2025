@@ -273,7 +273,6 @@ class UserProfileRoutes
                 'favorite_player' => $favoritePlayer,
                 'is_supporter' => $isSupporter,
                 'supporter_type' => $supporterType,
-                'founding_badge' => \BigBrotherJunkies\Data\Billing\FoundingBadge::has($userId),
                 'rank' => $rank ? [
                     'key' => $rank['key'],
                     'name' => $rank['name'],

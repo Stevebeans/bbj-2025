@@ -19,7 +19,7 @@ class PlanResolutionTest extends TestCase
         $plan = SubscriptionManager::resolvePlan('annual');
         $this->assertSame('annual', $plan['plan_type']);
         $this->assertSame('supporter', $plan['tier']);
-        $this->assertSame(4500, $plan['amount_cents']);
+        $this->assertSame(3500, $plan['amount_cents']);
     }
 
     public function testResolveUnknownKeyReturnsNull(): void

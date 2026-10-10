@@ -2,18 +2,15 @@
 
 namespace BigBrotherJunkies\Data\Api;
 
-use BigBrotherJunkies\Data\Billing\FoundersWindow;
-use BigBrotherJunkies\Data\Billing\FoundingBadge;
 use BigBrotherJunkies\Data\Billing\SubscriptionManager;
 use BigBrotherJunkies\Data\Permissions\PermissionChecker;
 
 /**
  * Admin premium-members endpoints (the /admin/premium tab): subscription list
- * with derived fields, aggregate stats + trends, an end-of-period cancel, and
- * the Founders window controls (open/close, closes-at, lifetime cap) plus its
- * spots/badge counters. Thin REST layer over SubscriptionManager and
- * FoundersWindow/FoundingBadge (which own the Stripe/PayPal calls, DB writes,
- * and role revocation). Gated on `user_management` like the Users tab.
+ * with derived fields, aggregate stats + trends, and an end-of-period cancel.
+ * Thin REST layer over SubscriptionManager (which owns the Stripe/PayPal
+ * calls, DB writes, and role revocation). Gated on `user_management` like the
+ * Users tab.
  */
 class SubscriptionAdminRoutes
 {
@@ -45,18 +42,6 @@ class SubscriptionAdminRoutes
             'callback' => [$this, 'cancelSubscription'],
             'permission_callback' => [$this, 'checkAccess'],
             'args' => ['id' => ['required' => true, 'type' => 'integer', 'sanitize_callback' => 'absint']],
-        ]);
-
-        register_rest_route(self::NAMESPACE, '/admin/founders', [
-            'methods' => 'GET',
-            'callback' => [$this, 'getFounders'],
-            'permission_callback' => [$this, 'checkAccess'],
-        ]);
-
-        register_rest_route(self::NAMESPACE, '/admin/founders', [
-            'methods' => 'POST',
-            'callback' => [$this, 'saveFounders'],
-            'permission_callback' => [$this, 'checkAccess'],
         ]);
     }
 
@@ -97,94 +82,7 @@ class SubscriptionAdminRoutes
             'stats' => array_map('intval', $manager->getStats()),
             'trends' => array_map('intval', $manager->getTrendStats()),
             'revenue' => $manager->getRevenueStats(),
-            'founders' => [
-                'spots_sold' => FoundersWindow::lifetimeSpotsSold(),
-                'spots_left' => FoundersWindow::lifetimeSpotsLeft(),
-                'badge_count' => FoundingBadge::count(),
-                'window_open' => FoundersWindow::isOpen(),
-            ],
         ]);
-    }
-
-    public function getFounders(): \WP_REST_Response
-    {
-        return new \WP_REST_Response(self::foundersPayload());
-    }
-
-    /**
-     * Patch the Founders window option. `enabled` is validated with
-     * filter_var(..., FILTER_VALIDATE_BOOLEAN) rather than a raw (bool) cast,
-     * since (bool) "false" is true in PHP — a JSON string "false" must not
-     * silently open the window. `closes_at` must be the empty string
-     * (never-closes) or parse via strtotime(); a non-empty value is resolved
-     * against UTC (appending ' UTC' before parsing, matching how
-     * FoundersWindow::isOpenPure() reads it back) and stored as an absolute
-     * 'Y-m-d H:i:s' via gmdate(), so a relative value like "tomorrow" or
-     * "+3 days" is fixed at save time instead of drifting on every later
-     * read. An unparseable value returns 400 with no write at all, rather
-     * than silently reverting to the previous value. `lifetime_cap` is
-     * clamped 1-500. Enabling the window while `opened_at` is still empty
-     * stamps it with current_time('mysql') (site-local, same clock as
-     * bbj_subscriptions.created_at) — see FoundersWindow's docblock.
-     */
-    public function saveFounders(\WP_REST_Request $request): \WP_REST_Response
-    {
-        $patch = (array) $request->get_json_params();
-        $settings = FoundersWindow::settings();
-        $wasEnabled = !empty($settings['enabled']);
-
-        if (array_key_exists('enabled', $patch)) {
-            $settings['enabled'] = filter_var($patch['enabled'], FILTER_VALIDATE_BOOLEAN);
-        }
-
-        if (array_key_exists('closes_at', $patch)) {
-            $closesAt = trim((string) $patch['closes_at']);
-            if ($closesAt === '') {
-                $settings['closes_at'] = '';
-            } else {
-                $closesTs = strtotime($closesAt . ' UTC');
-                if ($closesTs === false) {
-                    return new \WP_REST_Response([
-                        'success' => false,
-                        'message' => 'closes_at must be a date like 2026-10-08 16:00:00 (UTC)',
-                    ], 400);
-                }
-                $settings['closes_at'] = gmdate('Y-m-d H:i:s', $closesTs);
-            }
-        }
-
-        if (array_key_exists('lifetime_cap', $patch)) {
-            $settings['lifetime_cap'] = max(1, min(500, (int) $patch['lifetime_cap']));
-        }
-
-        if ($settings['enabled'] && $settings['opened_at'] === '') {
-            $settings['opened_at'] = current_time('mysql');
-        }
-
-        update_option(FoundersWindow::OPTION, $settings);
-
-        // Opening the window retroactively includes the members who already
-        // bought a qualifying plan. Only on the closed->open edge, never on an
-        // ordinary save (cap tweak, date change) - the backfill walks every
-        // annual and lifetime row.
-        $backfilled = 0;
-        if (!$wasEnabled && $settings['enabled']) {
-            $backfilled = FoundingBadge::backfillExisting();
-        }
-
-        return new \WP_REST_Response(array_merge(self::foundersPayload(), ['backfilled' => $backfilled]));
-    }
-
-    /** Shared GET/POST response shape for /admin/founders. */
-    private static function foundersPayload(): array
-    {
-        return [
-            'settings' => FoundersWindow::settings(),
-            'spots_sold' => FoundersWindow::lifetimeSpotsSold(),
-            'spots_left' => FoundersWindow::lifetimeSpotsLeft(),
-            'badge_count' => FoundingBadge::count(),
-            'window_open' => FoundersWindow::isOpen(),
-        ];
     }
 
     /**

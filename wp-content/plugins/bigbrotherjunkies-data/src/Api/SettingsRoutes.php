@@ -588,11 +588,11 @@ class SettingsRoutes
                     ],
                     [
                         'question' => 'What\'s the difference between plans?',
-                        'answer' => 'Monthly ($6.95/mo) and the All-Access Pass ($45/yr) both give Supporter status. Lifetime ($99 one-time) gives permanent access and a special Lifetime badge.',
+                        'answer' => 'Monthly ($6.95/mo) and the All-Access Pass ($35/yr) both give Supporter status. Lifetime ($99 one-time) gives permanent access and a special Lifetime badge.',
                     ],
                     [
                         'question' => 'Can I upgrade from Monthly to Lifetime?',
-                        'answer' => 'Yes, while the founding window is open. Buy the Lifetime plan and your monthly subscription is cancelled automatically. On an annual plan? Lifetime upgrades for annual members are coming, so reach out and we\'ll sort you out.',
+                        'answer' => 'Yes. Buy the Lifetime plan and your monthly subscription is cancelled automatically. On an annual plan? Lifetime upgrades for annual members are coming, so reach out and we\'ll sort you out.',
                     ],
                     [
                         'question' => 'Can I change my username?',

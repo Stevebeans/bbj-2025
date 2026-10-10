@@ -32,7 +32,7 @@ class StripeService
         ],
         'annual' => [
             'name' => 'BBJ All-Access Pass',
-            'amount' => 4500, // $45.00 in cents
+            'amount' => 3500, // $35.00 in cents
             'interval' => 'year',
             'interval_count' => 1,
             'role' => 'supporter',
@@ -240,60 +240,13 @@ class StripeService
     }
 
     /**
-     * $5 Founding Junkie badge - mode=payment, no plan machinery.
-     */
-    public function createBadgeCheckoutSession(int $userId, string $successUrl, string $cancelUrl): ?array
-    {
-        $user = get_user_by('id', $userId);
-        if (!$user) {
-            return ['error' => 'User not found'];
-        }
-
-        $sep = strpos($successUrl, '?') !== false ? '&' : '?';
-
-        $params = [
-            'mode' => 'payment',
-            'success_url' => $successUrl . $sep . 'session_id={CHECKOUT_SESSION_ID}&processor=stripe&sku=founding_badge',
-            'cancel_url' => $cancelUrl,
-            // Card only, like every other session here. Delayed-notification
-            // methods complete the session before the money settles, which the
-            // badge webhook must not treat as paid.
-            'payment_method_types' => ['card'],
-            'customer_email' => $user->user_email,
-            'line_items' => [[
-                'quantity' => 1,
-                'price_data' => [
-                    'currency' => 'usd',
-                    'unit_amount' => FoundingBadge::PRICE_CENTS,
-                    'product_data' => [
-                        'name' => 'BBJ Founding Junkie Badge',
-                        'description' => 'One-time founding badge, BB28 era. Shown on your comments, profile, and DMs forever.',
-                    ],
-                ],
-            ]],
-            'metadata' => ['wp_user_id' => (string) $userId, 'plan_type' => 'founding_badge'],
-        ];
-
-        $response = $this->apiRequest('checkout/sessions', $params);
-
-        if ($response && isset($response['id'])) {
-            return [
-                'session_id' => $response['id'],
-                'url' => $response['url'],
-            ];
-        }
-
-        return ['error' => $response['error'] ?? 'Failed to create checkout session'];
-    }
-
-    /**
      * Get plan description for display
      */
     private function getPlanDescription(string $planType): string
     {
         $descriptions = [
             'monthly' => 'Ad-free browsing, supporter badge, and premium features. Cancel anytime.',
-            'annual' => 'Ad-free everything on every show we cover - about 46% off monthly.',
+            'annual' => 'Ad-free everything on every show we cover - about 58% off monthly.',
             'lifetime' => 'Premium access forever. One payment, never expires.',
             'full_bean_monthly' => 'Everything in Supporter, plus the smartest Bean (unlimited chats, longer memory). Cancel anytime.',
             'full_bean_annual' => 'A full year of the smartest Bean and ad-free browsing. Best value.',

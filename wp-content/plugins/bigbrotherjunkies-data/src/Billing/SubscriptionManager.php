@@ -177,12 +177,6 @@ class SubscriptionManager
         if ($result) {
             $subscriptionId = $wpdb->insert_id;
 
-            // Founders window: All-Access and Lifetime include the Founding Junkie badge.
-            FoundingBadge::maybeGrantForPlan(
-                (int) $insertData['user_id'],
-                (string) ($insertData['plan_type'] ?? '')
-            );
-
             // Assign role to user
             $this->assignSupporterRole(
                 $insertData['user_id'],
@@ -341,7 +335,7 @@ class SubscriptionManager
     /**
      * The same guard, aware of what the member is trying to buy.
      *
-     * Founders decision (2026-09-12): a SUPPORTER MONTHLY member may buy
+     * Decision (2026-09-12): a SUPPORTER MONTHLY member may buy
      * Lifetime mid-cycle. Completing that purchase cancels the monthly
      * subscription (see supersedeWithLifetime()), so the running plan is not a
      * blocker for that one target.
@@ -451,7 +445,7 @@ class SubscriptionManager
             ? (string) ($old['paypal_subscription_id'] ?? '')
             : (string) ($old['stripe_subscription_id'] ?? '');
 
-        // Offline escape hatch for scripts/founders-money-verify.php ONLY, so
+        // Offline escape hatch for local verify scripts ONLY, so
         // it can exercise this branch without calling Stripe or PayPal. It
         // lives here rather than in cancelAtProcessor() on purpose: the shared
         // helper is also what member-facing cancellation uses, and a filter
@@ -639,10 +633,6 @@ class SubscriptionManager
         // Reassign the role — a tier change (supporter <-> full_bean) must
         // grant/revoke the corresponding role immediately.
         $this->assignSupporterRole($userId, $target['plan_type'], $target['tier']);
-
-        // A switch INTO All-Access during the window buys the same thing a
-        // fresh All-Access checkout buys, badge included. Same rule, one place.
-        FoundingBadge::maybeGrantForPlan($userId, $target['plan_type']);
 
         return [
             'success' => true,

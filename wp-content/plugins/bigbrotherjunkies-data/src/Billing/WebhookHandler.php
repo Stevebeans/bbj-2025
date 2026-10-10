@@ -73,36 +73,6 @@ class WebhookHandler
             return ['error' => 'Missing metadata', 'status' => 400];
         }
 
-        // Founding badge: grant and stop. Never a subscription row, never a role.
-        if ($planType === 'founding_badge') {
-            // checkout.session.completed fires before the money settles for
-            // delayed-notification methods. Only 'paid' is an entitlement.
-            $paymentStatus = (string) ($session['payment_status'] ?? '');
-            if ($paymentStatus !== 'paid') {
-                error_log(
-                    'BBJ Billing: founding badge session ' . ($session['id'] ?? '?')
-                    . ' completed with payment_status=' . ($paymentStatus === '' ? '(missing)' : $paymentStatus)
-                    . ' - not granting'
-                );
-                return ['success' => true, 'message' => 'Founding badge payment not settled'];
-            }
-
-            $alreadyHad = FoundingBadge::has($userId);
-            $granted = FoundingBadge::grant($userId, 'purchase');
-
-            if ($alreadyHad) {
-                error_log('BBJ Billing: founding badge duplicate payment - user ' . $userId . ' already held the badge (session ' . ($session['id'] ?? '?') . ')');
-                return ['success' => true, 'message' => 'Founding badge already held - duplicate payment logged'];
-            }
-
-            if (!$granted) {
-                error_log('BBJ Billing: founding badge grant FAILED for user ' . $userId . ' (session ' . ($session['id'] ?? '?') . ')');
-                return ['success' => true, 'message' => 'Founding badge grant failed - logged'];
-            }
-
-            return ['success' => true, 'message' => 'Founding badge granted'];
-        }
-
         $stripe = new StripeService();
         $planConfig = $stripe->getPlanConfig($planType);
 
@@ -154,13 +124,9 @@ class WebhookHandler
 
             // The PaymentIntent is the only id a later charge.refunded event
             // carries that points back at this exact purchase. Store it so a
-            // refund can free the founders spot it consumed.
+            // refund can revoke the Lifetime it bought.
             if (!empty($session['payment_intent'])) {
                 $subscriptionData['stripe_payment_intent_id'] = (string) $session['payment_intent'];
-            }
-
-            if (FoundersWindow::lifetimeSpotsLeft() <= 0) {
-                error_log('BBJ Billing: lifetime cap overshoot - honoring paid checkout for user ' . $userId);
             }
         }
 
@@ -303,13 +269,11 @@ class WebhookHandler
     /**
      * Handle Stripe charge.refunded.
      *
-     * Only Lifetime needs this. It is the one purchase that consumes a capped,
-     * publicly-counted founders spot, and no other event in this switch can
-     * give the spot back - a refunded row would keep `status = 'lifetime'`
-     * forever and the "N of 50 left" counter would stay permanently short.
-     * Partial refunds are logged and left alone (the member keeps what they
-     * mostly paid for). The founding badge is deliberately NOT revoked; it is
-     * cosmetic and that call is Steve's. PayPal refunds stay manual.
+     * Only Lifetime needs this. It is the one-time purchase, and no other
+     * event in this switch can take it back - a refunded row would keep
+     * `status = 'lifetime'` (and the role) forever. Partial refunds are
+     * logged and left alone (the member keeps what they mostly paid for).
+     * PayPal refunds stay manual.
      */
     private function handleStripeChargeRefunded(array $charge): array
     {
@@ -400,13 +364,11 @@ class WebhookHandler
     }
 
     /**
-     * Take a refunded lifetime row out of the founders count and strip the role.
+     * Close out a refunded lifetime row and strip the role.
      *
      * `refunded` is not a value in the bbj_subscriptions.status ENUM
      * ('active','canceled','past_due','expired','lifetime'), so the row lands
-     * on 'canceled': it is no longer counted by
-     * FoundersWindow::lifetimeSpotsSold(), which only counts status='lifetime'.
-     * updateSubscriptionStatus() also runs the existing role-removal path, so
+     * on 'canceled'. updateSubscriptionStatus() also runs the existing role-removal path, so
      * the `lifetime` role goes with it unless another paid row still needs it.
      *
      * Public so the local verify script can drive the transition without
@@ -426,7 +388,7 @@ class WebhookHandler
         ]);
 
         if ($updated) {
-            error_log('BBJ Billing: lifetime refund - freed a founders spot for user ' . $userId);
+            error_log('BBJ Billing: lifetime refund - revoked Lifetime for user ' . $userId);
         }
 
         return $updated;

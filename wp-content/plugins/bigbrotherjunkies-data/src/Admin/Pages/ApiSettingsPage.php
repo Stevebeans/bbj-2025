@@ -275,7 +275,7 @@ class ApiSettingsPage
 
                             <div>
                                 <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">
-                                    Annual ($45/yr)
+                                    Annual ($35/yr)
                                 </label>
                                 <input type="text"
                                        name="stripe_price_annual"
@@ -441,7 +441,7 @@ class ApiSettingsPage
 
                             <div>
                                 <label class="bbjd-block bbjd-text-sm bbjd-font-medium bbjd-text-gray-700 bbjd-mb-1">
-                                    Annual Plan ID ($45/yr)
+                                    Annual Plan ID ($35/yr)
                                 </label>
                                 <input type="text"
                                        name="paypal_plan_annual"
