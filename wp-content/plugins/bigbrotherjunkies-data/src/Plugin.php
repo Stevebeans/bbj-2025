@@ -24,6 +24,7 @@ use BigBrotherJunkies\Data\Api\AdRoutes;
 use BigBrotherJunkies\Data\Api\SpoilerBarRoutes;
 use BigBrotherJunkies\Data\Api\SearchRoutes;
 use BigBrotherJunkies\Data\Api\HomeRoutes;
+use BigBrotherJunkies\Data\Api\HomepageModeRoutes;
 use BigBrotherJunkies\Data\Api\CommentRoutes;
 use BigBrotherJunkies\Data\Api\ReactionRoutes;
 use BigBrotherJunkies\Data\Api\SessionRoutes;
@@ -615,6 +616,9 @@ class Plugin
 
         $homeRoutes = new HomeRoutes();
         $homeRoutes->register();
+
+        $homepageModeRoutes = new HomepageModeRoutes();
+        $homepageModeRoutes->register();
 
         // Comment system tables + migrations (idempotent)
         if (CommentMigrator::needsMigration()) {

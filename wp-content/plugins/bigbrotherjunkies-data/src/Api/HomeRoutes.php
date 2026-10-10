@@ -18,6 +18,13 @@ use BigBrotherJunkies\Data\LiveThread\LiveThreadState;
  */
 class HomeRoutes
 {
+    public const HOMEPAGE_TRANSIENT = 'bbjd_homepage_combined';
+    public const HOMEPAGE_MODE_OPTION = 'bbjd_homepage_mode';
+    public const HOMEPAGE_MODES = ['season', 'offseason'];
+    private const OTHER_SHOWS_SLUG = 'other-shows';
+    /** Shows with a dedicated hub page; the rest link to their category archive. */
+    private const SHOW_PAGES = ['survivor' => '/shows/survivor'];
+
     /** Transient key for the premium live-poller payload (20s micro-cache). */
     public const RECENT_TRANSIENT = 'bbjd_feed_updates_recent';
 
@@ -1014,11 +1021,13 @@ class HomeRoutes
      */
     public function getHomepage(): array
     {
-        $cacheKey = 'bbjd_homepage_combined';
+        $cacheKey = self::HOMEPAGE_TRANSIENT;
         $cached = get_transient($cacheKey);
         if ($cached !== false) {
             return $cached;
         }
+
+        $mode = self::homepageMode();
 
         // Build mock requests with homepage defaults
         $feedRequest = new \WP_REST_Request('GET', '/bbjd/v1/feed-updates');
@@ -1027,6 +1036,10 @@ class HomeRoutes
         $feedRequest->set_param('sort', 'newest');
         $feedRequest->set_param('date_range', 'all');
         $feedRequest->set_param('search', '');
+        if ($mode === 'offseason') {
+            // Off-season front page covers every show, not just BB.
+            $feedRequest->set_param('show', 'all');
+        }
 
         $commentsRequest = new \WP_REST_Request('GET', '/bbjd/v1/recent-comments');
         $commentsRequest->set_param('per_page', 5);
@@ -1043,12 +1056,78 @@ class HomeRoutes
             'seasonStats' => $this->getSeasonStats(),
             'recentComments' => $this->getRecentComments($commentsRequest),
             'posts' => $this->getPosts($postsRequest),
+            'homepageMode' => $mode,
         ];
+        if ($mode === 'offseason') {
+            $result['shows'] = $this->getShowsBlock();
+        }
 
         // Cache for 60 seconds
         set_transient($cacheKey, $result, 60);
 
         return $result;
+    }
+
+    public static function homepageMode(): string
+    {
+        $mode = (string) get_option(self::HOMEPAGE_MODE_OPTION, 'season');
+        return in_array($mode, self::HOMEPAGE_MODES, true) ? $mode : 'season';
+    }
+
+    /**
+     * One card per child of the "Other Shows" category that has a published
+     * post: the show's newest post + where "More <Show>" should point.
+     * A handful of shows = a handful of 1-row queries, inside the 60s
+     * homepage transient.
+     */
+    public function getShowsBlock(): array
+    {
+        $parent = get_category_by_slug(self::OTHER_SHOWS_SLUG);
+        if (!$parent) {
+            return [];
+        }
+        $children = get_categories([
+            'taxonomy' => 'category',
+            'parent' => $parent->term_id,
+            'hide_empty' => true,
+        ]);
+
+        $shows = [];
+        foreach ($children as $cat) {
+            $query = new \WP_Query([
+                'post_type' => 'post',
+                'post_status' => 'publish',
+                'posts_per_page' => 1,
+                'cat' => $cat->term_id,
+                'orderby' => 'date',
+                'order' => 'DESC',
+                'ignore_sticky_posts' => true,
+                'no_found_rows' => true,
+            ]);
+            if (!$query->have_posts()) {
+                continue;
+            }
+            $post = $query->posts[0];
+            $shows[] = [
+                'name' => html_entity_decode($cat->name, ENT_QUOTES, 'UTF-8'),
+                'slug' => $cat->slug,
+                'href' => self::SHOW_PAGES[$cat->slug] ?? '/category/' . $cat->slug,
+                'post' => [
+                    'id' => $post->ID,
+                    'slug' => $post->post_name,
+                    'title' => html_entity_decode(get_the_title($post), ENT_QUOTES, 'UTF-8'),
+                    'date' => get_the_date('c', $post),
+                    'date_formatted' => get_the_date('M j, Y', $post),
+                    'comment_count' => (int) get_comments_number($post),
+                    'featured_image' => get_the_post_thumbnail_url($post, 'medium_large') ?: null,
+                ],
+            ];
+        }
+
+        // Most recently active show first.
+        usort($shows, static fn($a, $b) => strcmp($b['post']['date'], $a['post']['date']));
+
+        return $shows;
     }
 
     /**

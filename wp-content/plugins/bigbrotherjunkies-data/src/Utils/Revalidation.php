@@ -57,6 +57,15 @@ class Revalidation
     }
 
     /**
+     * Trigger revalidation for the homepage (mode toggle): revalidates '/'
+     * and targeted-purges only the homepage URL from Cloudflare.
+     */
+    public static function revalidateHomepage(): bool
+    {
+        return self::trigger('homepage', '');
+    }
+
+    /**
      * Trigger revalidation for the spoiler bar
      */
     public static function revalidateSpoilerBar(): bool
