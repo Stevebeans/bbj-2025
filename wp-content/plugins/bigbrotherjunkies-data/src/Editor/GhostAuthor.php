@@ -3,46 +3,25 @@
 namespace BigBrotherJunkies\Data\Editor;
 
 /**
- * "BennyBronx" ghost byline for AI-drafted posts Steve reviews but didn't
- * write. Admin-only: the flag is saved and honored only for users with
- * manage_options. While drafting the post stays owned by the real editor
- * (autosave/ownership untouched); the author swaps to the ghost account at
+ * "Bean Bot" byline for AI-drafted posts Steve reviews but didn't write, so
+ * readers can see a bot wrote them. Reuses the `bean-bot` author Bean Bot
+ * already posts as. Admin-only: the flag is saved and honored only for users
+ * with manage_options. While drafting the post stays owned by the real editor
+ * (autosave/ownership untouched); the author swaps to Bean Bot at
  * publish/schedule time, and swaps back if the flag is cleared.
  */
 class GhostAuthor
 {
-    public const OPTION       = 'bbjd_ghost_author_id';
-    public const LOGIN        = 'bbj-ghostwriter';
-    public const DISPLAY_NAME = 'BennyBronx';
-    public const META_KEY     = '_bbjd_ghost_author';
+    public const META_KEY = '_bbjd_ghost_author';
 
     /** Pass $createIfMissing = false on read-only paths so they never create users. */
     public static function id(bool $createIfMissing = true): int
     {
-        $id = (int) get_option(self::OPTION, 0);
-        if ($id > 0 && get_userdata($id)) {
-            return $id;
+        if ($createIfMissing) {
+            return \BigBrotherJunkies\Data\Social\BeanBotService::ensureUser();
         }
-        if (!$createIfMissing) {
-            return 0;
-        }
-        $existing = get_user_by('login', self::LOGIN);
-        if ($existing) {
-            update_option(self::OPTION, (int) $existing->ID);
-            return (int) $existing->ID;
-        }
-        $id = wp_insert_user([
-            'user_login'   => self::LOGIN,
-            'user_email'   => self::LOGIN . '@bigbrotherjunkies.com',
-            'user_pass'    => wp_generate_password(32, true, true),
-            'display_name' => self::DISPLAY_NAME,
-            'role'         => 'subscriber',
-        ]);
-        if (is_wp_error($id)) {
-            return 0;
-        }
-        update_option(self::OPTION, (int) $id);
-        return (int) $id;
+        $user = get_user_by('login', 'bean-bot');
+        return $user ? (int) $user->ID : 0;
     }
 
     public static function canUse(): bool
